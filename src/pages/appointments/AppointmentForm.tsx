@@ -17,9 +17,8 @@ const APPOINTMENT_TYPES: AppointmentType[] = ['MOT', 'SERVICE', 'MOT_AND_SERVICE
 const APPOINTMENT_STATUSES: AppointmentStatus[] = ['BOOKED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']
 
 export function AppointmentForm() {
-  const { id } = useParams()
+  const { id: appointmentId } = useParams()
   const [searchParams] = useSearchParams()
-  const appointmentId = id ? Number(id) : undefined
   const isEdit = appointmentId !== undefined
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -31,7 +30,7 @@ export function AppointmentForm() {
   const { data: customers } = useCustomers()
   const { data: vehicles } = useVehicles()
   const createMutation = useCreateAppointment()
-  const updateMutation = useUpdateAppointment(appointmentId ?? -1)
+  const updateMutation = useUpdateAppointment(appointmentId ?? '')
   const cancelMutation = useCancelAppointment()
 
   const [employeeId, setEmployeeId] = useState('')
@@ -67,9 +66,9 @@ export function AppointmentForm() {
     setFormError(null)
     setConflict(false)
     const payload = {
-      employee_id: Number(employeeId),
-      customer_id: Number(customerId),
-      vehicle_id: vehicleId ? Number(vehicleId) : null,
+      employee_id: employeeId,
+      customer_id: customerId,
+      vehicle_id: vehicleId || null,
       start_time: localInputValueToIso(startTime),
       end_time: localInputValueToIso(endTime),
       appointment_type: appointmentType,
@@ -142,16 +141,16 @@ export function AppointmentForm() {
           </label>
           <input
             id="employee_id"
-            type="number"
+            type="text"
             required
             value={employeeId}
             onChange={(e) => setEmployeeId(e.target.value)}
+            placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6"
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
           />
           <p className="mt-1 text-xs text-slate-400">
-            There's no staff list yet, so enter the employee's numeric ID directly (visible to
-            them from their login token). A proper picker is blocked on a backend endpoint that
-            doesn't exist.
+            There's no picker here yet, so paste the employee's id directly. The backend now
+            exposes GET /api/employees/ to look one up - this screen just doesn't call it yet.
           </p>
           {errors.employee_id && <p className="mt-1 text-sm text-red-600">{errors.employee_id}</p>}
         </div>
@@ -191,7 +190,7 @@ export function AppointmentForm() {
           >
             <option value="">No vehicle</option>
             {vehicles
-              ?.filter((v) => !customerId || v.customer_id === Number(customerId))
+              ?.filter((v) => !customerId || v.customer_id === customerId)
               .map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.registration_number}

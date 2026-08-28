@@ -15,11 +15,11 @@ export function VehiclesList() {
     isError,
   } = useVehicles({
     registration: registration || undefined,
-    customer_id: customerId ? Number(customerId) : undefined,
+    customer_id: customerId || undefined,
     mot_expiry_date: motExpiryDate || undefined,
   })
 
-  const customerName = (id: number) => {
+  const customerName = (id: string) => {
     const c = customers?.find((c) => c.id === id)
     return c ? `${c.first_name} ${c.last_name}` : `#${id}`
   }

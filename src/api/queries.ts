@@ -31,10 +31,10 @@ export function useCustomers(search?: string) {
   })
 }
 
-export function useCustomer(id: number | undefined) {
+export function useCustomer(id: string | undefined) {
   return useQuery({
     queryKey: ['customers', id],
-    queryFn: () => customersApi.getCustomer(id as number),
+    queryFn: () => customersApi.getCustomer(id as string),
     enabled: id !== undefined,
   })
 }
@@ -47,7 +47,7 @@ export function useCreateCustomer() {
   })
 }
 
-export function useUpdateCustomer(id: number) {
+export function useUpdateCustomer(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: Partial<CustomerInput>) => customersApi.updateCustomer(id, data),
@@ -58,7 +58,7 @@ export function useUpdateCustomer(id: number) {
 export function useDeleteCustomer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => customersApi.deleteCustomer(id),
+    mutationFn: (id: string) => customersApi.deleteCustomer(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
   })
 }
@@ -71,10 +71,10 @@ export function useVehicles(params: VehicleListParams = {}) {
   })
 }
 
-export function useVehicle(id: number | undefined) {
+export function useVehicle(id: string | undefined) {
   return useQuery({
     queryKey: ['vehicles', id],
-    queryFn: () => vehiclesApi.getVehicle(id as number),
+    queryFn: () => vehiclesApi.getVehicle(id as string),
     enabled: id !== undefined,
   })
 }
@@ -87,7 +87,7 @@ export function useCreateVehicle() {
   })
 }
 
-export function useUpdateVehicle(id: number) {
+export function useUpdateVehicle(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: Partial<VehicleInput>) => vehiclesApi.updateVehicle(id, data),
@@ -98,21 +98,21 @@ export function useUpdateVehicle(id: number) {
 export function useDeleteVehicle() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => vehiclesApi.deleteVehicle(id),
+    mutationFn: (id: string) => vehiclesApi.deleteVehicle(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['vehicles'] }),
   })
 }
 
 // MOT records
-export function useMOTRecords(vehicleId: number | undefined) {
+export function useMOTRecords(vehicleId: string | undefined) {
   return useQuery({
     queryKey: ['motRecords', vehicleId],
-    queryFn: () => motRecordsApi.listMOTRecords(vehicleId as number),
+    queryFn: () => motRecordsApi.listMOTRecords(vehicleId as string),
     enabled: vehicleId !== undefined,
   })
 }
 
-export function useCreateMOTRecord(vehicleId: number) {
+export function useCreateMOTRecord(vehicleId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: MOTRecordInput) => motRecordsApi.createMOTRecord(vehicleId, data),
@@ -124,10 +124,10 @@ export function useCreateMOTRecord(vehicleId: number) {
   })
 }
 
-export function useUpdateMOTRecord(vehicleId: number) {
+export function useUpdateMOTRecord(vehicleId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<MOTRecordInput> }) =>
+    mutationFn: ({ id, data }: { id: string; data: Partial<MOTRecordInput> }) =>
       motRecordsApi.updateMOTRecord(vehicleId, id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['motRecords', vehicleId] })
@@ -153,7 +153,7 @@ export function useCreateAppointment() {
   })
 }
 
-export function useUpdateAppointment(id: number) {
+export function useUpdateAppointment(id: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: Partial<AppointmentInput>) => appointmentsApi.updateAppointment(id, data),
@@ -164,7 +164,7 @@ export function useUpdateAppointment(id: number) {
 export function useCancelAppointment() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => appointmentsApi.cancelAppointment(id),
+    mutationFn: (id: string) => appointmentsApi.cancelAppointment(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
   })
 }

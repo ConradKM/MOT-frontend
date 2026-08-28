@@ -1,7 +1,7 @@
 export type Role = 'OWNER' | 'STAFF'
 
 export interface Garage {
-  id: number
+  id: string
   name: string
   email: string | null
   phone: string | null
@@ -11,8 +11,8 @@ export interface Garage {
 }
 
 export interface Employee {
-  id: number
-  garage_id: number
+  id: string
+  garage_id: string
   email: string
   role: Role
   created_at: string
@@ -20,8 +20,8 @@ export interface Employee {
 }
 
 export interface Customer {
-  id: number
-  garage_id: number
+  id: string
+  garage_id: string
   first_name: string
   last_name: string
   email: string | null
@@ -31,9 +31,9 @@ export interface Customer {
 }
 
 export interface Vehicle {
-  id: number
-  garage_id: number
-  customer_id: number
+  id: string
+  garage_id: string
+  customer_id: string
   registration_number: string
   make: string | null
   model: string | null
@@ -47,9 +47,9 @@ export interface Vehicle {
 export type MOTResult = 'PASS' | 'FAIL'
 
 export interface MOTRecord {
-  id: number
-  garage_id: number
-  vehicle_id: number
+  id: string
+  garage_id: string
+  vehicle_id: string
   mot_date: string
   expiry_date: string
   result: MOTResult
@@ -62,11 +62,11 @@ export type AppointmentType = 'MOT' | 'SERVICE' | 'MOT_AND_SERVICE' | 'REPAIR' |
 export type AppointmentStatus = 'BOOKED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
 
 export interface Appointment {
-  id: number
-  garage_id: number
-  employee_id: number
-  customer_id: number
-  vehicle_id: number | null
+  id: string
+  garage_id: string
+  employee_id: string
+  customer_id: string
+  vehicle_id: string | null
   start_time: string
   end_time: string
   appointment_type: AppointmentType

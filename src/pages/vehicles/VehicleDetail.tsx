@@ -13,8 +13,7 @@ import { useToast } from '../../components/Toast'
 import type { MOTResult } from '../../types'
 
 export function VehicleDetail() {
-  const { id } = useParams()
-  const vehicleId = Number(id)
+  const { id: vehicleId } = useParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
 
@@ -22,7 +21,7 @@ export function VehicleDetail() {
   const { data: customer } = useCustomer(vehicle?.customer_id)
   const { data: records } = useMOTRecords(vehicleId)
   const deleteMutation = useDeleteVehicle()
-  const createRecordMutation = useCreateMOTRecord(vehicleId)
+  const createRecordMutation = useCreateMOTRecord(vehicleId ?? '')
 
   const [showAddRecord, setShowAddRecord] = useState(false)
   const [motDate, setMotDate] = useState('')
@@ -35,7 +34,7 @@ export function VehicleDetail() {
   const handleDeleteVehicle = async () => {
     if (!confirm('Delete this vehicle? This cannot be undone.')) return
     try {
-      await deleteMutation.mutateAsync(vehicleId)
+      await deleteMutation.mutateAsync(vehicleId as string)
       showToast('Vehicle deleted.', 'success')
       navigate('/vehicles')
     } catch (err) {

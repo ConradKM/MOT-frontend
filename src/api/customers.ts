@@ -15,7 +15,7 @@ export function listCustomers(params: { search?: string } = {}): Promise<Custome
   return apiFetch<Customer[]>(`/api/customers/${suffix}`)
 }
 
-export function getCustomer(id: number): Promise<Customer> {
+export function getCustomer(id: string): Promise<Customer> {
   return apiFetch<Customer>(`/api/customers/${id}`)
 }
 
@@ -23,10 +23,10 @@ export function createCustomer(data: CustomerInput): Promise<Customer> {
   return apiFetch<Customer>('/api/customers/', { method: 'POST', body: data })
 }
 
-export function updateCustomer(id: number, data: Partial<CustomerInput>): Promise<Customer> {
+export function updateCustomer(id: string, data: Partial<CustomerInput>): Promise<Customer> {
   return apiFetch<Customer>(`/api/customers/${id}`, { method: 'PATCH', body: data })
 }
 
-export function deleteCustomer(id: number): Promise<void> {
+export function deleteCustomer(id: string): Promise<void> {
   return apiFetch<void>(`/api/customers/${id}`, { method: 'DELETE' })
 }

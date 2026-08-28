@@ -15,10 +15,8 @@ export function decodeJwt(token: string): JwtPayload | null {
   }
 }
 
-export function employeeIdFromToken(token: string): number | null {
+export function employeeIdFromToken(token: string): string | null {
   const payload = decodeJwt(token)
   const sub = payload?.sub
-  if (typeof sub !== 'string') return null
-  const id = Number(sub)
-  return Number.isFinite(id) ? id : null
+  return typeof sub === 'string' && sub.length > 0 ? sub : null
 }

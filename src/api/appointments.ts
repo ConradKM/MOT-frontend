@@ -2,9 +2,9 @@ import { apiFetch } from './client'
 import type { Appointment, AppointmentStatus, AppointmentType } from '../types'
 
 export interface AppointmentInput {
-  employee_id: number
-  customer_id: number
-  vehicle_id?: number | null
+  employee_id: string
+  customer_id: string
+  vehicle_id?: string | null
   start_time: string
   end_time: string
   appointment_type: AppointmentType
@@ -16,9 +16,9 @@ export interface AppointmentListParams {
   date?: string
   start_date?: string
   end_date?: string
-  employee_id?: number
-  customer_id?: number
-  vehicle_id?: number
+  employee_id?: string
+  customer_id?: string
+  vehicle_id?: string
   status?: AppointmentStatus
   appointment_type?: AppointmentType
 }
@@ -37,12 +37,12 @@ export function createAppointment(data: AppointmentInput): Promise<Appointment> 
 }
 
 export function updateAppointment(
-  id: number,
+  id: string,
   data: Partial<AppointmentInput>,
 ): Promise<Appointment> {
   return apiFetch<Appointment>(`/api/appointments/${id}`, { method: 'PATCH', body: data })
 }
 
-export function cancelAppointment(id: number): Promise<void> {
+export function cancelAppointment(id: string): Promise<void> {
   return apiFetch<void>(`/api/appointments/${id}`, { method: 'DELETE' })
 }

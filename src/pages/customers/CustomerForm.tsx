@@ -5,15 +5,14 @@ import { errorMessage, fieldErrors } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 
 export function CustomerForm() {
-  const { id } = useParams()
-  const customerId = id ? Number(id) : undefined
+  const { id: customerId } = useParams()
   const isEdit = customerId !== undefined
   const navigate = useNavigate()
   const { showToast } = useToast()
 
   const { data: existing } = useCustomer(customerId)
   const createMutation = useCreateCustomer()
-  const updateMutation = useUpdateCustomer(customerId ?? -1)
+  const updateMutation = useUpdateCustomer(customerId ?? '')
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')

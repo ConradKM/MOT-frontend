@@ -13,7 +13,7 @@ export interface CalendarColumn {
 
 interface Props {
   columns: CalendarColumn[]
-  customerName: (id: number) => string
+  customerName: (id: string) => string
 }
 
 const HOUR_HEIGHT = 56

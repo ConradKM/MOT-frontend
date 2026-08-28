@@ -8,11 +8,11 @@ export interface MOTRecordInput {
   notes?: string | null
 }
 
-export function listMOTRecords(vehicleId: number): Promise<MOTRecord[]> {
+export function listMOTRecords(vehicleId: string): Promise<MOTRecord[]> {
   return apiFetch<MOTRecord[]>(`/api/vehicles/${vehicleId}/mot-records/`)
 }
 
-export function createMOTRecord(vehicleId: number, data: MOTRecordInput): Promise<MOTRecord> {
+export function createMOTRecord(vehicleId: string, data: MOTRecordInput): Promise<MOTRecord> {
   return apiFetch<MOTRecord>(`/api/vehicles/${vehicleId}/mot-records/`, {
     method: 'POST',
     body: data,
@@ -20,8 +20,8 @@ export function createMOTRecord(vehicleId: number, data: MOTRecordInput): Promis
 }
 
 export function updateMOTRecord(
-  vehicleId: number,
-  id: number,
+  vehicleId: string,
+  id: string,
   data: Partial<MOTRecordInput>,
 ): Promise<MOTRecord> {
   return apiFetch<MOTRecord>(`/api/vehicles/${vehicleId}/mot-records/${id}`, {

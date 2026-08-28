@@ -4,8 +4,7 @@ import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 
 export function CustomerDetail() {
-  const { id } = useParams()
-  const customerId = Number(id)
+  const { id: customerId } = useParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
 
@@ -16,7 +15,7 @@ export function CustomerDetail() {
   const handleDelete = async () => {
     if (!confirm('Delete this customer? This cannot be undone.')) return
     try {
-      await deleteMutation.mutateAsync(customerId)
+      await deleteMutation.mutateAsync(customerId as string)
       showToast('Customer deleted.', 'success')
       navigate('/customers')
     } catch (err) {

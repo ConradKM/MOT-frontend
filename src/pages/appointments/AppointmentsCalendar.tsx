@@ -32,17 +32,17 @@ export function AppointmentsCalendar() {
 
   const listParams =
     mode === 'day'
-      ? { date, employee_id: employeeId ? Number(employeeId) : undefined }
+      ? { date, employee_id: employeeId || undefined }
       : mode === 'week'
         ? {
             start_date: weekDates[0],
             end_date: weekDates[6],
-            employee_id: employeeId ? Number(employeeId) : undefined,
+            employee_id: employeeId || undefined,
           }
         : {
             start_date: startDate,
             end_date: endDate,
-            employee_id: employeeId ? Number(employeeId) : undefined,
+            employee_id: employeeId || undefined,
           }
 
   const { data: appointments, isLoading, isError } = useAppointments(listParams)
@@ -50,11 +50,11 @@ export function AppointmentsCalendar() {
   const { data: vehicles } = useVehicles()
   const cancelMutation = useCancelAppointment()
 
-  const customerName = (id: number) => {
+  const customerName = (id: string) => {
     const c = customers?.find((c) => c.id === id)
     return c ? `${c.first_name} ${c.last_name}` : `Customer #${id}`
   }
-  const vehicleReg = (id: number | null) => {
+  const vehicleReg = (id: string | null) => {
     if (id === null) return null
     return vehicles?.find((v) => v.id === id)?.registration_number ?? `Vehicle #${id}`
   }
@@ -62,10 +62,10 @@ export function AppointmentsCalendar() {
   const dayColumns: CalendarColumn[] = useMemo(() => {
     const list = appointments ?? []
     const employeeIds = employeeId
-      ? [Number(employeeId)]
-      : [...new Set(list.map((a) => a.employee_id))].sort((a, b) => a - b)
+      ? [employeeId]
+      : [...new Set(list.map((a) => a.employee_id))].sort()
     return employeeIds.map((id) => ({
-      key: String(id),
+      key: id,
       label: `Employee #${id}`,
       appointments: list.filter((a) => a.employee_id === id),
     }))
@@ -85,7 +85,7 @@ export function AppointmentsCalendar() {
   }, [appointments, weekDates])
 
   const grouped = useMemo(() => {
-    const byEmployee = new Map<number, Appointment[]>()
+    const byEmployee = new Map<string, Appointment[]>()
     for (const a of appointments ?? []) {
       const list = byEmployee.get(a.employee_id) ?? []
       list.push(a)
@@ -94,10 +94,10 @@ export function AppointmentsCalendar() {
     for (const list of byEmployee.values()) {
       list.sort((a, b) => a.start_time.localeCompare(b.start_time))
     }
-    return [...byEmployee.entries()].sort(([a], [b]) => a - b)
+    return [...byEmployee.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [appointments])
 
-  const handleCancel = async (id: number) => {
+  const handleCancel = async (id: string) => {
     if (!confirm('Cancel this appointment?')) return
     try {
       await cancelMutation.mutateAsync(id)
@@ -187,11 +187,11 @@ export function AppointmentsCalendar() {
         )}
 
         <input
-          type="number"
+          type="text"
           placeholder="Filter by employee ID…"
           value={employeeId}
           onChange={(e) => setEmployeeId(e.target.value)}
-          className="w-48 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
+          className="w-64 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
         />
       </div>
 

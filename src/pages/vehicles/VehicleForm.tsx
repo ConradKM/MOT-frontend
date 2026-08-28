@@ -5,9 +5,8 @@ import { errorMessage, fieldErrors } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 
 export function VehicleForm() {
-  const { id } = useParams()
+  const { id: vehicleId } = useParams()
   const [searchParams] = useSearchParams()
-  const vehicleId = id ? Number(id) : undefined
   const isEdit = vehicleId !== undefined
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -15,7 +14,7 @@ export function VehicleForm() {
   const { data: existing } = useVehicle(vehicleId)
   const { data: customers } = useCustomers()
   const createMutation = useCreateVehicle()
-  const updateMutation = useUpdateVehicle(vehicleId ?? -1)
+  const updateMutation = useUpdateVehicle(vehicleId ?? '')
 
   const [customerId, setCustomerId] = useState(searchParams.get('customer_id') ?? '')
   const [registration, setRegistration] = useState('')
@@ -46,7 +45,7 @@ export function VehicleForm() {
     setErrors({})
     setFormError(null)
     const payload = {
-      customer_id: Number(customerId),
+      customer_id: customerId,
       registration_number: registration,
       make: make || null,
       model: model || null,

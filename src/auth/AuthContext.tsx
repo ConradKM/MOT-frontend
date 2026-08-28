@@ -6,7 +6,7 @@ import { employeeIdFromToken } from '../lib/jwt'
 
 interface AuthContextValue {
   isAuthenticated: boolean
-  employeeId: number | null
+  employeeId: string | null
   login: (email: string, password: string) => Promise<void>
   register: (garageName: string, email: string, password: string) => Promise<void>
   logout: () => void
