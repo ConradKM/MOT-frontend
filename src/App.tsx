@@ -13,12 +13,20 @@ import { VehicleDetail } from './pages/vehicles/VehicleDetail'
 import { AppointmentsCalendar } from './pages/appointments/AppointmentsCalendar'
 import { AppointmentForm } from './pages/appointments/AppointmentForm'
 import { GarageSettings } from './pages/garage/GarageSettings'
+import { CustomerLayout } from './components/customer/CustomerLayout'
+import { CustomerLanding } from './pages/customer/CustomerLanding'
+import { BookingWizard } from './pages/customer/BookingWizard'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+
+      <Route element={<CustomerLayout />}>
+        <Route path="/customer" element={<CustomerLanding />} />
+        <Route path="/customer/book" element={<BookingWizard />} />
+      </Route>
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>

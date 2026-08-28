@@ -85,6 +85,12 @@ export function Login() {
             Register
           </Link>
         </p>
+        <p className="mt-2 text-center text-sm text-slate-500">
+          Looking to book an MOT or service?{' '}
+          <Link to="/customer" className="font-medium text-slate-900 hover:underline">
+            Book here
+          </Link>
+        </p>
       </div>
     </div>
   )
