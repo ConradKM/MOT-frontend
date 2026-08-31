@@ -10,11 +10,19 @@ import {
 } from '../../api/queries'
 import { isoToLocalInputValue, localInputValueToIso } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
+import { appointmentTypeDescriptions, appointmentTypeLabels } from '../../lib/appointments'
 import { useToast } from '../../components/Toast'
+import { RichDropdown } from '../../components/RichDropdown'
 import type { AppointmentStatus, AppointmentType } from '../../types'
 
 const APPOINTMENT_TYPES: AppointmentType[] = ['MOT', 'SERVICE', 'MOT_AND_SERVICE', 'REPAIR', 'OTHER']
 const APPOINTMENT_STATUSES: AppointmentStatus[] = ['BOOKED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']
+
+const APPOINTMENT_TYPE_OPTIONS = APPOINTMENT_TYPES.map((t) => ({
+  value: t,
+  title: appointmentTypeLabels[t],
+  description: appointmentTypeDescriptions[t],
+}))
 
 export function AppointmentForm() {
   const { id: appointmentId } = useParams()
@@ -235,18 +243,14 @@ export function AppointmentForm() {
             <label className="block text-sm font-medium text-slate-700" htmlFor="appointment_type">
               Type
             </label>
-            <select
-              id="appointment_type"
-              value={appointmentType}
-              onChange={(e) => setAppointmentType(e.target.value as AppointmentType)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            >
-              {APPOINTMENT_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </select>
+            <div className="mt-1">
+              <RichDropdown
+                id="appointment_type"
+                options={APPOINTMENT_TYPE_OPTIONS}
+                value={appointmentType}
+                onChange={(v) => setAppointmentType(v as AppointmentType)}
+              />
+            </div>
           </div>
           {isEdit && (
             <div>

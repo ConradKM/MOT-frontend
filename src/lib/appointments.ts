@@ -8,6 +8,18 @@ export const appointmentTypeLabels: Record<AppointmentType, string> = {
   OTHER: 'Other',
 }
 
+/**
+ * Placeholder copy until garages can define their own appointment types with real
+ * descriptions and pricing (see MOT-backend issue #8) — swap this out once that lands.
+ */
+export const appointmentTypeDescriptions: Record<AppointmentType, string> = {
+  MOT: 'Annual MOT test',
+  SERVICE: 'Routine service and inspection',
+  MOT_AND_SERVICE: 'MOT test combined with a full service',
+  REPAIR: 'Diagnostic and repair work',
+  OTHER: "Anything that doesn't fit the categories above",
+}
+
 export const appointmentStatusLabels: Record<AppointmentStatus, string> = {
   BOOKED: 'Booked',
   COMPLETED: 'Completed',
