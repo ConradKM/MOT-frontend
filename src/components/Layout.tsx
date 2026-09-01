@@ -1,21 +1,28 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useGarage } from '../api/queries'
+import { useGarageId } from '../hooks/useGarageId'
 
 export function Layout() {
   const { logout } = useAuth()
   const { data: garage } = useGarage()
+  const garageId = useGarageId()
+  const location = useLocation()
 
-  // Once the garage loads, link straight to its scoped dashboard so the nav item can
-  // highlight as active there; /dashboard (used meanwhile, and by post-login redirects)
-  // immediately forwards to the same place.
-  const dashboardTo = garage ? `/${garage.id}/dashboard` : '/dashboard'
+  // Every route under here is /:garageId/... but the garage itself is always derived
+  // from the employee's JWT, not the URL - if the id in the URL doesn't match (stale
+  // link, hand-edited), send them to the same page under the correct id instead.
+  if (garage && garageId !== garage.id) {
+    const rest = location.pathname.split('/').slice(2).join('/')
+    return <Navigate to={`/${garage.id}/${rest}${location.search}`} replace />
+  }
+
   const navItems = [
-    { to: dashboardTo, label: 'Dashboard', end: true },
-    { to: '/customers', label: 'Customers' },
-    { to: '/vehicles', label: 'Vehicles' },
-    { to: '/appointments', label: 'Appointments' },
-    { to: '/garage', label: 'Garage Settings' },
+    { to: `/${garageId}/dashboard`, label: 'Dashboard', end: true },
+    { to: `/${garageId}/customers`, label: 'Customers' },
+    { to: `/${garageId}/vehicles`, label: 'Vehicles' },
+    { to: `/${garageId}/appointments`, label: 'Appointments' },
+    { to: `/${garageId}/settings`, label: 'Settings' },
   ]
 
   return (

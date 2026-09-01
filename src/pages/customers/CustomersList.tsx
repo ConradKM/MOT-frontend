@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCustomers } from '../../api/queries'
+import { useGarageId } from '../../hooks/useGarageId'
 
 export function CustomersList() {
+  const garageId = useGarageId()
   const [search, setSearch] = useState('')
   const { data: customers, isLoading, isError } = useCustomers(search || undefined)
 
@@ -11,7 +13,7 @@ export function CustomersList() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Customers</h1>
         <Link
-          to="/customers/new"
+          to={`/${garageId}/customers/new`}
           className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           New customer
@@ -45,7 +47,7 @@ export function CustomersList() {
               {customers.map((c) => (
                 <tr key={c.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-2">
-                    <Link to={`/customers/${c.id}`} className="font-medium text-slate-900 hover:underline">
+                    <Link to={`/${garageId}/customers/${c.id}`} className="font-medium text-slate-900 hover:underline">
                       {c.first_name} {c.last_name}
                     </Link>
                   </td>

@@ -12,6 +12,8 @@ import { VehicleDetail } from './pages/vehicles/VehicleDetail'
 import { AppointmentsCalendar } from './pages/appointments/AppointmentsCalendar'
 import { AppointmentForm } from './pages/appointments/AppointmentForm'
 import { GarageSettings } from './pages/garage/GarageSettings'
+import { EmployeesList } from './pages/employees/EmployeesList'
+import { SettingsHub } from './pages/settings/SettingsHub'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerLanding } from './pages/customer/CustomerLanding'
 import { BookingWizard } from './pages/customer/BookingWizard'
@@ -31,25 +33,30 @@ export default function App() {
       </Route>
 
       <Route element={<ProtectedRoute />}>
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<DashboardRedirect />} />
-          <Route path="/:garageId/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={<DashboardRedirect />} />
 
-          <Route path="/customers" element={<CustomersList />} />
-          <Route path="/customers/new" element={<CustomerForm />} />
-          <Route path="/customers/:id" element={<CustomerDetail />} />
-          <Route path="/customers/:id/edit" element={<CustomerForm />} />
+        <Route path="/:garageId" element={<Layout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
 
-          <Route path="/vehicles" element={<VehiclesList />} />
-          <Route path="/vehicles/new" element={<VehicleForm />} />
-          <Route path="/vehicles/:id" element={<VehicleDetail />} />
-          <Route path="/vehicles/:id/edit" element={<VehicleForm />} />
+          <Route path="customers" element={<CustomersList />} />
+          <Route path="customers/new" element={<CustomerForm />} />
+          <Route path="customers/:id" element={<CustomerDetail />} />
+          <Route path="customers/:id/edit" element={<CustomerForm />} />
 
-          <Route path="/appointments" element={<AppointmentsCalendar />} />
-          <Route path="/appointments/new" element={<AppointmentForm />} />
-          <Route path="/appointments/:id/edit" element={<AppointmentForm />} />
+          <Route path="vehicles" element={<VehiclesList />} />
+          <Route path="vehicles/new" element={<VehicleForm />} />
+          <Route path="vehicles/:id" element={<VehicleDetail />} />
+          <Route path="vehicles/:id/edit" element={<VehicleForm />} />
 
-          <Route path="/garage" element={<GarageSettings />} />
+          <Route path="appointments" element={<AppointmentsCalendar />} />
+          <Route path="appointments/new" element={<AppointmentForm />} />
+          <Route path="appointments/:id/edit" element={<AppointmentForm />} />
+
+          <Route path="settings" element={<SettingsHub />} />
+          <Route path="settings/employees" element={<EmployeesList />} />
+          <Route path="settings/roles" element={<Navigate to="../employees" replace />} />
+          <Route path="settings/garage" element={<GarageSettings />} />
         </Route>
       </Route>
 

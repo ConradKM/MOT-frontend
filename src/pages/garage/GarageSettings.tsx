@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useGarage, useUpdateGarage } from '../../api/queries'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
+import { SettingsLayout } from '../../components/settings/SettingsLayout'
 
 export function GarageSettings() {
   const { data: garage, isLoading } = useGarage()
@@ -49,10 +50,17 @@ export function GarageSettings() {
     }
   }
 
-  if (isLoading) return <p className="text-sm text-slate-500">Loading…</p>
+  if (isLoading) {
+    return (
+      <SettingsLayout>
+        <p className="text-sm text-slate-500">Loading…</p>
+      </SettingsLayout>
+    )
+  }
 
   return (
-    <div className="max-w-lg">
+    <SettingsLayout>
+      <div className="max-w-lg">
       <h1 className="text-2xl font-semibold text-slate-900">Garage settings</h1>
       <p className="mt-1 text-sm text-slate-500">
         Only garage owners can save changes here — staff accounts will see a permission error on
@@ -132,6 +140,7 @@ export function GarageSettings() {
           {updateMutation.isPending ? 'Saving…' : 'Save changes'}
         </button>
       </form>
-    </div>
+      </div>
+    </SettingsLayout>
   )
 }

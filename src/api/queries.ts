@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as garageApi from './garage'
 import * as publicGarageApi from './publicGarage'
+import * as employeesApi from './employees'
+import * as rolesApi from './roles'
 import * as customersApi from './customers'
 import * as vehiclesApi from './vehicles'
 import * as motRecordsApi from './motRecords'
@@ -23,6 +25,64 @@ export function useUpdateGarage() {
     mutationFn: (data: Parameters<typeof garageApi.updateGarage>[0]) =>
       garageApi.updateGarage(data),
     onSuccess: (garage) => qc.setQueryData(['garage'], garage),
+  })
+}
+
+// Employees
+export function useEmployees() {
+  return useQuery({ queryKey: ['employees'], queryFn: employeesApi.listEmployees })
+}
+
+export function useCreateEmployee() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Parameters<typeof employeesApi.createEmployee>[0]) =>
+      employeesApi.createEmployee(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['employees'] }),
+  })
+}
+
+export function useUpdateEmployee(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Parameters<typeof employeesApi.updateEmployee>[1]) =>
+      employeesApi.updateEmployee(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['employees'] }),
+  })
+}
+
+// Roles
+export function useRoles() {
+  return useQuery({ queryKey: ['roles'], queryFn: rolesApi.listRoles })
+}
+
+export function useCreateRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (name: string) => rolesApi.createRole(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roles'] }),
+  })
+}
+
+export function useUpdateRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => rolesApi.updateRole(id, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] })
+      qc.invalidateQueries({ queryKey: ['employees'] })
+    },
+  })
+}
+
+export function useDeleteRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => rolesApi.deleteRole(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles'] })
+      qc.invalidateQueries({ queryKey: ['employees'] })
+    },
   })
 }
 

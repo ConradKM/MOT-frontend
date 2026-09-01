@@ -1,5 +1,6 @@
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAppointments, useCustomers, useGarage, useVehicles } from '../api/queries'
+import { useGarageId } from '../hooks/useGarageId'
 import { todayIso } from '../lib/datetime'
 
 /** `/dashboard` — resolves the signed-in employee's own garage, then redirects to its
@@ -12,17 +13,11 @@ export function DashboardRedirect() {
 }
 
 export function Dashboard() {
-  const { garageId } = useParams<{ garageId: string }>()
+  const garageId = useGarageId()
   const { data: garage } = useGarage()
   const { data: customers } = useCustomers()
   const { data: vehicles } = useVehicles()
   const { data: todaysAppointments } = useAppointments({ date: todayIso() })
-
-  // The garage is always derived from the employee's JWT, not the URL — if the id in the
-  // URL doesn't match (stale link, hand-edited), send them to the correct one.
-  if (garage && garageId && garageId !== garage.id) {
-    return <Navigate to={`/${garage.id}/dashboard`} replace />
-  }
 
   const expiringSoon = (vehicles ?? []).filter((v) => {
     if (!v.mot_expiry_date) return false
@@ -39,21 +34,21 @@ export function Dashboard() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Link
-          to="/customers"
+          to={`/${garageId}/customers`}
           className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300"
         >
           <p className="text-sm font-medium text-slate-500">Customers</p>
           <p className="mt-1 text-3xl font-semibold text-slate-900">{customers?.length ?? '—'}</p>
         </Link>
         <Link
-          to="/vehicles"
+          to={`/${garageId}/vehicles`}
           className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300"
         >
           <p className="text-sm font-medium text-slate-500">Vehicles</p>
           <p className="mt-1 text-3xl font-semibold text-slate-900">{vehicles?.length ?? '—'}</p>
         </Link>
         <Link
-          to="/appointments"
+          to={`/${garageId}/appointments`}
           className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300"
         >
           <p className="text-sm font-medium text-slate-500">Today's appointments</p>
@@ -70,7 +65,7 @@ export function Dashboard() {
             expired or expiring within 30 days
           </p>
           <Link
-            to="/vehicles"
+            to={`/${garageId}/vehicles`}
             className="mt-2 inline-block text-sm font-medium text-amber-900 underline"
           >
             Review vehicles

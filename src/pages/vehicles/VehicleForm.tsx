@@ -3,8 +3,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCreateVehicle, useCustomers, useUpdateVehicle, useVehicle } from '../../api/queries'
 import { errorMessage, fieldErrors } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
+import { useGarageId } from '../../hooks/useGarageId'
 
 export function VehicleForm() {
+  const garageId = useGarageId()
   const { id: vehicleId } = useParams()
   const [searchParams] = useSearchParams()
   const isEdit = vehicleId !== undefined
@@ -56,11 +58,11 @@ export function VehicleForm() {
     try {
       if (isEdit) {
         const updated = await updateMutation.mutateAsync(payload)
-        navigate(`/vehicles/${updated.id}`)
+        navigate(`/${garageId}/vehicles/${updated.id}`)
       } else {
         const created = await createMutation.mutateAsync(payload)
         showToast('Vehicle created.', 'success')
-        navigate(`/vehicles/${created.id}`)
+        navigate(`/${garageId}/vehicles/${created.id}`)
       }
     } catch (err) {
       const fields = fieldErrors(err)

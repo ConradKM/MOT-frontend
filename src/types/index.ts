@@ -1,5 +1,3 @@
-export type Role = 'OWNER' | 'STAFF'
-
 export interface Garage {
   id: string
   name: string
@@ -10,11 +8,23 @@ export interface Garage {
   updated_at: string
 }
 
+/** A per-garage employee role — a tag, not a fixed enum. "OWNER" is reserved: every
+ * garage has one, it can't be renamed/deleted, and having it grants owner-only actions. */
+export interface Role {
+  id: string
+  garage_id: string
+  name: string
+  created_at: string
+  updated_at: string
+}
+
 export interface Employee {
   id: string
   garage_id: string
   email: string
-  role: Role
+  first_name: string | null
+  last_name: string | null
+  roles: Role[]
   created_at: string
   updated_at: string
 }

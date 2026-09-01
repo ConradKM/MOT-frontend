@@ -6,6 +6,7 @@ import {
   useCancelAppointment,
   useCreateAppointment,
   useCustomers,
+  useEmployees,
   useUpdateAppointment,
   useVehicles,
 } from '../../api/queries'
@@ -15,6 +16,7 @@ import { useToast } from '../../components/Toast'
 import { RichDropdown } from '../../components/rich/RichDropdown'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
+import { useGarageId } from '../../hooks/useGarageId'
 import type { AppointmentStatus } from '../../types'
 
 const APPOINTMENT_STATUSES: AppointmentStatus[] = ['BOOKED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']
@@ -22,6 +24,7 @@ const APPOINTMENT_STATUSES: AppointmentStatus[] = ['BOOKED', 'COMPLETED', 'CANCE
 const priceFormatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' })
 
 export function AppointmentForm() {
+  const garageId = useGarageId()
   const { id: appointmentId } = useParams()
   const [searchParams] = useSearchParams()
   const isEdit = appointmentId !== undefined
@@ -34,6 +37,7 @@ export function AppointmentForm() {
 
   const { data: customers } = useCustomers()
   const { data: vehicles } = useVehicles()
+  const { data: employees } = useEmployees()
   const { data: appointmentTypes } = useAppointmentTypes('ACTIVE')
   const createMutation = useCreateAppointment()
   const updateMutation = useUpdateAppointment(appointmentId ?? '')
@@ -108,7 +112,7 @@ export function AppointmentForm() {
         await createMutation.mutateAsync(payload)
         showToast('Appointment booked.', 'success')
       }
-      navigate('/appointments')
+      navigate(`/${garageId}/appointments`)
     } catch (err) {
       if (isApiError(err) && err.code === 409) {
         setConflict(true)
@@ -127,7 +131,7 @@ export function AppointmentForm() {
     try {
       await cancelMutation.mutateAsync(appointmentId)
       showToast('Appointment cancelled.', 'success')
-      navigate('/appointments')
+      navigate(`/${garageId}/appointments`)
     } catch (err) {
       showToast(errorMessage(err))
     }
@@ -163,21 +167,22 @@ export function AppointmentForm() {
 
         <div>
           <label className="block text-sm font-medium text-slate-700" htmlFor="employee_id">
-            Employee ID
+            Employee
           </label>
           <div className="mt-1">
-            <RichTextInput
+            <RichDropdown
               id="employee_id"
-              required
+              options={(employees ?? []).map((e) => ({
+                value: e.id,
+                title: e.email,
+                description: e.roles.map((r) => r.name).join(', ') || undefined,
+              }))}
               value={employeeId}
               onChange={setEmployeeId}
-              placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+              placeholder="Select an employee…"
+              searchable
             />
           </div>
-          <p className="mt-1 text-xs text-slate-400">
-            There's no picker here yet, so paste the employee's id directly. The backend now
-            exposes GET /api/employees/ to look one up - this screen just doesn't call it yet.
-          </p>
           {errors.employee_id && <p className="mt-1 text-sm text-red-600">{errors.employee_id}</p>}
         </div>
 

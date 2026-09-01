@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCustomers, useVehicles } from '../../api/queries'
 import { MotBadge } from '../../components/MotBadge'
+import { useGarageId } from '../../hooks/useGarageId'
 
 export function VehiclesList() {
+  const garageId = useGarageId()
   const [registration, setRegistration] = useState('')
   const [customerId, setCustomerId] = useState('')
   const [motExpiryDate, setMotExpiryDate] = useState('')
@@ -29,7 +31,7 @@ export function VehiclesList() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Vehicles</h1>
         <Link
-          to="/vehicles/new"
+          to={`/${garageId}/vehicles/new`}
           className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           New vehicle
@@ -101,7 +103,7 @@ export function VehiclesList() {
               {vehicles.map((v) => (
                 <tr key={v.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-2">
-                    <Link to={`/vehicles/${v.id}`} className="font-medium text-slate-900 hover:underline">
+                    <Link to={`/${garageId}/vehicles/${v.id}`} className="font-medium text-slate-900 hover:underline">
                       {v.registration_number}
                     </Link>
                   </td>

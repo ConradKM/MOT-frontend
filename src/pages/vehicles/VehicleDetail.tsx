@@ -10,9 +10,11 @@ import {
 import { MotBadge } from '../../components/MotBadge'
 import { errorMessage, fieldErrors } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
+import { useGarageId } from '../../hooks/useGarageId'
 import type { MOTResult } from '../../types'
 
 export function VehicleDetail() {
+  const garageId = useGarageId()
   const { id: vehicleId } = useParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -36,7 +38,7 @@ export function VehicleDetail() {
     try {
       await deleteMutation.mutateAsync(vehicleId as string)
       showToast('Vehicle deleted.', 'success')
-      navigate('/vehicles')
+      navigate(`/${garageId}/vehicles`)
     } catch (err) {
       showToast(errorMessage(err))
     }
@@ -84,7 +86,7 @@ export function VehicleDetail() {
           <p className="mt-1 text-sm text-slate-500">
             Owner:{' '}
             {customer ? (
-              <Link to={`/customers/${customer.id}`} className="font-medium text-slate-900 hover:underline">
+              <Link to={`/${garageId}/customers/${customer.id}`} className="font-medium text-slate-900 hover:underline">
                 {customer.first_name} {customer.last_name}
               </Link>
             ) : (
@@ -97,7 +99,7 @@ export function VehicleDetail() {
         </div>
         <div className="flex gap-2">
           <Link
-            to={`/vehicles/${vehicle.id}/edit`}
+            to={`/${garageId}/vehicles/${vehicle.id}/edit`}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Edit

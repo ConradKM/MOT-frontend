@@ -2,8 +2,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCustomer, useDeleteCustomer, useVehicles } from '../../api/queries'
 import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
+import { useGarageId } from '../../hooks/useGarageId'
 
 export function CustomerDetail() {
+  const garageId = useGarageId()
   const { id: customerId } = useParams()
   const navigate = useNavigate()
   const { showToast } = useToast()
@@ -17,7 +19,7 @@ export function CustomerDetail() {
     try {
       await deleteMutation.mutateAsync(customerId as string)
       showToast('Customer deleted.', 'success')
-      navigate('/customers')
+      navigate(`/${garageId}/customers`)
     } catch (err) {
       showToast(errorMessage(err))
     }
@@ -39,7 +41,7 @@ export function CustomerDetail() {
         </div>
         <div className="flex gap-2">
           <Link
-            to={`/customers/${customer.id}/edit`}
+            to={`/${garageId}/customers/${customer.id}/edit`}
             className="rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Edit
@@ -57,7 +59,7 @@ export function CustomerDetail() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Vehicles</h2>
           <Link
-            to={`/vehicles/new?customer_id=${customer.id}`}
+            to={`/${garageId}/vehicles/new?customer_id=${customer.id}`}
             className="text-sm font-medium text-slate-900 hover:underline"
           >
             Add vehicle
@@ -81,7 +83,7 @@ export function CustomerDetail() {
                 {vehicles.map((v) => (
                   <tr key={v.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                     <td className="px-4 py-2">
-                      <Link to={`/vehicles/${v.id}`} className="font-medium text-slate-900 hover:underline">
+                      <Link to={`/${garageId}/vehicles/${v.id}`} className="font-medium text-slate-900 hover:underline">
                         {v.registration_number}
                       </Link>
                     </td>

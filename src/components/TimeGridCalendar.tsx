@@ -4,6 +4,7 @@ import type { Appointment } from '../types'
 import { hourRangeForAppointments, layoutOverlaps } from '../lib/calendarLayout'
 import { appointmentStatusClasses } from '../lib/appointments'
 import { formatTime } from '../lib/datetime'
+import { useGarageId } from '../hooks/useGarageId'
 
 export interface CalendarColumn {
   key: string
@@ -25,6 +26,7 @@ function minutesFromStart(iso: string, startHour: number): number {
 }
 
 export function TimeGridCalendar({ columns, customerName, appointmentTypeName }: Props) {
+  const garageId = useGarageId()
   const allAppointments = columns.flatMap((c) => c.appointments)
   const [startHour, endHour] = hourRangeForAppointments(allAppointments)
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i)
@@ -85,7 +87,7 @@ export function TimeGridCalendar({ columns, customerName, appointmentTypeName }:
                 return (
                   <Link
                     key={a.id}
-                    to={`/appointments/${a.id}/edit`}
+                    to={`/${garageId}/appointments/${a.id}/edit`}
                     className={`absolute overflow-hidden rounded-md border border-black/10 px-1.5 py-0.5 text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${appointmentStatusClasses[a.status]}`}
                     style={{
                       top,

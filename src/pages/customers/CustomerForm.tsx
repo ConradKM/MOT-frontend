@@ -3,8 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useCreateCustomer, useCustomer, useUpdateCustomer } from '../../api/queries'
 import { errorMessage, fieldErrors } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
+import { useGarageId } from '../../hooks/useGarageId'
 
 export function CustomerForm() {
+  const garageId = useGarageId()
   const { id: customerId } = useParams()
   const isEdit = customerId !== undefined
   const navigate = useNavigate()
@@ -45,11 +47,11 @@ export function CustomerForm() {
     try {
       if (isEdit) {
         const updated = await updateMutation.mutateAsync(payload)
-        navigate(`/customers/${updated.id}`)
+        navigate(`/${garageId}/customers/${updated.id}`)
       } else {
         const created = await createMutation.mutateAsync(payload)
         showToast('Customer created.', 'success')
-        navigate(`/customers/${created.id}`)
+        navigate(`/${garageId}/customers/${created.id}`)
       }
     } catch (err) {
       const fields = fieldErrors(err)

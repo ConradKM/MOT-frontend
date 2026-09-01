@@ -18,11 +18,13 @@ import { appointmentStatusClasses, appointmentStatusLabels } from '../../lib/app
 import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { TimeGridCalendar, type CalendarColumn } from '../../components/TimeGridCalendar'
+import { useGarageId } from '../../hooks/useGarageId'
 import type { Appointment } from '../../types'
 
 type Mode = 'day' | 'week' | 'list'
 
 export function AppointmentsCalendar() {
+  const garageId = useGarageId()
   const [mode, setMode] = useState<Mode>('day')
   const [date, setDate] = useState(todayIso())
   const [startDate, setStartDate] = useState(todayIso())
@@ -118,7 +120,7 @@ export function AppointmentsCalendar() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Appointments</h1>
         <Link
-          to="/appointments/new"
+          to={`/${garageId}/appointments/new`}
           className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           New appointment
@@ -267,7 +269,7 @@ export function AppointmentsCalendar() {
                         </td>
                         <td className="px-4 py-2 text-right">
                           <Link
-                            to={`/appointments/${a.id}/edit`}
+                            to={`/${garageId}/appointments/${a.id}/edit`}
                             className="mr-3 font-medium text-slate-900 hover:underline"
                           >
                             Edit

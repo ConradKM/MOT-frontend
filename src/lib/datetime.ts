@@ -32,6 +32,10 @@ export function formatTimeRange(startIso: string, endIso: string): string {
   return `${formatTime(startIso)} – ${formatTime(endIso)}`
 }
 
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+}
+
 /** YYYY-MM-DD of an ISO datetime, in the browser's local timezone. */
 export function localDateKey(iso: string): string {
   const d = new Date(iso)
