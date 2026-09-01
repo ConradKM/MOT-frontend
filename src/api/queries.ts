@@ -1,13 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as garageApi from './garage'
+import * as publicGarageApi from './publicGarage'
 import * as customersApi from './customers'
 import * as vehiclesApi from './vehicles'
 import * as motRecordsApi from './motRecords'
 import * as appointmentsApi from './appointments'
+import * as appointmentTypesApi from './appointmentTypes'
 import type { CustomerInput } from './customers'
 import type { VehicleInput, VehicleListParams } from './vehicles'
 import type { MOTRecordInput } from './motRecords'
 import type { AppointmentInput, AppointmentListParams } from './appointments'
+import type { AppointmentTypeStatus } from '../types'
 
 // Garage
 export function useGarage() {
@@ -166,5 +169,32 @@ export function useCancelAppointment() {
   return useMutation({
     mutationFn: (id: string) => appointmentsApi.cancelAppointment(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
+  })
+}
+
+// Appointment types
+export function useAppointmentTypes(status?: AppointmentTypeStatus) {
+  return useQuery({
+    queryKey: ['appointmentTypes', { status }],
+    queryFn: () => appointmentTypesApi.listAppointmentTypes({ status }),
+  })
+}
+
+// Public garage (unauthenticated booking flow)
+export function usePublicGarages(enabled = true) {
+  return useQuery({
+    queryKey: ['publicGarages'],
+    queryFn: publicGarageApi.getPublicGarages,
+    enabled,
+    retry: false,
+  })
+}
+
+export function usePublicGarage(id: string | undefined) {
+  return useQuery({
+    queryKey: ['publicGarage', id],
+    queryFn: () => publicGarageApi.getPublicGarage(id as string),
+    enabled: !!id,
+    retry: false,
   })
 }

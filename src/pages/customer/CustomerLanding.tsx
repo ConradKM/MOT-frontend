@@ -1,15 +1,32 @@
-import { Link } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
+import { usePublicGarage } from '../../api/queries'
 
 export function CustomerLanding() {
+  const { garageId } = useParams<{ garageId: string }>()
+  const { data: garage, isLoading, isError } = usePublicGarage(garageId)
+
+  const heading = garageId
+    ? isLoading
+      ? 'Loading…'
+      : garage
+        ? `Book your MOT or service at ${garage.name}`
+        : 'Book your MOT or service'
+    : 'Book your MOT or service'
+
   return (
     <div>
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-slate-900">Book your MOT or service</h1>
+        <h1 className="text-3xl font-bold text-slate-900">{heading}</h1>
+        {garageId && isError && (
+          <p className="mx-auto mt-2 max-w-md text-sm text-amber-600">
+            We couldn't find that garage — you can still start a booking below and pick one.
+          </p>
+        )}
         <p className="mx-auto mt-3 max-w-md text-slate-600">
           Tell us about you, your vehicle, and when suits you — we'll take it from there.
         </p>
         <Link
-          to="/customer/book"
+          to={garageId && garage ? `/book/${garageId}` : '/book'}
           className="mt-6 inline-block rounded-md bg-slate-900 px-6 py-3 text-sm font-medium text-white hover:bg-slate-800"
         >
           Start a booking

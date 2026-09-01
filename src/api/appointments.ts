@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { Appointment, AppointmentStatus, AppointmentType } from '../types'
+import type { Appointment, AppointmentStatus } from '../types'
 
 export interface AppointmentInput {
   employee_id: string
@@ -7,7 +7,7 @@ export interface AppointmentInput {
   vehicle_id?: string | null
   start_time: string
   end_time: string
-  appointment_type: AppointmentType
+  appointment_type_id: string
   status?: AppointmentStatus
   notes?: string | null
 }
@@ -20,7 +20,7 @@ export interface AppointmentListParams {
   customer_id?: string
   vehicle_id?: string
   status?: AppointmentStatus
-  appointment_type?: AppointmentType
+  appointment_type_id?: string
 }
 
 export function listAppointments(params: AppointmentListParams = {}): Promise<Appointment[]> {

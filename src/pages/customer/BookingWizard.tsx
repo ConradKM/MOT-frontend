@@ -1,11 +1,18 @@
-import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { WizardStepper, type WizardStep } from '../../components/customer/WizardStepper'
 import { todayIso } from '../../lib/datetime'
+import { usePublicGarage, usePublicGarages } from '../../api/queries'
+import type { PublicGarage } from '../../api/publicGarage'
+import { RichDropdown } from '../../components/rich/RichDropdown'
+import { RichStaticField } from '../../components/rich/RichStaticField'
+import { RichTextInput } from '../../components/rich/RichTextInput'
+import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
 
 type AppointmentTypeChoice = 'MOT' | 'MOT_AND_SERVICE'
 
 interface WizardData {
+  garageId: string
   firstName: string
   lastName: string
   email: string
@@ -23,6 +30,7 @@ interface WizardData {
 }
 
 const initialData: WizardData = {
+  garageId: '',
   firstName: '',
   lastName: '',
   email: '',
@@ -57,6 +65,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validateStep1(d: WizardData): FieldErrors {
   const errors: FieldErrors = {}
+  if (!d.garageId) errors.garageId = 'Please choose a garage.'
   if (!d.firstName.trim()) errors.firstName = 'First name is required.'
   if (!d.lastName.trim()) errors.lastName = 'Last name is required.'
   if (!d.email.trim()) errors.email = 'Email is required.'
@@ -82,10 +91,24 @@ function validateStep3(d: WizardData): FieldErrors {
 }
 
 export function BookingWizard() {
+  const { garageId: urlGarageId } = useParams<{ garageId: string }>()
+  const { data: urlGarage, isLoading: urlGarageLoading } = usePublicGarage(urlGarageId)
+  const {
+    data: garages,
+    isLoading: garagesLoading,
+    isError: garagesError,
+  } = usePublicGarages(!urlGarageId)
+
   const [step, setStep] = useState(1)
-  const [data, setData] = useState<WizardData>(initialData)
+  const [data, setData] = useState<WizardData>(() => ({ ...initialData, garageId: urlGarageId ?? '' }))
   const [errors, setErrors] = useState<FieldErrors>({})
   const [submitted, setSubmitted] = useState(false)
+
+  // Keep the wizard's garage in sync if the URL param is present (it's fixed either way —
+  // this just covers the id arriving after the initial render).
+  useEffect(() => {
+    if (urlGarageId) setData((d) => ({ ...d, garageId: urlGarageId }))
+  }, [urlGarageId])
 
   const update = (field: keyof WizardData, value: string) => {
     setData((d) => ({ ...d, [field]: value }))
@@ -136,7 +159,17 @@ export function BookingWizard() {
       <WizardStepper steps={STEPS} currentStep={step} />
 
       <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
-        {step === 1 && <CustomerDetailsStep data={data} errors={errors} update={update} />}
+        {step === 1 && (
+          <CustomerDetailsStep
+            data={data}
+            errors={errors}
+            update={update}
+            urlGarage={urlGarageId ? { garage: urlGarage, loading: urlGarageLoading } : null}
+            garages={garages}
+            garagesLoading={garagesLoading}
+            garagesError={garagesError}
+          />
+        )}
         {step === 2 && <VehicleDetailsStep data={data} errors={errors} update={update} />}
         {step === 3 && <AppointmentStep data={data} errors={errors} update={update} />}
         {step === 4 && <SummaryStep data={data} onEditStep={goToStep} />}
@@ -204,45 +237,63 @@ function Field({
   )
 }
 
-const inputClass =
-  'w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none'
+interface CustomerDetailsStepProps extends StepProps {
+  /** Present (non-null) when a garage id came from the URL — fixed, shown as a static field. */
+  urlGarage: { garage: PublicGarage | undefined; loading: boolean } | null
+  garages: PublicGarage[] | undefined
+  garagesLoading: boolean
+  garagesError: boolean
+}
 
-function CustomerDetailsStep({ data, errors, update }: StepProps) {
+function CustomerDetailsStep({
+  data,
+  errors,
+  update,
+  urlGarage,
+  garages,
+  garagesLoading,
+  garagesError,
+}: CustomerDetailsStepProps) {
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">1. Customer Details</h2>
       <div className="mt-4 space-y-4">
+        <Field label="Garage" required error={errors.garageId}>
+          {urlGarage ? (
+            <RichStaticField
+              title={urlGarage.garage?.name ?? (urlGarage.loading ? 'Loading…' : undefined)}
+              placeholder="Garage not found"
+            />
+          ) : (
+            <RichDropdown
+              options={(garages ?? []).map((g) => ({ value: g.id, title: g.name }))}
+              value={data.garageId}
+              onChange={(value) => update('garageId', value)}
+              placeholder={
+                garagesError
+                  ? 'Unable to load garages'
+                  : garagesLoading
+                    ? 'Loading garages…'
+                    : 'Select a garage…'
+              }
+              disabled={garagesLoading || garagesError || (garages?.length ?? 0) === 0}
+              searchable
+            />
+          )}
+        </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="First name" required error={errors.firstName}>
-            <input
-              value={data.firstName}
-              onChange={(e) => update('firstName', e.target.value)}
-              className={inputClass}
-            />
+            <RichTextInput value={data.firstName} onChange={(v) => update('firstName', v)} />
           </Field>
           <Field label="Last name" required error={errors.lastName}>
-            <input
-              value={data.lastName}
-              onChange={(e) => update('lastName', e.target.value)}
-              className={inputClass}
-            />
+            <RichTextInput value={data.lastName} onChange={(v) => update('lastName', v)} />
           </Field>
         </div>
         <Field label="Email" required error={errors.email}>
-          <input
-            type="email"
-            value={data.email}
-            onChange={(e) => update('email', e.target.value)}
-            className={inputClass}
-          />
+          <RichTextInput type="email" value={data.email} onChange={(v) => update('email', v)} />
         </Field>
         <Field label="Phone number" error={errors.phone}>
-          <input
-            type="tel"
-            value={data.phone}
-            onChange={(e) => update('phone', e.target.value)}
-            className={inputClass}
-          />
+          <RichTextInput type="tel" value={data.phone} onChange={(v) => update('phone', v)} />
         </Field>
       </div>
     </div>
@@ -255,36 +306,30 @@ function VehicleDetailsStep({ data, errors, update }: StepProps) {
       <h2 className="text-lg font-semibold text-slate-900">2. Vehicle Details</h2>
       <div className="mt-4 space-y-4">
         <Field label="Registration number" required error={errors.registration}>
-          <input
+          <RichTextInput
             value={data.registration}
-            onChange={(e) => update('registration', e.target.value.toUpperCase())}
-            className={`${inputClass} uppercase`}
+            onChange={(v) => update('registration', v.toUpperCase())}
+            className="uppercase"
           />
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Make" error={errors.make}>
-            <input value={data.make} onChange={(e) => update('make', e.target.value)} className={inputClass} />
+            <RichTextInput value={data.make} onChange={(v) => update('make', v)} />
           </Field>
           <Field label="Model" error={errors.model}>
-            <input value={data.model} onChange={(e) => update('model', e.target.value)} className={inputClass} />
+            <RichTextInput value={data.model} onChange={(v) => update('model', v)} />
           </Field>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Year" error={errors.year}>
-            <input
-              type="number"
-              value={data.year}
-              onChange={(e) => update('year', e.target.value)}
-              className={inputClass}
-            />
+            <RichTextInput type="number" value={data.year} onChange={(v) => update('year', v)} />
           </Field>
           <Field label="Current mileage" error={errors.mileage}>
-            <input
+            <RichTextInput
               type="number"
               min={0}
               value={data.mileage}
-              onChange={(e) => update('mileage', e.target.value)}
-              className={inputClass}
+              onChange={(v) => update('mileage', v)}
             />
           </Field>
         </div>
@@ -300,30 +345,23 @@ function AppointmentStep({ data, errors, update }: StepProps) {
       <div className="mt-4 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Date" required error={errors.date}>
-            <input
+            <RichTextInput
               type="date"
               min={todayIso()}
               value={data.date}
-              onChange={(e) => update('date', e.target.value)}
-              className={inputClass}
+              onChange={(v) => update('date', v)}
             />
           </Field>
           <Field label="Time" required error={errors.time}>
-            <input
-              type="time"
-              value={data.time}
-              onChange={(e) => update('time', e.target.value)}
-              className={inputClass}
-            />
+            <RichTextInput type="time" value={data.time} onChange={(v) => update('time', v)} />
           </Field>
         </div>
 
         <Field label="Assigned garage employee/mechanic" error={errors.preferredMechanic}>
-          <input
+          <RichTextInput
             placeholder="No preference"
             value={data.preferredMechanic}
-            onChange={(e) => update('preferredMechanic', e.target.value)}
-            className={inputClass}
+            onChange={(v) => update('preferredMechanic', v)}
           />
           <p className="mt-1 text-xs text-slate-400">
             Optional — let us know if you'd like someone specific, otherwise the garage will assign
@@ -331,31 +369,23 @@ function AppointmentStep({ data, errors, update }: StepProps) {
           </p>
         </Field>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700">
-            Appointment type <span className="text-red-500">*</span>
-          </label>
-          <div className="mt-2 flex gap-4">
-            {(['MOT', 'MOT_AND_SERVICE'] as const).map((type) => (
-              <label key={type} className="flex items-center gap-2 text-sm text-slate-700">
-                <input
-                  type="radio"
-                  name="appointmentType"
-                  checked={data.appointmentType === type}
-                  onChange={() => update('appointmentType', type)}
-                />
-                {appointmentTypeLabels[type]}
-              </label>
-            ))}
-          </div>
-        </div>
+        <Field label="Appointment type" required>
+          <RichDropdown
+            options={(['MOT', 'MOT_AND_SERVICE'] as const).map((type) => ({
+              value: type,
+              title: appointmentTypeLabels[type],
+            }))}
+            value={data.appointmentType}
+            onChange={(v) => update('appointmentType', v)}
+          />
+        </Field>
 
         <Field label="Additional notes" error={errors.notes}>
           <textarea
             rows={3}
             value={data.notes}
             onChange={(e) => update('notes', e.target.value)}
-            className={inputClass}
+            className={`${richFieldBoxClass} ${richFieldFocusClass}`}
           />
         </Field>
       </div>
@@ -450,7 +480,7 @@ function ConfirmationScreen({ data, onRestart }: { data: WizardData; onRestart: 
           Book another
         </button>
         <Link
-          to="/customer"
+          to="/"
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
           Back to home

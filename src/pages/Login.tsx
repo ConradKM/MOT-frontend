@@ -19,7 +19,7 @@ export function Login() {
     setFormError(null)
     try {
       await login(email, password)
-      navigate('/', { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       const fields = fieldErrors(err)
       setErrors(fields)
@@ -87,7 +87,7 @@ export function Login() {
         </p>
         <p className="mt-2 text-center text-sm text-slate-500">
           Looking to book an MOT or service?{' '}
-          <Link to="/customer" className="font-medium text-slate-900 hover:underline">
+          <Link to="/" className="font-medium text-slate-900 hover:underline">
             Book here
           </Link>
         </p>

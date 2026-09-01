@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useAppointments,
+  useAppointmentTypes,
   useCancelAppointment,
   useCreateAppointment,
   useCustomers,
@@ -10,19 +11,15 @@ import {
 } from '../../api/queries'
 import { isoToLocalInputValue, localInputValueToIso } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
-import { appointmentTypeDescriptions, appointmentTypeLabels } from '../../lib/appointments'
 import { useToast } from '../../components/Toast'
-import { RichDropdown } from '../../components/RichDropdown'
-import type { AppointmentStatus, AppointmentType } from '../../types'
+import { RichDropdown } from '../../components/rich/RichDropdown'
+import { RichTextInput } from '../../components/rich/RichTextInput'
+import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
+import type { AppointmentStatus } from '../../types'
 
-const APPOINTMENT_TYPES: AppointmentType[] = ['MOT', 'SERVICE', 'MOT_AND_SERVICE', 'REPAIR', 'OTHER']
 const APPOINTMENT_STATUSES: AppointmentStatus[] = ['BOOKED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']
 
-const APPOINTMENT_TYPE_OPTIONS = APPOINTMENT_TYPES.map((t) => ({
-  value: t,
-  title: appointmentTypeLabels[t],
-  description: appointmentTypeDescriptions[t],
-}))
+const priceFormatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' })
 
 export function AppointmentForm() {
   const { id: appointmentId } = useParams()
@@ -37,6 +34,7 @@ export function AppointmentForm() {
 
   const { data: customers } = useCustomers()
   const { data: vehicles } = useVehicles()
+  const { data: appointmentTypes } = useAppointmentTypes('ACTIVE')
   const createMutation = useCreateAppointment()
   const updateMutation = useUpdateAppointment(appointmentId ?? '')
   const cancelMutation = useCancelAppointment()
@@ -46,7 +44,7 @@ export function AppointmentForm() {
   const [vehicleId, setVehicleId] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
-  const [appointmentType, setAppointmentType] = useState<AppointmentType>('MOT')
+  const [appointmentTypeId, setAppointmentTypeId] = useState('')
   const [status, setStatus] = useState<AppointmentStatus>('BOOKED')
   const [notes, setNotes] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -60,11 +58,27 @@ export function AppointmentForm() {
       setVehicleId(existing.vehicle_id !== null ? String(existing.vehicle_id) : '')
       setStartTime(isoToLocalInputValue(existing.start_time))
       setEndTime(isoToLocalInputValue(existing.end_time))
-      setAppointmentType(existing.appointment_type)
+      setAppointmentTypeId(existing.appointment_type_id)
       setStatus(existing.status)
       setNotes(existing.notes ?? '')
     }
   }, [existing])
+
+  // Default new appointments to the first available type, rather than leaving the picker empty.
+  useEffect(() => {
+    if (!isEdit && !appointmentTypeId && appointmentTypes && appointmentTypes.length > 0) {
+      setAppointmentTypeId(appointmentTypes[0].id)
+    }
+  }, [isEdit, appointmentTypeId, appointmentTypes])
+
+  const appointmentTypeOptions = (appointmentTypes ?? []).map((t) => ({
+    value: t.id,
+    title: t.name,
+    description:
+      [t.description, t.base_price !== null ? `from ${priceFormatter.format(Number(t.base_price))}` : null]
+        .filter(Boolean)
+        .join(' · ') || undefined,
+  }))
 
   const submitting = createMutation.isPending || updateMutation.isPending
 
@@ -73,13 +87,17 @@ export function AppointmentForm() {
     setErrors({})
     setFormError(null)
     setConflict(false)
+    if (!appointmentTypeId) {
+      setErrors({ appointment_type_id: 'Please choose an appointment type.' })
+      return
+    }
     const payload = {
       employee_id: employeeId,
       customer_id: customerId,
       vehicle_id: vehicleId || null,
       start_time: localInputValueToIso(startTime),
       end_time: localInputValueToIso(endTime),
-      appointment_type: appointmentType,
+      appointment_type_id: appointmentTypeId,
       status,
       notes: notes || null,
     }
@@ -147,15 +165,15 @@ export function AppointmentForm() {
           <label className="block text-sm font-medium text-slate-700" htmlFor="employee_id">
             Employee ID
           </label>
-          <input
-            id="employee_id"
-            type="text"
-            required
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          />
+          <div className="mt-1">
+            <RichTextInput
+              id="employee_id"
+              required
+              value={employeeId}
+              onChange={setEmployeeId}
+              placeholder="e.g. 3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            />
+          </div>
           <p className="mt-1 text-xs text-slate-400">
             There's no picker here yet, so paste the employee's id directly. The backend now
             exposes GET /api/employees/ to look one up - this screen just doesn't call it yet.
@@ -167,22 +185,19 @@ export function AppointmentForm() {
           <label className="block text-sm font-medium text-slate-700" htmlFor="customer_id">
             Customer
           </label>
-          <select
-            id="customer_id"
-            required
-            value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          >
-            <option value="" disabled>
-              Select a customer
-            </option>
-            {customers?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.first_name} {c.last_name}
-              </option>
-            ))}
-          </select>
+          <div className="mt-1">
+            <RichDropdown
+              id="customer_id"
+              options={(customers ?? []).map((c) => ({
+                value: c.id,
+                title: `${c.first_name} ${c.last_name}`,
+              }))}
+              value={customerId}
+              onChange={setCustomerId}
+              placeholder="Select a customer…"
+              searchable
+            />
+          </div>
           {errors.customer_id && <p className="mt-1 text-sm text-red-600">{errors.customer_id}</p>}
         </div>
 
@@ -190,21 +205,21 @@ export function AppointmentForm() {
           <label className="block text-sm font-medium text-slate-700" htmlFor="vehicle_id">
             Vehicle <span className="font-normal text-slate-400">(optional)</span>
           </label>
-          <select
-            id="vehicle_id"
-            value={vehicleId}
-            onChange={(e) => setVehicleId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-          >
-            <option value="">No vehicle</option>
-            {vehicles
-              ?.filter((v) => !customerId || v.customer_id === customerId)
-              .map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.registration_number}
-                </option>
-              ))}
-          </select>
+          <div className="mt-1">
+            <RichDropdown
+              id="vehicle_id"
+              options={[
+                { value: '', title: 'No vehicle' },
+                ...(vehicles ?? [])
+                  .filter((v) => !customerId || v.customer_id === customerId)
+                  .map((v) => ({ value: v.id, title: v.registration_number })),
+              ]}
+              value={vehicleId}
+              onChange={setVehicleId}
+              placeholder="No vehicle"
+              searchable
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -212,63 +227,70 @@ export function AppointmentForm() {
             <label className="block text-sm font-medium text-slate-700" htmlFor="start_time">
               Start
             </label>
-            <input
-              id="start_time"
-              type="datetime-local"
-              required
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            />
+            <div className="mt-1">
+              <RichTextInput
+                id="start_time"
+                type="datetime-local"
+                required
+                value={startTime}
+                onChange={setStartTime}
+              />
+            </div>
             {errors.start_time && <p className="mt-1 text-sm text-red-600">{errors.start_time}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700" htmlFor="end_time">
               End
             </label>
-            <input
-              id="end_time"
-              type="datetime-local"
-              required
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            />
+            <div className="mt-1">
+              <RichTextInput
+                id="end_time"
+                type="datetime-local"
+                required
+                value={endTime}
+                onChange={setEndTime}
+              />
+            </div>
             {errors.end_time && <p className="mt-1 text-sm text-red-600">{errors.end_time}</p>}
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700" htmlFor="appointment_type">
+            <label className="block text-sm font-medium text-slate-700" htmlFor="appointment_type_id">
               Type
             </label>
             <div className="mt-1">
               <RichDropdown
-                id="appointment_type"
-                options={APPOINTMENT_TYPE_OPTIONS}
-                value={appointmentType}
-                onChange={(v) => setAppointmentType(v as AppointmentType)}
+                id="appointment_type_id"
+                options={appointmentTypeOptions}
+                value={appointmentTypeId}
+                onChange={setAppointmentTypeId}
+                placeholder={
+                  appointmentTypes && appointmentTypes.length === 0
+                    ? 'No appointment types set up yet'
+                    : 'Select a type…'
+                }
+                disabled={!appointmentTypes || appointmentTypes.length === 0}
               />
             </div>
+            {errors.appointment_type_id && (
+              <p className="mt-1 text-sm text-red-600">{errors.appointment_type_id}</p>
+            )}
           </div>
           {isEdit && (
             <div>
               <label className="block text-sm font-medium text-slate-700" htmlFor="status">
                 Status
               </label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as AppointmentStatus)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              >
-                {APPOINTMENT_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s.replace(/_/g, ' ')}
-                  </option>
-                ))}
-              </select>
+              <div className="mt-1">
+                <RichDropdown
+                  id="status"
+                  options={APPOINTMENT_STATUSES.map((s) => ({ value: s, title: s.replace(/_/g, ' ') }))}
+                  value={status}
+                  onChange={(value) => setStatus(value as AppointmentStatus)}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -282,7 +304,7 @@ export function AppointmentForm() {
             rows={3}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            className={`mt-1 ${richFieldBoxClass} ${richFieldFocusClass}`}
           />
         </div>
 

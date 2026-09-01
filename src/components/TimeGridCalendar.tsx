@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Appointment } from '../types'
 import { hourRangeForAppointments, layoutOverlaps } from '../lib/calendarLayout'
-import { appointmentStatusClasses, appointmentTypeLabels } from '../lib/appointments'
+import { appointmentStatusClasses } from '../lib/appointments'
 import { formatTime } from '../lib/datetime'
 
 export interface CalendarColumn {
@@ -14,6 +14,7 @@ export interface CalendarColumn {
 interface Props {
   columns: CalendarColumn[]
   customerName: (id: string) => string
+  appointmentTypeName: (id: string) => string
 }
 
 const HOUR_HEIGHT = 56
@@ -23,7 +24,7 @@ function minutesFromStart(iso: string, startHour: number): number {
   return (d.getHours() - startHour) * 60 + d.getMinutes()
 }
 
-export function TimeGridCalendar({ columns, customerName }: Props) {
+export function TimeGridCalendar({ columns, customerName, appointmentTypeName }: Props) {
   const allAppointments = columns.flatMap((c) => c.appointments)
   const [startHour, endHour] = hourRangeForAppointments(allAppointments)
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i)
@@ -97,7 +98,7 @@ export function TimeGridCalendar({ columns, customerName }: Props) {
                     <p className="truncate font-medium">
                       {formatTime(a.start_time)} {customerName(a.customer_id)}
                     </p>
-                    <p className="truncate opacity-80">{appointmentTypeLabels[a.appointment_type]}</p>
+                    <p className="truncate opacity-80">{appointmentTypeName(a.appointment_type_id)}</p>
                   </Link>
                 )
               })}

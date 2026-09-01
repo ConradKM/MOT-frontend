@@ -58,8 +58,21 @@ export interface MOTRecord {
   updated_at: string
 }
 
-export type AppointmentType = 'MOT' | 'SERVICE' | 'MOT_AND_SERVICE' | 'REPAIR' | 'OTHER'
 export type AppointmentStatus = 'BOOKED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
+export type AppointmentTypeStatus = 'ACTIVE' | 'HIDDEN' | 'DEPRECATED'
+
+/** A garage's own configurable appointment type (replaces the old global enum). */
+export interface AppointmentType {
+  id: string
+  garage_id: string
+  name: string
+  description: string | null
+  /** Serialized as a decimal string by the backend (e.g. "54.85"), not a JSON number. */
+  base_price: string | null
+  status: AppointmentTypeStatus
+  created_at: string
+  updated_at: string
+}
 
 export interface Appointment {
   id: string
@@ -69,7 +82,7 @@ export interface Appointment {
   vehicle_id: string | null
   start_time: string
   end_time: string
-  appointment_type: AppointmentType
+  appointment_type_id: string
   status: AppointmentStatus
   notes: string | null
   created_at: string

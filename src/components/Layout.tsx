@@ -2,17 +2,21 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useGarage } from '../api/queries'
 
-const navItems = [
-  { to: '/', label: 'Dashboard', end: true },
-  { to: '/customers', label: 'Customers' },
-  { to: '/vehicles', label: 'Vehicles' },
-  { to: '/appointments', label: 'Appointments' },
-  { to: '/garage', label: 'Garage Settings' },
-]
-
 export function Layout() {
   const { logout } = useAuth()
   const { data: garage } = useGarage()
+
+  // Once the garage loads, link straight to its scoped dashboard so the nav item can
+  // highlight as active there; /dashboard (used meanwhile, and by post-login redirects)
+  // immediately forwards to the same place.
+  const dashboardTo = garage ? `/${garage.id}/dashboard` : '/dashboard'
+  const navItems = [
+    { to: dashboardTo, label: 'Dashboard', end: true },
+    { to: '/customers', label: 'Customers' },
+    { to: '/vehicles', label: 'Vehicles' },
+    { to: '/appointments', label: 'Appointments' },
+    { to: '/garage', label: 'Garage Settings' },
+  ]
 
   return (
     <div className="min-h-screen bg-slate-50">

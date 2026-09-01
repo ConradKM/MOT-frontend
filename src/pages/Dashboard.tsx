@@ -1,12 +1,28 @@
-import { Link } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { useAppointments, useCustomers, useGarage, useVehicles } from '../api/queries'
 import { todayIso } from '../lib/datetime'
 
+/** `/dashboard` — resolves the signed-in employee's own garage, then redirects to its
+ * garage-scoped dashboard URL. Lets Login/Register and the nav link target a fixed path
+ * without needing to know the garage id up front. */
+export function DashboardRedirect() {
+  const { data: garage } = useGarage()
+  if (!garage) return null
+  return <Navigate to={`/${garage.id}/dashboard`} replace />
+}
+
 export function Dashboard() {
+  const { garageId } = useParams<{ garageId: string }>()
   const { data: garage } = useGarage()
   const { data: customers } = useCustomers()
   const { data: vehicles } = useVehicles()
   const { data: todaysAppointments } = useAppointments({ date: todayIso() })
+
+  // The garage is always derived from the employee's JWT, not the URL — if the id in the
+  // URL doesn't match (stale link, hand-edited), send them to the correct one.
+  if (garage && garageId && garageId !== garage.id) {
+    return <Navigate to={`/${garage.id}/dashboard`} replace />
+  }
 
   const expiringSoon = (vehicles ?? []).filter((v) => {
     if (!v.mot_expiry_date) return false

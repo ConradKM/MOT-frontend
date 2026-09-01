@@ -3,7 +3,6 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
-import { Dashboard } from './pages/Dashboard'
 import { CustomersList } from './pages/customers/CustomersList'
 import { CustomerForm } from './pages/customers/CustomerForm'
 import { CustomerDetail } from './pages/customers/CustomerDetail'
@@ -16,6 +15,7 @@ import { GarageSettings } from './pages/garage/GarageSettings'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerLanding } from './pages/customer/CustomerLanding'
 import { BookingWizard } from './pages/customer/BookingWizard'
+import { Dashboard, DashboardRedirect } from './pages/Dashboard'
 
 export default function App() {
   return (
@@ -24,13 +24,16 @@ export default function App() {
       <Route path="/register" element={<Register />} />
 
       <Route element={<CustomerLayout />}>
-        <Route path="/customer" element={<CustomerLanding />} />
-        <Route path="/customer/book" element={<BookingWizard />} />
+        <Route path="/" element={<CustomerLanding />} />
+        <Route path="/book" element={<BookingWizard />} />
+        <Route path="/book/:garageId" element={<BookingWizard />} />
+        <Route path="/:garageId" element={<CustomerLanding />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<DashboardRedirect />} />
+          <Route path="/:garageId/dashboard" element={<Dashboard />} />
 
           <Route path="/customers" element={<CustomersList />} />
           <Route path="/customers/new" element={<CustomerForm />} />

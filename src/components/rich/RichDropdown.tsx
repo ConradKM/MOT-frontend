@@ -6,6 +6,11 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from 'react'
+import {
+  richFieldBoxClass,
+  richFieldDisabledClass,
+  richFieldFocusClass,
+} from './richFieldStyles'
 
 export interface RichDropdownOption {
   value: string
@@ -156,7 +161,7 @@ export function RichDropdown({
         aria-activedescendant={
           open && filteredOptions[activeIndex] ? `${listboxId}-${activeIndex}` : undefined
         }
-        className="flex w-full items-center justify-between gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-left text-sm focus:border-slate-500 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+        className={`flex items-center justify-between gap-2 ${richFieldBoxClass} ${richFieldFocusClass} ${richFieldDisabledClass}`}
       >
         {selected ? (
           <span className="min-w-0 flex-1">

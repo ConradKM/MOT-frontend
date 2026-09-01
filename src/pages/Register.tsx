@@ -20,7 +20,7 @@ export function Register() {
     setFormError(null)
     try {
       await register(garageName, email, password)
-      navigate('/', { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch (err) {
       const fields = fieldErrors(err)
       setErrors(fields)

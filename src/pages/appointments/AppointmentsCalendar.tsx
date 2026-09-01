@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAppointments, useCancelAppointment, useCustomers, useVehicles } from '../../api/queries'
+import {
+  useAppointments,
+  useAppointmentTypes,
+  useCancelAppointment,
+  useCustomers,
+  useVehicles,
+} from '../../api/queries'
 import {
   addDaysIso,
   formatTimeRange,
@@ -8,11 +14,7 @@ import {
   todayIso,
   weekDatesIso,
 } from '../../lib/datetime'
-import {
-  appointmentStatusClasses,
-  appointmentStatusLabels,
-  appointmentTypeLabels,
-} from '../../lib/appointments'
+import { appointmentStatusClasses, appointmentStatusLabels } from '../../lib/appointments'
 import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { TimeGridCalendar, type CalendarColumn } from '../../components/TimeGridCalendar'
@@ -48,6 +50,7 @@ export function AppointmentsCalendar() {
   const { data: appointments, isLoading, isError } = useAppointments(listParams)
   const { data: customers } = useCustomers()
   const { data: vehicles } = useVehicles()
+  const { data: appointmentTypes } = useAppointmentTypes()
   const cancelMutation = useCancelAppointment()
 
   const customerName = (id: string) => {
@@ -57,6 +60,9 @@ export function AppointmentsCalendar() {
   const vehicleReg = (id: string | null) => {
     if (id === null) return null
     return vehicles?.find((v) => v.id === id)?.registration_number ?? `Vehicle #${id}`
+  }
+  const appointmentTypeName = (id: string) => {
+    return appointmentTypes?.find((t) => t.id === id)?.name ?? 'Unknown type'
   }
 
   const dayColumns: CalendarColumn[] = useMemo(() => {
@@ -204,13 +210,21 @@ export function AppointmentsCalendar() {
             {dayColumns.length === 0 ? (
               <p className="text-sm text-slate-500">No appointments today.</p>
             ) : (
-              <TimeGridCalendar columns={dayColumns} customerName={customerName} />
+              <TimeGridCalendar
+                columns={dayColumns}
+                customerName={customerName}
+                appointmentTypeName={appointmentTypeName}
+              />
             )}
           </>
         )}
 
         {!isLoading && !isError && mode === 'week' && (
-          <TimeGridCalendar columns={weekColumns} customerName={customerName} />
+          <TimeGridCalendar
+            columns={weekColumns}
+            customerName={customerName}
+            appointmentTypeName={appointmentTypeName}
+          />
         )}
 
         {!isLoading && !isError && mode === 'list' && (
@@ -242,7 +256,7 @@ export function AppointmentsCalendar() {
                         <td className="px-4 py-2 text-slate-600">{customerName(a.customer_id)}</td>
                         <td className="px-4 py-2 text-slate-600">{vehicleReg(a.vehicle_id) ?? '—'}</td>
                         <td className="px-4 py-2 text-slate-600">
-                          {appointmentTypeLabels[a.appointment_type]}
+                          {appointmentTypeName(a.appointment_type_id)}
                         </td>
                         <td className="px-4 py-2">
                           <span
