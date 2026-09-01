@@ -8,7 +8,6 @@ import {
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { SettingsLayout } from '../../components/settings/SettingsLayout'
-import { RolesSection } from '../../components/settings/RolesSection'
 import { Disclosure } from '../../components/Disclosure'
 import { formatDateTime } from '../../lib/datetime'
 import type { Employee, Role } from '../../types'
@@ -286,7 +285,7 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
           disabled={createMutation.isPending}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {createMutation.isPending ? 'Adding…' : 'Add employee'}
+          {createMutation.isPending ? 'Adding…' : 'Add Employee'}
         </button>
       </form>
     </div>
@@ -385,12 +384,9 @@ export function EmployeesList() {
         )}
       </div>
 
-      <div className="mt-6 space-y-4">
-        <Disclosure title="Add employee">
+      <div className="mt-6">
+        <Disclosure title="Add Employees">
           <AddEmployeeForm roles={roles ?? []} />
-        </Disclosure>
-        <Disclosure title="Roles">
-          <RolesSection />
         </Disclosure>
       </div>
     </SettingsLayout>

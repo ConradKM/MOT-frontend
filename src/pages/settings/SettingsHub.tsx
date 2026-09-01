@@ -16,8 +16,13 @@ const SETTINGS_PAGES: SettingsPage[] = [
   },
   {
     title: 'Employees',
-    description: 'Manage staff accounts and the roles assigned to them.',
+    description: 'See who has an account at your garage and add new staff.',
     slug: 'settings/employees',
+  },
+  {
+    title: 'Roles',
+    description: 'Tags you can assign to employees, like Mechanic or Front Desk.',
+    slug: 'settings/roles',
   },
   {
     title: 'Garage Settings',

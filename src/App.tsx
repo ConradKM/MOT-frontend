@@ -13,6 +13,7 @@ import { AppointmentsCalendar } from './pages/appointments/AppointmentsCalendar'
 import { AppointmentForm } from './pages/appointments/AppointmentForm'
 import { GarageSettings } from './pages/garage/GarageSettings'
 import { EmployeesList } from './pages/employees/EmployeesList'
+import { RolesList } from './pages/roles/RolesList'
 import { SettingsHub } from './pages/settings/SettingsHub'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerLanding } from './pages/customer/CustomerLanding'
@@ -55,7 +56,7 @@ export default function App() {
 
           <Route path="settings" element={<SettingsHub />} />
           <Route path="settings/employees" element={<EmployeesList />} />
-          <Route path="settings/roles" element={<Navigate to="../employees" replace />} />
+          <Route path="settings/roles" element={<RolesList />} />
           <Route path="settings/garage" element={<GarageSettings />} />
         </Route>
       </Route>
