@@ -17,9 +17,8 @@ import { RichDropdown } from '../../components/rich/RichDropdown'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
 import { useGarageId } from '../../hooks/useGarageId'
+import { APPOINTMENT_STATUSES, appointmentStatusLabels } from '../../lib/appointments'
 import type { AppointmentStatus } from '../../types'
-
-const APPOINTMENT_STATUSES: AppointmentStatus[] = ['BOOKED', 'COMPLETED', 'CANCELLED', 'NO_SHOW']
 
 const priceFormatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' })
 
@@ -291,7 +290,7 @@ export function AppointmentForm() {
               <div className="mt-1">
                 <RichDropdown
                   id="status"
-                  options={APPOINTMENT_STATUSES.map((s) => ({ value: s, title: s.replace(/_/g, ' ') }))}
+                  options={APPOINTMENT_STATUSES.map((s) => ({ value: s, title: appointmentStatusLabels[s] }))}
                   value={status}
                   onChange={(value) => setStatus(value as AppointmentStatus)}
                 />

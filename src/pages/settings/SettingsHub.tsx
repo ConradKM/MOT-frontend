@@ -25,6 +25,11 @@ const SETTINGS_PAGES: SettingsPage[] = [
     slug: 'settings/roles',
   },
   {
+    title: 'Appointment Types',
+    description: 'Manage the checklist mechanics work through for each appointment type.',
+    slug: 'settings/appointment-types',
+  },
+  {
     title: 'Garage Settings',
     description: "Your garage's name, contact details, and address.",
     slug: 'settings/garage',

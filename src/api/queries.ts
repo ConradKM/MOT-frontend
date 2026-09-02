@@ -8,6 +8,8 @@ import * as vehiclesApi from './vehicles'
 import * as motRecordsApi from './motRecords'
 import * as appointmentsApi from './appointments'
 import * as appointmentTypesApi from './appointmentTypes'
+import * as checklistTemplatesApi from './checklistTemplates'
+import * as appointmentChecklistsApi from './appointmentChecklists'
 import type { CustomerInput } from './customers'
 import type { VehicleInput, VehicleListParams } from './vehicles'
 import type { MOTRecordInput } from './motRecords'
@@ -237,6 +239,105 @@ export function useAppointmentTypes(status?: AppointmentTypeStatus) {
   return useQuery({
     queryKey: ['appointmentTypes', { status }],
     queryFn: () => appointmentTypesApi.listAppointmentTypes({ status }),
+  })
+}
+
+export function useAppointmentType(id: string | undefined) {
+  return useQuery({
+    queryKey: ['appointmentTypes', id],
+    queryFn: () => appointmentTypesApi.getAppointmentType(id as string),
+    enabled: !!id,
+  })
+}
+
+// Checklist templates (owner-facing builder, one per appointment type)
+export function useChecklistTemplate(appointmentTypeId: string | undefined) {
+  return useQuery({
+    queryKey: ['checklistTemplate', appointmentTypeId],
+    queryFn: () => checklistTemplatesApi.getChecklistTemplate(appointmentTypeId as string),
+    enabled: !!appointmentTypeId,
+    retry: false,
+  })
+}
+
+export function useCreateChecklistTemplate(appointmentTypeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => checklistTemplatesApi.createChecklistTemplate(appointmentTypeId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['checklistTemplate', appointmentTypeId] }),
+  })
+}
+
+export function useDeleteChecklistTemplate(appointmentTypeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => checklistTemplatesApi.deleteChecklistTemplate(appointmentTypeId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['checklistTemplate', appointmentTypeId] }),
+  })
+}
+
+export function useCreateChecklistTemplateItem(appointmentTypeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: checklistTemplatesApi.ChecklistTemplateItemInput) =>
+      checklistTemplatesApi.createChecklistTemplateItem(appointmentTypeId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['checklistTemplate', appointmentTypeId] }),
+  })
+}
+
+export function useUpdateChecklistTemplateItem(appointmentTypeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      data,
+    }: {
+      itemId: string
+      data: Partial<checklistTemplatesApi.ChecklistTemplateItemInput>
+    }) => checklistTemplatesApi.updateChecklistTemplateItem(appointmentTypeId, itemId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['checklistTemplate', appointmentTypeId] }),
+  })
+}
+
+export function useDeleteChecklistTemplateItem(appointmentTypeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (itemId: string) =>
+      checklistTemplatesApi.deleteChecklistTemplateItem(appointmentTypeId, itemId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['checklistTemplate', appointmentTypeId] }),
+  })
+}
+
+// Appointment checklists (mechanic-facing logging, per appointment instance)
+export function useAppointmentChecklist(appointmentId: string | undefined) {
+  return useQuery({
+    queryKey: ['appointmentChecklist', appointmentId],
+    queryFn: () => appointmentChecklistsApi.getAppointmentChecklist(appointmentId as string),
+    enabled: !!appointmentId,
+    retry: false,
+  })
+}
+
+export function useStartAppointmentChecklist(appointmentId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => appointmentChecklistsApi.startAppointmentChecklist(appointmentId),
+    onSuccess: (checklist) =>
+      qc.setQueryData(['appointmentChecklist', appointmentId], checklist),
+  })
+}
+
+export function useUpdateAppointmentChecklistItem(appointmentId: string, checklistId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      data,
+    }: {
+      itemId: string
+      data: Parameters<typeof appointmentChecklistsApi.updateAppointmentChecklistItem>[2]
+    }) => appointmentChecklistsApi.updateAppointmentChecklistItem(checklistId, itemId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentChecklist', appointmentId] }),
   })
 }
 

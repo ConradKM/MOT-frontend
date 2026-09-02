@@ -5,6 +5,7 @@ import { useGarageId } from '../../hooks/useGarageId'
 const SECTIONS = [
   { slug: 'employees', label: 'Employees' },
   { slug: 'roles', label: 'Roles' },
+  { slug: 'appointment-types', label: 'Appointment Types' },
   { slug: 'garage', label: 'Garage Details' },
 ]
 

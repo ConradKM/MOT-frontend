@@ -87,7 +87,7 @@ export function TimeGridCalendar({ columns, customerName, appointmentTypeName }:
                 return (
                   <Link
                     key={a.id}
-                    to={`/${garageId}/appointments/${a.id}/edit`}
+                    to={`/${garageId}/appointments/${a.id}/overview`}
                     className={`absolute overflow-hidden rounded-md border border-black/10 px-1.5 py-0.5 text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${appointmentStatusClasses[a.status]}`}
                     style={{
                       top,

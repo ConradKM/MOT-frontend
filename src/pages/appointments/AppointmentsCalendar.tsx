@@ -269,8 +269,20 @@ export function AppointmentsCalendar() {
                         </td>
                         <td className="px-4 py-2 text-right">
                           <Link
-                            to={`/${garageId}/appointments/${a.id}/edit`}
+                            to={`/${garageId}/appointments/${a.id}/overview`}
                             className="mr-3 font-medium text-slate-900 hover:underline"
+                          >
+                            Overview
+                          </Link>
+                          <Link
+                            to={`/${garageId}/appointments/${a.id}/checklist`}
+                            className="mr-3 font-medium text-slate-900 hover:underline"
+                          >
+                            Checklist
+                          </Link>
+                          <Link
+                            to={`/${garageId}/appointments/${a.id}/edit`}
+                            className="mr-3 font-medium text-slate-600 hover:underline"
                           >
                             Edit
                           </Link>

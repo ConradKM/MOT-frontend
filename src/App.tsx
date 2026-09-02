@@ -11,9 +11,14 @@ import { VehicleForm } from './pages/vehicles/VehicleForm'
 import { VehicleDetail } from './pages/vehicles/VehicleDetail'
 import { AppointmentsCalendar } from './pages/appointments/AppointmentsCalendar'
 import { AppointmentForm } from './pages/appointments/AppointmentForm'
+import { AppointmentOverview } from './pages/appointments/AppointmentOverview'
+import { AppointmentChecklistPage } from './pages/appointments/AppointmentChecklistPage'
 import { GarageSettings } from './pages/garage/GarageSettings'
 import { EmployeesList } from './pages/employees/EmployeesList'
 import { RolesList } from './pages/roles/RolesList'
+import { AppointmentTypesList } from './pages/appointmentTypes/AppointmentTypesList'
+import { ChecklistTemplateBuilder } from './pages/appointmentTypes/ChecklistTemplateBuilder'
+import { ChecklistTemplateViewer } from './pages/appointmentTypes/ChecklistTemplateViewer'
 import { SettingsHub } from './pages/settings/SettingsHub'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerLanding } from './pages/customer/CustomerLanding'
@@ -53,10 +58,22 @@ export default function App() {
           <Route path="appointments" element={<AppointmentsCalendar />} />
           <Route path="appointments/new" element={<AppointmentForm />} />
           <Route path="appointments/:id/edit" element={<AppointmentForm />} />
+          <Route path="appointments/:appointmentId/overview" element={<AppointmentOverview />} />
+          <Route path="appointments/:appointmentId/checklist" element={<AppointmentChecklistPage />} />
+
+          <Route
+            path="appointment-types/:appointmentTypeId/checklist"
+            element={<ChecklistTemplateViewer />}
+          />
+          <Route
+            path="appointment-types/:appointmentTypeId/checklist/build"
+            element={<ChecklistTemplateBuilder />}
+          />
 
           <Route path="settings" element={<SettingsHub />} />
           <Route path="settings/employees" element={<EmployeesList />} />
           <Route path="settings/roles" element={<RolesList />} />
+          <Route path="settings/appointment-types" element={<AppointmentTypesList />} />
           <Route path="settings/garage" element={<GarageSettings />} />
         </Route>
       </Route>

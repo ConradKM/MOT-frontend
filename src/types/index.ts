@@ -68,7 +68,14 @@ export interface MOTRecord {
   updated_at: string
 }
 
-export type AppointmentStatus = 'BOOKED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
+export type AppointmentStatus =
+  | 'REQUESTED'
+  | 'BOOKED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'ACTION_NEEDED'
+  | 'CANCELLED'
+  | 'NO_SHOW'
 export type AppointmentTypeStatus = 'ACTIVE' | 'HIDDEN' | 'DEPRECATED'
 
 /** A garage's own configurable appointment type (replaces the old global enum). */
@@ -95,6 +102,76 @@ export interface Appointment {
   appointment_type_id: string
   status: AppointmentStatus
   notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ChecklistItemMediaType = 'NONE' | 'PHOTO' | 'VIDEO' | 'EITHER'
+
+/** Mirrors DVSA's MOT grading, extended for day-to-day service/repair work. */
+export type ChecklistItemStatus =
+  | 'PASS'
+  | 'ADVISORY'
+  | 'MINOR'
+  | 'MAJOR'
+  | 'DANGEROUS'
+  | 'RECTIFIED'
+  | 'RECOMMENDED'
+  | 'CUSTOMER_DECLINED'
+  | 'NOT_APPLICABLE'
+  | 'NOT_CHECKED'
+
+export interface ChecklistTemplateItem {
+  id: string
+  garage_id: string
+  checklist_template_id: string
+  order: number
+  label: string
+  is_compulsory: boolean
+  media_type: ChecklistItemMediaType
+  media_required_for_statuses: ChecklistItemStatus[]
+  created_at: string
+  updated_at: string
+}
+
+/** One per appointment type. Snapshotted onto an AppointmentChecklist the first time a
+ * checklist is opened for an appointment of that type - later edits here don't
+ * retroactively change an already-started checklist. */
+export interface ChecklistTemplate {
+  id: string
+  garage_id: string
+  appointment_type_id: string
+  items: ChecklistTemplateItem[]
+  created_at: string
+  updated_at: string
+}
+
+export interface AppointmentChecklistItem {
+  id: string
+  garage_id: string
+  appointment_checklist_id: string
+  checklist_template_item_id: string | null
+  order: number
+  label: string
+  is_compulsory: boolean
+  media_type: ChecklistItemMediaType
+  media_required_for_statuses: ChecklistItemStatus[]
+  status: ChecklistItemStatus
+  notes: string | null
+  completed_by_employee_id: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** The per-appointment checklist instance - a snapshot of the template at the time it
+ * was started, plus logged status/notes per item. */
+export interface AppointmentChecklist {
+  id: string
+  garage_id: string
+  appointment_id: string
+  checklist_template_id: string | null
+  items: AppointmentChecklistItem[]
   created_at: string
   updated_at: string
 }

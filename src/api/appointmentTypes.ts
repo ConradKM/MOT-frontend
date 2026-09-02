@@ -9,3 +9,7 @@ export function listAppointmentTypes(
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return apiFetch<AppointmentType[]>(`/api/appointment-types/${suffix}`)
 }
+
+export function getAppointmentType(id: string): Promise<AppointmentType> {
+  return apiFetch<AppointmentType>(`/api/appointment-types/${id}`)
+}
