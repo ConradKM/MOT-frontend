@@ -10,6 +10,8 @@ import * as appointmentsApi from './appointments'
 import * as appointmentTypesApi from './appointmentTypes'
 import * as checklistTemplatesApi from './checklistTemplates'
 import * as appointmentChecklistsApi from './appointmentChecklists'
+import * as customerAccountApi from './customerAccount'
+import { getCustomerAccessToken } from './customerTokens'
 import type { CustomerInput } from './customers'
 import type { VehicleInput, VehicleListParams } from './vehicles'
 import type { MOTRecordInput } from './motRecords'
@@ -356,6 +358,25 @@ export function usePublicGarage(id: string | undefined) {
     queryKey: ['publicGarage', id],
     queryFn: () => publicGarageApi.getPublicGarage(id as string),
     enabled: !!id,
+    retry: false,
+  })
+}
+
+// Customer portal (unauthenticated staff app; separate customer token)
+export function useCustomerAccount() {
+  return useQuery({
+    queryKey: ['customerAccount'],
+    queryFn: customerAccountApi.getCustomerAccount,
+    enabled: !!getCustomerAccessToken(),
+    retry: false,
+  })
+}
+
+export function useCustomerAppointment(id: string | undefined) {
+  return useQuery({
+    queryKey: ['customerAppointment', id],
+    queryFn: () => customerAccountApi.getCustomerAppointment(id as string),
+    enabled: !!id && !!getCustomerAccessToken(),
     retry: false,
   })
 }
