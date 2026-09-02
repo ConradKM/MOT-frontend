@@ -31,6 +31,12 @@ export function CustomerLanding() {
         >
           Start a booking
         </Link>
+        <p className="mt-4 text-sm text-slate-500">
+          Already booked with us?{' '}
+          <Link to="/customer/login" className="font-medium text-slate-900 hover:underline">
+            View your account
+          </Link>
+        </p>
       </div>
 
       <div className="mt-16 grid gap-6 sm:grid-cols-3">

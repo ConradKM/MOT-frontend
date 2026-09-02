@@ -1,6 +1,9 @@
 import { Link, Outlet } from 'react-router-dom'
+import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 
 export function CustomerLayout() {
+  const { isAuthenticated } = useCustomerAuth()
+
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
@@ -8,9 +11,17 @@ export function CustomerLayout() {
           <Link to="/" className="text-sm font-semibold text-slate-900">
             MOT Garage
           </Link>
-          <Link to="/login" className="text-sm font-medium text-slate-500 hover:text-slate-800">
-            Garage staff sign in
-          </Link>
+          <nav className="flex items-center gap-4 text-sm font-medium">
+            <Link
+              to={isAuthenticated ? '/customer/account' : '/customer/login'}
+              className="text-slate-500 hover:text-slate-800"
+            >
+              {isAuthenticated ? 'My account' : 'Customer sign in'}
+            </Link>
+            <Link to="/login" className="text-slate-500 hover:text-slate-800">
+              Garage staff sign in
+            </Link>
+          </nav>
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-6 py-10">
