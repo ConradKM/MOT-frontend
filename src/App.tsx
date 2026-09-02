@@ -21,8 +21,12 @@ import { ChecklistTemplateBuilder } from './pages/appointmentTypes/ChecklistTemp
 import { ChecklistTemplateViewer } from './pages/appointmentTypes/ChecklistTemplateViewer'
 import { SettingsHub } from './pages/settings/SettingsHub'
 import { CustomerLayout } from './components/customer/CustomerLayout'
+import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
 import { CustomerLanding } from './pages/customer/CustomerLanding'
 import { BookingWizard } from './pages/customer/BookingWizard'
+import { CustomerLogin } from './pages/customer/CustomerLogin'
+import { CustomerAccount } from './pages/customer/CustomerAccount'
+import { CustomerAppointmentDetail } from './pages/customer/CustomerAppointmentDetail'
 import { Dashboard, DashboardRedirect } from './pages/Dashboard'
 
 export default function App() {
@@ -35,6 +39,14 @@ export default function App() {
         <Route path="/" element={<CustomerLanding />} />
         <Route path="/book" element={<BookingWizard />} />
         <Route path="/book/:garageId" element={<BookingWizard />} />
+        <Route path="/customer/login" element={<CustomerLogin />} />
+        <Route element={<CustomerProtectedRoute />}>
+          <Route path="/customer/account" element={<CustomerAccount />} />
+          <Route
+            path="/customer/appointments/:appointmentId"
+            element={<CustomerAppointmentDetail />}
+          />
+        </Route>
         <Route path="/:garageId" element={<CustomerLanding />} />
       </Route>
 

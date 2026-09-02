@@ -31,6 +31,19 @@ JWT access/refresh tokens, stored in `localStorage`. The API client
 (`src/api/client.ts`) attaches the access token to every request, and on a
 401 silently refreshes once and retries before giving up and logging out.
 
+## Customer account hub
+
+`/customer/login` + `/customer/account` are a second customer-facing surface
+(separate from both the staff app and the public booking flow). A customer signs
+in with their **email + one of their vehicle registration numbers** — no
+password — and gets a customer-scoped JWT stored under its own `localStorage`
+keys (`src/api/customerTokens.ts`), independent of any staff session. The hub
+shows their vehicles with MOT status/history and their upcoming/past
+appointments; each appointment links to a read-only detail page at
+`/customer/appointments/:id`. It's backed by `GET /api/customer/account` and
+`GET /api/customer/appointments/:id` (`app/customer_portal` on the backend);
+`CustomerProtectedRoute` redirects to `/customer/login` when signed out.
+
 ## Known gap: staff management
 
 There is no backend endpoint to list or create employees — the only account
