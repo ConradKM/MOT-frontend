@@ -11,8 +11,6 @@ import * as api from '../../api/publicGarage'
 vi.mock('../../api/publicGarage', async (orig) => ({
   ...(await orig<typeof import('../../api/publicGarage')>()),
   getPublicGarage: vi.fn(),
-  getPublicGarages: vi.fn(),
-  getPublicGarageBySlug: vi.fn(),
   getGarageAvailability: vi.fn(),
   getGarageDayAvailability: vi.fn(),
   submitBookingRequest: vi.fn(),
@@ -32,51 +30,35 @@ function renderWizard() {
   )
 }
 
-async function walkToConfirm(user: ReturnType<typeof userEvent.setup>) {
-  // Step 1: garage is fixed from the URL
+async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
+  // Step 1 — garage name shown, no garage picker
   await screen.findByText('Test Garage')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByText('Book your vehicle in')).toBeInTheDocument()
 
-  // Step 2: pick an available day, then an available slot
-  const day = await screen.findByRole('gridcell', {
-    name: /10 September 2026 — Good availability, selectable/,
-  })
-  await user.click(day)
+  await user.click(
+    await screen.findByRole('gridcell', {
+      name: /10 September 2026 — Good availability, selectable/,
+    }),
+  )
   await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
 
-  // Auto-advanced to step 3
-  expect(await screen.findByText('Your selected time')).toBeInTheDocument()
-  const details = screen.getAllByRole('textbox')
-  await user.type(details[0], 'Alex')
-  await user.type(details[1], 'Turner')
-  await user.type(details[2], 'alex@example.com')
+  // Auto-advanced to step 2 (combined vehicle + your details)
+  const inputs = await screen.findAllByRole('textbox')
+  await user.type(inputs[0], 'PB11REQ') // registration
+  await user.type(inputs[3], 'Alex') // first name
+  await user.type(inputs[4], 'Turner') // last name
+  await user.type(inputs[5], 'alex@example.com') // email
+  await user.type(inputs[7], 'Please call first') // notes
   await user.click(screen.getByRole('button', { name: 'Continue' }))
 
-  // Step 4: vehicle
-  await user.type(screen.getAllByRole('textbox')[0], 'PB11REQ')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-
-  // Step 5: extra details
-  await screen.findByText(/Anything else/)
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-
-  // Step 6: review
-  await screen.findByText('6. Review')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
-
-  // Step 7: confirm
-  await screen.findByText('7. Confirm & submit')
+  // Step 3 — review
+  await screen.findByRole('heading', { name: 'Review' })
 }
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 8, 10, 9, 0, 0))
   vi.mocked(api.getPublicGarage).mockResolvedValue(GARAGE)
-  vi.mocked(api.getPublicGarages).mockResolvedValue([GARAGE])
-  vi.mocked(api.getPublicGarageBySlug).mockResolvedValue({
-    ...GARAGE,
-    appointment_types: [],
-  })
   vi.mocked(api.getGarageAvailability).mockResolvedValue({
     garage: { slug: 'test-garage', name: 'Test Garage' },
     rules: {
@@ -107,24 +89,42 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('BookingWizard calendar flow', () => {
+describe('BookingWizard — 3-step flow', () => {
+  it('has exactly three steps and no garage-selection step', async () => {
+    vi.mocked(api.getPublicGarage).mockResolvedValue(GARAGE)
+    renderWizard()
+    await screen.findByText('Test Garage')
+
+    expect(screen.getByText(/Step 1 of 3/)).toBeInTheDocument()
+    expect(screen.getByText('Vehicle & your details')).toBeInTheDocument()
+    expect(screen.queryByText(/Choose a garage/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeInTheDocument()
+  })
+
   it('carries the picked date and time into the booking request', async () => {
     vi.mocked(api.submitBookingRequest).mockResolvedValue({ id: 'r1', status: 'PENDING' })
     const user = userEvent.setup()
     renderWizard()
 
-    await walkToConfirm(user)
+    await walkToReview(user)
     await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
 
     await waitFor(() => expect(api.submitBookingRequest).toHaveBeenCalled())
     expect(api.submitBookingRequest).toHaveBeenCalledWith(
       'test-garage',
-      expect.objectContaining({ preferred_date: TODAY, preferred_time: '09:00' }),
+      expect.objectContaining({
+        preferred_date: TODAY,
+        preferred_time: '09:00',
+        appointment_type_id: null,
+        preferred_employee_note: null,
+        vehicle_registration: 'PB11REQ',
+        notes: 'Please call first',
+      }),
     )
     expect(await screen.findByText('Request received')).toBeInTheDocument()
   })
 
-  it('returns to the time step when the slot was taken (409)', async () => {
+  it('returns to the date & time step when the slot was taken (409)', async () => {
     vi.mocked(api.submitBookingRequest).mockRejectedValue(
       new ApiError(
         {
@@ -138,11 +138,36 @@ describe('BookingWizard calendar flow', () => {
     const user = userEvent.setup()
     renderWizard()
 
-    await walkToConfirm(user)
+    await walkToReview(user)
     await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
 
     expect(await screen.findByText(/no longer available/)).toBeInTheDocument()
-    expect(screen.getByText('2. Pick a date & time')).toBeInTheDocument()
+    expect(screen.getByText('Pick a date & time')).toBeInTheDocument()
     expect(api.submitBookingRequest).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps entered details when navigating back from review', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+
+    await walkToReview(user)
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+
+    const inputs = await screen.findAllByRole('textbox')
+    expect(inputs[0]).toHaveValue('PB11REQ')
+    expect(inputs[5]).toHaveValue('alex@example.com')
+    expect(inputs[7]).toHaveValue('Please call first')
+  })
+
+  it('shows a notice instead of the wizard when no garage is in the URL', async () => {
+    renderWithProviders(
+      <ToastProvider>
+        <Routes>
+          <Route path="/book" element={<BookingWizard />} />
+        </Routes>
+      </ToastProvider>,
+      { route: '/book' },
+    )
+    expect(await screen.findByText('Choose your garage')).toBeInTheDocument()
   })
 })
