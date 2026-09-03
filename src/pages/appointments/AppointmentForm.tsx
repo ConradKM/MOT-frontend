@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   useAppointments,
+  useAppointmentStatuses,
   useAppointmentTypes,
   useCancelAppointment,
   useCreateAppointment,
@@ -17,7 +18,7 @@ import { RichDropdown } from '../../components/rich/RichDropdown'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
 import { useGarageId } from '../../hooks/useGarageId'
-import { APPOINTMENT_STATUSES, appointmentStatusLabels } from '../../lib/appointments'
+import { statusOptions } from '../../lib/appointmentStatuses'
 import type { AppointmentStatus } from '../../types'
 
 const priceFormatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' })
@@ -38,6 +39,7 @@ export function AppointmentForm() {
   const { data: vehicles } = useVehicles()
   const { data: employees } = useEmployees()
   const { data: appointmentTypes } = useAppointmentTypes('ACTIVE')
+  const { data: statusConfig } = useAppointmentStatuses()
   const createMutation = useCreateAppointment()
   const updateMutation = useUpdateAppointment(appointmentId ?? '')
   const cancelMutation = useCancelAppointment()
@@ -290,7 +292,7 @@ export function AppointmentForm() {
               <div className="mt-1">
                 <RichDropdown
                   id="status"
-                  options={APPOINTMENT_STATUSES.map((s) => ({ value: s, title: appointmentStatusLabels[s] }))}
+                  options={statusOptions(statusConfig).map((s) => ({ value: s.key, title: s.label }))}
                   value={status}
                   onChange={(value) => setStatus(value as AppointmentStatus)}
                 />

@@ -68,6 +68,7 @@ export interface MOTRecord {
   updated_at: string
 }
 
+/** The seven built-in keys; a garage may also define its own, so any string is valid. */
 export type AppointmentStatus =
   | 'REQUESTED'
   | 'BOOKED'
@@ -76,6 +77,23 @@ export type AppointmentStatus =
   | 'ACTION_NEEDED'
   | 'CANCELLED'
   | 'NO_SHOW'
+  | (string & {})
+
+/** A garage-configurable label + colour for an appointment status key. */
+export interface GarageAppointmentStatus {
+  id: string
+  garage_id: string
+  key: string
+  label: string
+  /** Colour token (e.g. "blue", "emerald") mapped to classes in lib/appointmentStatuses. */
+  color: string
+  sort_order: number
+  is_terminal: boolean
+  is_system: boolean
+  created_at: string
+  updated_at: string
+}
+
 export type AppointmentTypeStatus = 'ACTIVE' | 'HIDDEN' | 'DEPRECATED'
 
 /** A garage's own configurable appointment type (replaces the old global enum). */

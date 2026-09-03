@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import {
   useAppointments,
+  useAppointmentStatuses,
   useAppointmentTypes,
   useCustomer,
   useEmployees,
@@ -11,7 +12,7 @@ import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage } from '../../lib/errors'
 import { formatDateTime } from '../../lib/datetime'
-import { APPOINTMENT_STATUSES, appointmentStatusClasses, appointmentStatusLabels } from '../../lib/appointments'
+import { statusBadgeClass, statusLabel, statusOptions } from '../../lib/appointmentStatuses'
 import { RichDropdown } from '../../components/rich/RichDropdown'
 import type { AppointmentStatus } from '../../types'
 
@@ -26,6 +27,7 @@ export function AppointmentOverview() {
   const { data: vehicle } = useVehicle(appointment?.vehicle_id ?? undefined)
   const { data: employees } = useEmployees()
   const { data: appointmentTypes } = useAppointmentTypes()
+  const { data: statusConfig } = useAppointmentStatuses()
   const updateMutation = useUpdateAppointment(appointmentId as string)
   const { showToast } = useToast()
 
@@ -61,9 +63,9 @@ export function AppointmentOverview() {
           <p className="mt-1 text-sm text-slate-500">{formatDateTime(appointment.start_time)}</p>
         </div>
         <span
-          className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${appointmentStatusClasses[appointment.status]}`}
+          className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${statusBadgeClass(statusConfig, appointment.status)}`}
         >
-          {appointmentStatusLabels[appointment.status]}
+          {statusLabel(statusConfig, appointment.status)}
         </span>
       </div>
 
@@ -96,7 +98,7 @@ export function AppointmentOverview() {
         <p className="text-sm font-medium text-slate-700">Change status</p>
         <div className="mt-2 max-w-xs">
           <RichDropdown
-            options={APPOINTMENT_STATUSES.map((s) => ({ value: s, title: appointmentStatusLabels[s] }))}
+            options={statusOptions(statusConfig).map((s) => ({ value: s.key, title: s.label }))}
             value={appointment.status}
             onChange={handleStatusChange}
           />

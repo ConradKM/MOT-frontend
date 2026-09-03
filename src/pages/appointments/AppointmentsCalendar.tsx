@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useAppointments,
+  useAppointmentStatuses,
   useAppointmentTypes,
   useCancelAppointment,
   useCustomers,
@@ -14,7 +15,7 @@ import {
   todayIso,
   weekDatesIso,
 } from '../../lib/datetime'
-import { appointmentStatusClasses, appointmentStatusLabels } from '../../lib/appointments'
+import { statusBadgeClass, statusLabel } from '../../lib/appointmentStatuses'
 import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { TimeGridCalendar, type CalendarColumn } from '../../components/TimeGridCalendar'
@@ -53,6 +54,7 @@ export function AppointmentsCalendar() {
   const { data: customers } = useCustomers()
   const { data: vehicles } = useVehicles()
   const { data: appointmentTypes } = useAppointmentTypes()
+  const { data: statusConfig } = useAppointmentStatuses()
   const cancelMutation = useCancelAppointment()
 
   const customerName = (id: string) => {
@@ -262,9 +264,9 @@ export function AppointmentsCalendar() {
                         </td>
                         <td className="px-4 py-2">
                           <span
-                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${appointmentStatusClasses[a.status]}`}
+                            className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(statusConfig, a.status)}`}
                           >
-                            {appointmentStatusLabels[a.status]}
+                            {statusLabel(statusConfig, a.status)}
                           </span>
                         </td>
                         <td className="px-4 py-2 text-right">

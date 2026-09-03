@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom'
 import {
   useAppointments,
+  useAppointmentStatuses,
   useAppointmentTypes,
   useBookingRequests,
   useCustomers,
@@ -9,7 +10,7 @@ import {
 } from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
 import { formatTimeRange, todayIso } from '../lib/datetime'
-import { appointmentStatusClasses, appointmentStatusLabels } from '../lib/appointments'
+import { statusBadgeClass, statusLabel } from '../lib/appointmentStatuses'
 
 /** `/dashboard` — resolves the signed-in employee's own garage, then redirects to its
  * garage-scoped dashboard URL. Lets Login/Register and the nav link target a fixed path
@@ -28,6 +29,7 @@ export function Dashboard() {
   const { data: todaysAppointments } = useAppointments({ date: todayIso() })
   const { data: appointmentTypes } = useAppointmentTypes()
   const { data: pendingRequests } = useBookingRequests('PENDING')
+  const { data: statusConfig } = useAppointmentStatuses()
 
   const expiringSoon = (vehicles ?? []).filter((v) => {
     if (!v.mot_expiry_date) return false
@@ -131,9 +133,9 @@ export function Dashboard() {
                       </p>
                     </div>
                     <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${appointmentStatusClasses[a.status]}`}
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass(statusConfig, a.status)}`}
                     >
-                      {appointmentStatusLabels[a.status]}
+                      {statusLabel(statusConfig, a.status)}
                     </span>
                   </Link>
                 </li>

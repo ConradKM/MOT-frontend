@@ -2,9 +2,10 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Appointment } from '../types'
 import { hourRangeForAppointments, layoutOverlaps } from '../lib/calendarLayout'
-import { appointmentStatusClasses } from '../lib/appointments'
+import { statusBadgeClass } from '../lib/appointmentStatuses'
 import { formatTime } from '../lib/datetime'
 import { useGarageId } from '../hooks/useGarageId'
+import { useAppointmentStatuses } from '../api/queries'
 
 export interface CalendarColumn {
   key: string
@@ -27,6 +28,7 @@ function minutesFromStart(iso: string, startHour: number): number {
 
 export function TimeGridCalendar({ columns, customerName, appointmentTypeName }: Props) {
   const garageId = useGarageId()
+  const { data: statusConfig } = useAppointmentStatuses()
   const allAppointments = columns.flatMap((c) => c.appointments)
   const [startHour, endHour] = hourRangeForAppointments(allAppointments)
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i)
@@ -88,7 +90,7 @@ export function TimeGridCalendar({ columns, customerName, appointmentTypeName }:
                   <Link
                     key={a.id}
                     to={`/${garageId}/appointments/${a.id}/overview`}
-                    className={`absolute overflow-hidden rounded-md border border-black/10 px-1.5 py-0.5 text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${appointmentStatusClasses[a.status]}`}
+                    className={`absolute overflow-hidden rounded-md border border-black/10 px-1.5 py-0.5 text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${statusBadgeClass(statusConfig, a.status)}`}
                     style={{
                       top,
                       height,

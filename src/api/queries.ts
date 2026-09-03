@@ -12,6 +12,7 @@ import * as checklistTemplatesApi from './checklistTemplates'
 import * as appointmentChecklistsApi from './appointmentChecklists'
 import * as customerAccountApi from './customerAccount'
 import * as bookingRequestsApi from './bookingRequests'
+import * as appointmentStatusesApi from './appointmentStatuses'
 import { getCustomerAccessToken } from './customerTokens'
 import type { BookingRequestStatus } from './bookingRequests'
 import type { CustomerInput } from './customers'
@@ -282,6 +283,45 @@ export function useDeleteAppointmentType() {
   return useMutation({
     mutationFn: (id: string) => appointmentTypesApi.deleteAppointmentType(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentTypes'] }),
+  })
+}
+
+// Appointment statuses (per-garage labels / colours)
+export function useAppointmentStatuses() {
+  return useQuery({
+    queryKey: ['appointmentStatuses'],
+    queryFn: appointmentStatusesApi.listAppointmentStatuses,
+  })
+}
+
+export function useCreateAppointmentStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: appointmentStatusesApi.AppointmentStatusInput) =>
+      appointmentStatusesApi.createAppointmentStatus(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentStatuses'] }),
+  })
+}
+
+export function useUpdateAppointmentStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: Partial<Omit<appointmentStatusesApi.AppointmentStatusInput, 'key'>>
+    }) => appointmentStatusesApi.updateAppointmentStatus(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentStatuses'] }),
+  })
+}
+
+export function useDeleteAppointmentStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => appointmentStatusesApi.deleteAppointmentStatus(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentStatuses'] }),
   })
 }
 
