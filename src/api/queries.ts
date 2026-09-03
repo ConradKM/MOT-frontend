@@ -254,6 +254,37 @@ export function useAppointmentType(id: string | undefined) {
   })
 }
 
+export function useCreateAppointmentType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: appointmentTypesApi.AppointmentTypeInput) =>
+      appointmentTypesApi.createAppointmentType(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentTypes'] }),
+  })
+}
+
+export function useUpdateAppointmentType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: Partial<appointmentTypesApi.AppointmentTypeInput>
+    }) => appointmentTypesApi.updateAppointmentType(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentTypes'] }),
+  })
+}
+
+export function useDeleteAppointmentType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => appointmentTypesApi.deleteAppointmentType(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentTypes'] }),
+  })
+}
+
 // Checklist templates (owner-facing builder, one per appointment type)
 export function useChecklistTemplate(appointmentTypeId: string | undefined) {
   return useQuery({

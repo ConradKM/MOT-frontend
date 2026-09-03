@@ -86,6 +86,7 @@ export interface AppointmentType {
   description: string | null
   /** Serialized as a decimal string by the backend (e.g. "54.85"), not a JSON number. */
   base_price: string | null
+  default_duration_minutes: number | null
   status: AppointmentTypeStatus
   created_at: string
   updated_at: string
