@@ -330,11 +330,13 @@ interface StepProps {
 function Field({
   label,
   required,
+  optional,
   error,
   children,
 }: {
   label: string
   required?: boolean
+  optional?: boolean
   error?: string
   children: ReactNode
 }) {
@@ -342,6 +344,7 @@ function Field({
     <div>
       <label className="block text-sm font-medium text-slate-700">
         {label} {required && <span className="text-red-500">*</span>}
+        {optional && <span className="text-xs font-normal text-slate-400">(optional)</span>}
       </label>
       <div className="mt-1">{children}</div>
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
@@ -401,10 +404,10 @@ function DetailsStep({ data, errors, update }: StepProps) {
             />
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Make" error={errors.make}>
+            <Field label="Make" optional error={errors.make}>
               <RichTextInput value={data.make} onChange={(v) => update('make', v)} />
             </Field>
-            <Field label="Model" error={errors.model}>
+            <Field label="Model" optional error={errors.model}>
               <RichTextInput value={data.model} onChange={(v) => update('model', v)} />
             </Field>
           </div>
@@ -412,7 +415,7 @@ function DetailsStep({ data, errors, update }: StepProps) {
             <Field label="Year" error={errors.year}>
               <RichTextInput type="number" value={data.year} onChange={(v) => update('year', v)} />
             </Field>
-            <Field label="Current mileage" error={errors.mileage}>
+            <Field label="Current mileage" optional error={errors.mileage}>
               <RichTextInput
                 type="number"
                 min={0}
