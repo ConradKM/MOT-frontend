@@ -58,24 +58,23 @@ current user is `OWNER` or `STAFF` ahead of time — the Garage Settings save
 button is shown to everyone, and a `STAFF` user attempting to save simply
 sees the 403 surfaced as an inline message.
 
-## Known gap: public booking API
+## Public booking
 
-`/customer` and `/customer/book` are a public, unauthenticated booking flow
-for end customers (separate from the staff app — no login, different layout).
-The booking wizard (`src/pages/customer/BookingWizard.tsx`) collects customer,
-vehicle, and appointment details across four sections and validates them
-client-side, but **it doesn't submit anywhere** — every backend endpoint that
-could create a customer, vehicle, or appointment requires an authenticated
-garage employee's JWT and infers the garage from it. There's no public
-endpoint a logged-out customer could call, and no way to say which garage a
-public booking is even for (no slug/subdomain routing exists).
+`/book` (and `/book/:garageId`) is a public, unauthenticated booking flow for
+end customers, separate from the staff app. The wizard
+(`src/pages/customer/BookingWizard.tsx`) picks a garage, loads its active
+appointment types from `GET /api/public/<slug>`, and submits to
+`POST /api/public/<slug>/booking-requests`. Submissions land as **pending
+booking requests** — they don't create customers/vehicles/appointments
+directly. Staff review them at `/:garageId/booking-requests`
+(`src/pages/bookingRequests/`) and approve (which creates + links the real
+records) or reject.
 
-The wizard's final step logs the captured payload to the console and shows a
-success screen so the intended flow can be reviewed, but nothing is
-persisted. Making this real needs backend work: a public booking endpoint
-(likely scoped to a garage via a slug in the URL), plus a decision on whether
-submissions land as pending records for staff to approve or write straight
-into `customers`/`vehicles`/`appointments`.
+**CAPTCHA** is optional and provider-agnostic. Set `VITE_CAPTCHA_PROVIDER`
+(`recaptcha` | `hcaptcha` | `turnstile`) and `VITE_CAPTCHA_SITE_KEY` (see
+`.env.example`) to render the widget on the wizard; with nothing set the token
+is empty and the backend's `none` provider accepts it. The backend must be
+configured with the matching secret (`CAPTCHA_PROVIDER` / `CAPTCHA_SECRET`).
 
 ## Project structure
 

@@ -20,6 +20,8 @@ import { AppointmentTypesList } from './pages/appointmentTypes/AppointmentTypesL
 import { ChecklistTemplateBuilder } from './pages/appointmentTypes/ChecklistTemplateBuilder'
 import { ChecklistTemplateViewer } from './pages/appointmentTypes/ChecklistTemplateViewer'
 import { SettingsHub } from './pages/settings/SettingsHub'
+import { BookingRequestsList } from './pages/bookingRequests/BookingRequestsList'
+import { AppointmentStatusesList } from './pages/appointmentStatuses/AppointmentStatusesList'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
 import { CustomerLanding } from './pages/customer/CustomerLanding'
@@ -67,6 +69,8 @@ export default function App() {
           <Route path="vehicles/:id" element={<VehicleDetail />} />
           <Route path="vehicles/:id/edit" element={<VehicleForm />} />
 
+          <Route path="booking-requests" element={<BookingRequestsList />} />
+
           <Route path="appointments" element={<AppointmentsCalendar />} />
           <Route path="appointments/new" element={<AppointmentForm />} />
           <Route path="appointments/:id/edit" element={<AppointmentForm />} />
@@ -86,6 +90,7 @@ export default function App() {
           <Route path="settings/employees" element={<EmployeesList />} />
           <Route path="settings/roles" element={<RolesList />} />
           <Route path="settings/appointment-types" element={<AppointmentTypesList />} />
+          <Route path="settings/appointment-statuses" element={<AppointmentStatusesList />} />
           <Route path="settings/garage" element={<GarageSettings />} />
         </Route>
       </Route>

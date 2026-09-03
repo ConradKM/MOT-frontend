@@ -11,7 +11,10 @@ import * as appointmentTypesApi from './appointmentTypes'
 import * as checklistTemplatesApi from './checklistTemplates'
 import * as appointmentChecklistsApi from './appointmentChecklists'
 import * as customerAccountApi from './customerAccount'
+import * as bookingRequestsApi from './bookingRequests'
+import * as appointmentStatusesApi from './appointmentStatuses'
 import { getCustomerAccessToken } from './customerTokens'
+import type { BookingRequestStatus } from './bookingRequests'
 import type { CustomerInput } from './customers'
 import type { VehicleInput, VehicleListParams } from './vehicles'
 import type { MOTRecordInput } from './motRecords'
@@ -252,6 +255,76 @@ export function useAppointmentType(id: string | undefined) {
   })
 }
 
+export function useCreateAppointmentType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: appointmentTypesApi.AppointmentTypeInput) =>
+      appointmentTypesApi.createAppointmentType(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentTypes'] }),
+  })
+}
+
+export function useUpdateAppointmentType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: Partial<appointmentTypesApi.AppointmentTypeInput>
+    }) => appointmentTypesApi.updateAppointmentType(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentTypes'] }),
+  })
+}
+
+export function useDeleteAppointmentType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => appointmentTypesApi.deleteAppointmentType(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentTypes'] }),
+  })
+}
+
+// Appointment statuses (per-garage labels / colours)
+export function useAppointmentStatuses() {
+  return useQuery({
+    queryKey: ['appointmentStatuses'],
+    queryFn: appointmentStatusesApi.listAppointmentStatuses,
+  })
+}
+
+export function useCreateAppointmentStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: appointmentStatusesApi.AppointmentStatusInput) =>
+      appointmentStatusesApi.createAppointmentStatus(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentStatuses'] }),
+  })
+}
+
+export function useUpdateAppointmentStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: Partial<Omit<appointmentStatusesApi.AppointmentStatusInput, 'key'>>
+    }) => appointmentStatusesApi.updateAppointmentStatus(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentStatuses'] }),
+  })
+}
+
+export function useDeleteAppointmentStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => appointmentStatusesApi.deleteAppointmentStatus(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['appointmentStatuses'] }),
+  })
+}
+
 // Checklist templates (owner-facing builder, one per appointment type)
 export function useChecklistTemplate(appointmentTypeId: string | undefined) {
   return useQuery({
@@ -359,6 +432,51 @@ export function usePublicGarage(id: string | undefined) {
     queryFn: () => publicGarageApi.getPublicGarage(id as string),
     enabled: !!id,
     retry: false,
+  })
+}
+
+export function usePublicGarageBySlug(slug: string | undefined) {
+  return useQuery({
+    queryKey: ['publicGarageBySlug', slug],
+    queryFn: () => publicGarageApi.getPublicGarageBySlug(slug as string),
+    enabled: !!slug,
+    retry: false,
+  })
+}
+
+// Booking requests (staff review of public submissions)
+export function useBookingRequests(status?: BookingRequestStatus) {
+  return useQuery({
+    queryKey: ['bookingRequests', { status }],
+    queryFn: () => bookingRequestsApi.listBookingRequests({ status }),
+  })
+}
+
+export function useApproveBookingRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: bookingRequestsApi.ApproveBookingRequestInput
+    }) => bookingRequestsApi.approveBookingRequest(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookingRequests'] })
+      qc.invalidateQueries({ queryKey: ['appointments'] })
+      qc.invalidateQueries({ queryKey: ['customers'] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
+    },
+  })
+}
+
+export function useRejectBookingRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, staff_notes }: { id: string; staff_notes?: string | null }) =>
+      bookingRequestsApi.rejectBookingRequest(id, { staff_notes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bookingRequests'] }),
   })
 }
 

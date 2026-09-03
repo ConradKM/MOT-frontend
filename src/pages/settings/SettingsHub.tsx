@@ -26,8 +26,13 @@ const SETTINGS_PAGES: SettingsPage[] = [
   },
   {
     title: 'Appointment Types',
-    description: 'Manage the checklist mechanics work through for each appointment type.',
+    description: 'The services your garage offers, their prices, and their checklists.',
     slug: 'settings/appointment-types',
+  },
+  {
+    title: 'Appointment Statuses',
+    description: 'Rename and recolour appointment statuses, or add your own.',
+    slug: 'settings/appointment-statuses',
   },
   {
     title: 'Garage Settings',
