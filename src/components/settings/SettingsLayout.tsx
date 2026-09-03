@@ -7,6 +7,7 @@ const SECTIONS = [
   { slug: 'roles', label: 'Roles' },
   { slug: 'appointment-types', label: 'Appointment Types' },
   { slug: 'appointment-statuses', label: 'Appointment Statuses' },
+  { slug: 'availability', label: 'Availability' },
   { slug: 'garage', label: 'Garage Details' },
 ]
 

@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { WizardStepper, type WizardStep } from '../../components/customer/WizardStepper'
-import { todayIso } from '../../lib/datetime'
-import { errorMessage, fieldErrors } from '../../lib/errors'
+import { AvailabilityCalendar } from '../../components/customer/AvailabilityCalendar'
+import { TimeSlotPicker } from '../../components/customer/TimeSlotPicker'
+import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner'
+import { formatLongDate } from '../../lib/datetime'
+import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { usePublicGarage, usePublicGarageBySlug, usePublicGarages } from '../../api/queries'
 import { submitBookingRequest } from '../../api/publicGarage'
 import type { PublicAppointmentType, PublicGarage } from '../../api/publicGarage'
@@ -50,18 +54,41 @@ const initialData: WizardData = {
 
 type FieldErrors = Partial<Record<keyof WizardData, string>> & { form?: string }
 
+const STEP_GARAGE = 1
+const STEP_TIME = 2
+const STEP_DETAILS = 3
+const STEP_VEHICLE = 4
+const STEP_EXTRA = 5
+const STEP_REVIEW = 6
+const STEP_CONFIRM = 7
+
 const STEPS: WizardStep[] = [
-  { id: 1, label: 'Customer Details' },
-  { id: 2, label: 'Vehicle Details' },
-  { id: 3, label: 'Appointment' },
-  { id: 4, label: 'Confirm' },
+  { id: STEP_GARAGE, label: 'Garage' },
+  { id: STEP_TIME, label: 'Date & time' },
+  { id: STEP_DETAILS, label: 'Your details' },
+  { id: STEP_VEHICLE, label: 'Vehicle' },
+  { id: STEP_EXTRA, label: 'Extra details' },
+  { id: STEP_REVIEW, label: 'Review' },
+  { id: STEP_CONFIRM, label: 'Confirm' },
 ]
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function validateStep1(d: WizardData): FieldErrors {
+function validateGarage(d: WizardData): FieldErrors {
   const errors: FieldErrors = {}
   if (!d.garageSlug) errors.garageSlug = 'Please choose a garage.'
+  return errors
+}
+
+function validateTime(d: WizardData): FieldErrors {
+  const errors: FieldErrors = {}
+  if (!d.date) errors.form = 'Please choose an available date.'
+  else if (!d.time) errors.form = 'Please choose an available time.'
+  return errors
+}
+
+function validateDetails(d: WizardData): FieldErrors {
+  const errors: FieldErrors = {}
   if (!d.firstName.trim()) errors.firstName = 'First name is required.'
   if (!d.lastName.trim()) errors.lastName = 'Last name is required.'
   if (!d.email.trim()) errors.email = 'Email is required.'
@@ -69,7 +96,7 @@ function validateStep1(d: WizardData): FieldErrors {
   return errors
 }
 
-function validateStep2(d: WizardData): FieldErrors {
+function validateVehicle(d: WizardData): FieldErrors {
   const errors: FieldErrors = {}
   if (!d.registration.trim()) errors.registration = 'Registration number is required.'
   if (d.year && (Number(d.year) < 1900 || Number(d.year) > new Date().getFullYear() + 1)) {
@@ -79,11 +106,19 @@ function validateStep2(d: WizardData): FieldErrors {
   return errors
 }
 
-function validateStep3(d: WizardData): FieldErrors {
-  const errors: FieldErrors = {}
-  if (!d.date) errors.date = 'Please choose a date.'
-  if (!d.time) errors.time = 'Please choose a time.'
-  return errors
+function validateForStep(step: number, d: WizardData): FieldErrors {
+  switch (step) {
+    case STEP_GARAGE:
+      return validateGarage(d)
+    case STEP_TIME:
+      return validateTime(d)
+    case STEP_DETAILS:
+      return validateDetails(d)
+    case STEP_VEHICLE:
+      return validateVehicle(d)
+    default:
+      return {}
+  }
 }
 
 export function BookingWizard() {
@@ -94,8 +129,9 @@ export function BookingWizard() {
     isLoading: garagesLoading,
     isError: garagesError,
   } = usePublicGarages(!urlGarageId)
+  const queryClient = useQueryClient()
 
-  const [step, setStep] = useState(1)
+  const [step, setStep] = useState(STEP_GARAGE)
   const [data, setData] = useState<WizardData>(initialData)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [submitting, setSubmitting] = useState(false)
@@ -117,28 +153,39 @@ export function BookingWizard() {
     if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }))
   }
 
+  const selectDate = (date: string) => {
+    setData((d) => ({ ...d, date, time: '' }))
+    setErrors((e) => ({ ...e, form: undefined }))
+  }
+
+  const selectSlot = (time: string) => {
+    setData((d) => ({ ...d, time }))
+    setErrors((e) => ({ ...e, form: undefined }))
+    setStep(STEP_DETAILS)
+  }
+
   const goNext = () => {
-    const stepErrors =
-      step === 1
-        ? validateStep1(data)
-        : step === 2
-          ? validateStep2(data)
-          : step === 3
-            ? validateStep3(data)
-            : {}
+    const stepErrors = validateForStep(step, data)
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors)
       return
     }
     setErrors({})
-    setStep((s) => Math.min(s + 1, STEPS.length))
+    setStep((s) => Math.min(s + 1, STEP_CONFIRM))
   }
 
-  const goBack = () => setStep((s) => Math.max(s - 1, 1))
+  const goBack = () => setStep((s) => Math.max(s - 1, STEP_GARAGE))
 
   const goToStep = (target: number) => {
     setErrors({})
     setStep(target)
+  }
+
+  const refreshAvailability = () => {
+    queryClient.invalidateQueries({ queryKey: ['garageAvailability', data.garageSlug] })
+    queryClient.invalidateQueries({
+      queryKey: ['garageDayAvailability', data.garageSlug],
+    })
   }
 
   const handleSubmit = async () => {
@@ -168,19 +215,30 @@ export function BookingWizard() {
       })
       setSubmitted(true)
     } catch (err) {
+      // The slot was taken between loading the calendar and submitting.
+      if (isApiError(err) && err.code === 409) {
+        setData((d) => ({ ...d, time: '' }))
+        refreshAvailability()
+        setErrors({
+          form: `${errorMessage(err)} We've refreshed the calendar — please pick another time.`,
+        })
+        setStep(STEP_TIME)
+        return
+      }
+
       const fields = fieldErrors(err)
-      // Map snake_case API field names back onto the wizard's fields where it matters.
       const mapped: FieldErrors = {}
       if (fields.customer_email) mapped.email = fields.customer_email
       if (fields.vehicle_registration) mapped.registration = fields.vehicle_registration
-      if (fields.preferred_date) mapped.date = fields.preferred_date
+      const timeIssue = fields.preferred_date || fields.preferred_time
       mapped.form =
-        Object.keys(mapped).length > 0 ? 'Please fix the highlighted fields.' : errorMessage(err)
+        Object.keys(mapped).length > 0 || timeIssue
+          ? 'Please fix the highlighted details.'
+          : errorMessage(err)
       setErrors(mapped)
-      // Jump back to the earliest step with an error.
-      if (mapped.email) setStep(1)
-      else if (mapped.registration) setStep(2)
-      else if (mapped.date) setStep(3)
+      if (timeIssue) setStep(STEP_TIME)
+      else if (mapped.email) setStep(STEP_DETAILS)
+      else if (mapped.registration) setStep(STEP_VEHICLE)
     } finally {
       setSubmitting(false)
     }
@@ -189,7 +247,7 @@ export function BookingWizard() {
   const restart = () => {
     setData(initialData)
     setErrors({})
-    setStep(1)
+    setStep(STEP_GARAGE)
     setSubmitted(false)
     setCaptchaToken('')
   }
@@ -206,13 +264,23 @@ export function BookingWizard() {
     )
   }
 
+  const showSlotBanner = data.date && data.time && step >= STEP_DETAILS
+
   return (
     <div className="mx-auto max-w-2xl">
       <WizardStepper steps={STEPS} currentStep={step} />
 
       <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
-        {step === 1 && (
-          <CustomerDetailsStep
+        {showSlotBanner && (
+          <SelectedSlotBanner
+            date={data.date}
+            time={data.time}
+            onChange={() => goToStep(STEP_TIME)}
+          />
+        )}
+
+        {step === STEP_GARAGE && (
+          <GarageStep
             data={data}
             errors={errors}
             update={update}
@@ -222,18 +290,34 @@ export function BookingWizard() {
             garagesError={garagesError}
           />
         )}
-        {step === 2 && <VehicleDetailsStep data={data} errors={errors} update={update} />}
-        {step === 3 && (
-          <AppointmentStep
+        {step === STEP_TIME && (
+          <DateTimeStep
+            slug={data.garageSlug}
+            date={data.date}
+            time={data.time}
+            onSelectDate={selectDate}
+            onSelectSlot={selectSlot}
+          />
+        )}
+        {step === STEP_DETAILS && (
+          <YourDetailsStep data={data} errors={errors} update={update} />
+        )}
+        {step === STEP_VEHICLE && (
+          <VehicleDetailsStep data={data} errors={errors} update={update} />
+        )}
+        {step === STEP_EXTRA && (
+          <ExtraDetailsStep
             data={data}
             errors={errors}
             update={update}
             appointmentTypes={appointmentTypes}
-            onCaptchaToken={handleCaptchaToken}
           />
         )}
-        {step === 4 && (
-          <SummaryStep data={data} appointmentTypes={appointmentTypes} onEditStep={goToStep} />
+        {step === STEP_REVIEW && (
+          <ReviewStep data={data} appointmentTypes={appointmentTypes} onEditStep={goToStep} />
+        )}
+        {step === STEP_CONFIRM && (
+          <ConfirmStep data={data} onCaptchaToken={handleCaptchaToken} />
         )}
 
         {errors.form && (
@@ -241,7 +325,7 @@ export function BookingWizard() {
         )}
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6">
-          {step > 1 ? (
+          {step > STEP_GARAGE ? (
             <button
               type="button"
               onClick={goBack}
@@ -252,7 +336,16 @@ export function BookingWizard() {
           ) : (
             <span />
           )}
-          {step < STEPS.length ? (
+          {step === STEP_TIME ? (
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={!data.date || !data.time}
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
+            >
+              Continue
+            </button>
+          ) : step < STEP_CONFIRM ? (
             <button
               type="button"
               onClick={goNext}
@@ -267,7 +360,7 @@ export function BookingWizard() {
               disabled={submitting}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
             >
-              {submitting ? 'Sending…' : 'Confirm booking request'}
+              {submitting ? 'Sending…' : 'Submit booking request'}
             </button>
           )}
         </div>
@@ -304,7 +397,7 @@ function Field({
   )
 }
 
-interface CustomerDetailsStepProps extends StepProps {
+interface GarageStepProps extends StepProps {
   /** Present (non-null) when a garage id came from the URL — fixed, shown as a static field. */
   urlGarage: { garage: PublicGarage | undefined; loading: boolean } | null
   garages: PublicGarage[] | undefined
@@ -312,7 +405,7 @@ interface CustomerDetailsStepProps extends StepProps {
   garagesError: boolean
 }
 
-function CustomerDetailsStep({
+function GarageStep({
   data,
   errors,
   update,
@@ -320,11 +413,14 @@ function CustomerDetailsStep({
   garages,
   garagesLoading,
   garagesError,
-}: CustomerDetailsStepProps) {
+}: GarageStepProps) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">1. Customer Details</h2>
-      <div className="mt-4 space-y-4">
+      <h2 className="text-lg font-semibold text-slate-900">1. Choose a garage</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        We'll show you that garage's live availability next.
+      </p>
+      <div className="mt-4">
         <Field label="Garage" required error={errors.garageSlug}>
           {urlGarage ? (
             <RichStaticField
@@ -348,6 +444,61 @@ function CustomerDetailsStep({
             />
           )}
         </Field>
+      </div>
+    </div>
+  )
+}
+
+function DateTimeStep({
+  slug,
+  date,
+  time,
+  onSelectDate,
+  onSelectSlot,
+}: {
+  slug: string
+  date: string
+  time: string
+  onSelectDate: (date: string) => void
+  onSelectSlot: (time: string) => void
+}) {
+  if (!slug) {
+    return (
+      <p className="text-sm text-slate-500">
+        Please choose a garage first.
+      </p>
+    )
+  }
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-slate-900">2. Pick a date &amp; time</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Green days have good availability, amber days are filling up, and red days are full.
+      </p>
+      <div className="mt-4">
+        <AvailabilityCalendar
+          slug={slug}
+          selectedDate={date || null}
+          onSelectDate={onSelectDate}
+        />
+      </div>
+      {date && (
+        <TimeSlotPicker
+          slug={slug}
+          date={date}
+          selectedTime={time || null}
+          onSelectSlot={onSelectSlot}
+        />
+      )}
+    </div>
+  )
+}
+
+function YourDetailsStep({ data, errors, update }: StepProps) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-slate-900">3. Your details</h2>
+      <div className="mt-4 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Field label="First name" required error={errors.firstName}>
             <RichTextInput value={data.firstName} onChange={(v) => update('firstName', v)} />
@@ -370,7 +521,7 @@ function CustomerDetailsStep({
 function VehicleDetailsStep({ data, errors, update }: StepProps) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">2. Vehicle Details</h2>
+      <h2 className="text-lg font-semibold text-slate-900">4. Vehicle details</h2>
       <div className="mt-4 space-y-4">
         <Field label="Registration number" required error={errors.registration}>
           <RichTextInput
@@ -405,48 +556,15 @@ function VehicleDetailsStep({ data, errors, update }: StepProps) {
   )
 }
 
-interface AppointmentStepProps extends StepProps {
+interface ExtraDetailsStepProps extends StepProps {
   appointmentTypes: PublicAppointmentType[]
-  onCaptchaToken: (token: string) => void
 }
 
-function AppointmentStep({
-  data,
-  errors,
-  update,
-  appointmentTypes,
-  onCaptchaToken,
-}: AppointmentStepProps) {
+function ExtraDetailsStep({ data, errors, update, appointmentTypes }: ExtraDetailsStepProps) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">3. Appointment</h2>
+      <h2 className="text-lg font-semibold text-slate-900">5. Anything else?</h2>
       <div className="mt-4 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Date" required error={errors.date}>
-            <RichTextInput
-              type="date"
-              min={todayIso()}
-              value={data.date}
-              onChange={(v) => update('date', v)}
-            />
-          </Field>
-          <Field label="Time" required error={errors.time}>
-            <RichTextInput type="time" value={data.time} onChange={(v) => update('time', v)} />
-          </Field>
-        </div>
-
-        <Field label="Assigned garage employee/mechanic" error={errors.preferredMechanic}>
-          <RichTextInput
-            placeholder="No preference"
-            value={data.preferredMechanic}
-            onChange={(v) => update('preferredMechanic', v)}
-          />
-          <p className="mt-1 text-xs text-slate-400">
-            Optional — let us know if you'd like someone specific, otherwise the garage will assign
-            whoever's available.
-          </p>
-        </Field>
-
         <Field label="Appointment type" error={errors.appointmentTypeId}>
           {appointmentTypes.length > 0 ? (
             <RichDropdown
@@ -462,6 +580,18 @@ function AppointmentStep({
           )}
         </Field>
 
+        <Field label="Assigned garage employee/mechanic" error={errors.preferredMechanic}>
+          <RichTextInput
+            placeholder="No preference"
+            value={data.preferredMechanic}
+            onChange={(v) => update('preferredMechanic', v)}
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            Optional — let us know if you'd like someone specific, otherwise the garage will assign
+            whoever's available.
+          </p>
+        </Field>
+
         <Field label="Additional notes" error={errors.notes}>
           <textarea
             rows={3}
@@ -470,18 +600,12 @@ function AppointmentStep({
             className={`${richFieldBoxClass} ${richFieldFocusClass}`}
           />
         </Field>
-
-        {captchaEnabled && (
-          <Field label="Verification" required>
-            <Captcha onToken={onCaptchaToken} />
-          </Field>
-        )}
       </div>
     </div>
   )
 }
 
-function SummaryStep({
+function ReviewStep({
   data,
   appointmentTypes,
   onEditStep,
@@ -495,17 +619,25 @@ function SummaryStep({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">4. Confirmation</h2>
+      <h2 className="text-lg font-semibold text-slate-900">6. Review</h2>
       <p className="mt-1 text-sm text-slate-500">Please check everything below before you submit.</p>
 
       <div className="mt-4 space-y-4">
-        <SummarySection title="Customer Details" onEdit={() => onEditStep(1)}>
+        <SummarySection title="Appointment" onEdit={() => onEditStep(STEP_TIME)}>
+          <SummaryRow label="Date" value={data.date ? formatLongDate(data.date) : '—'} />
+          <SummaryRow label="Time" value={data.time || '—'} />
+          <SummaryRow label="Type" value={typeName} />
+          <SummaryRow label="Preferred mechanic" value={data.preferredMechanic || 'No preference'} />
+          <SummaryRow label="Notes" value={data.notes || '—'} />
+        </SummarySection>
+
+        <SummarySection title="Your details" onEdit={() => onEditStep(STEP_DETAILS)}>
           <SummaryRow label="Name" value={`${data.firstName} ${data.lastName}`.trim()} />
           <SummaryRow label="Email" value={data.email} />
           <SummaryRow label="Phone" value={data.phone || '—'} />
         </SummarySection>
 
-        <SummarySection title="Vehicle Details" onEdit={() => onEditStep(2)}>
+        <SummarySection title="Vehicle details" onEdit={() => onEditStep(STEP_VEHICLE)}>
           <SummaryRow label="Registration" value={data.registration} />
           <SummaryRow
             label="Make / model"
@@ -514,19 +646,34 @@ function SummaryStep({
           <SummaryRow label="Year" value={data.year || '—'} />
           <SummaryRow label="Current mileage" value={data.mileage || '—'} />
         </SummarySection>
-
-        <SummarySection title="Appointment" onEdit={() => onEditStep(3)}>
-          <SummaryRow label="Date" value={data.date} />
-          <SummaryRow label="Time" value={data.time} />
-          <SummaryRow label="Type" value={typeName} />
-          <SummaryRow label="Preferred mechanic" value={data.preferredMechanic || 'No preference'} />
-          <SummaryRow label="Notes" value={data.notes || '—'} />
-        </SummarySection>
       </div>
+    </div>
+  )
+}
 
-      <p className="mt-6 text-xs text-slate-400">
-        Submitting sends a request to the garage — they'll review it and get back to you to confirm.
+function ConfirmStep({
+  data,
+  onCaptchaToken,
+}: {
+  data: WizardData
+  onCaptchaToken: (token: string) => void
+}) {
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-slate-900">7. Confirm &amp; submit</h2>
+      <p className="mt-2 text-sm text-slate-600">
+        You're requesting <span className="font-medium">{formatLongDate(data.date)}</span> at{' '}
+        <span className="font-medium">{data.time}</span>. The garage will review your request and be
+        in touch at {data.email} to confirm.
       </p>
+
+      {captchaEnabled && (
+        <div className="mt-4">
+          <Field label="Verification" required>
+            <Captcha onToken={onCaptchaToken} />
+          </Field>
+        </div>
+      )}
     </div>
   )
 }
@@ -586,8 +733,8 @@ function ConfirmationScreen({
       </div>
       <h1 className="mt-4 text-2xl font-semibold text-slate-900">Request received</h1>
       <p className="mt-2 text-slate-600">
-        Thanks, {firstName}. We've sent your request for {date} at {time}. The garage will review it
-        and be in touch at {email} to confirm.
+        Thanks, {firstName}. We've sent your request for {date ? formatLongDate(date) : ''} at {time}.
+        The garage will review it and be in touch at {email} to confirm.
       </p>
       <div className="mt-6 flex justify-center gap-3">
         <button

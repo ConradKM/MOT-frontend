@@ -20,6 +20,7 @@ import { AppointmentTypesList } from './pages/appointmentTypes/AppointmentTypesL
 import { ChecklistTemplateBuilder } from './pages/appointmentTypes/ChecklistTemplateBuilder'
 import { ChecklistTemplateViewer } from './pages/appointmentTypes/ChecklistTemplateViewer'
 import { SettingsHub } from './pages/settings/SettingsHub'
+import { AvailabilitySettings } from './pages/settings/AvailabilitySettings'
 import { BookingRequestsList } from './pages/bookingRequests/BookingRequestsList'
 import { AppointmentStatusesList } from './pages/appointmentStatuses/AppointmentStatusesList'
 import { CustomerLayout } from './components/customer/CustomerLayout'
@@ -91,6 +92,7 @@ export default function App() {
           <Route path="settings/roles" element={<RolesList />} />
           <Route path="settings/appointment-types" element={<AppointmentTypesList />} />
           <Route path="settings/appointment-statuses" element={<AppointmentStatusesList />} />
+          <Route path="settings/availability" element={<AvailabilitySettings />} />
           <Route path="settings/garage" element={<GarageSettings />} />
         </Route>
       </Route>

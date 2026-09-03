@@ -62,3 +62,53 @@ export function weekDatesIso(iso: string): string[] {
   const monday = startOfWeekIso(iso)
   return Array.from({ length: 7 }, (_, i) => addDaysIso(monday, i))
 }
+
+/** YYYY-MM-01 of the month containing `iso`. */
+export function startOfMonthIso(iso: string): string {
+  return `${iso.slice(0, 7)}-01`
+}
+
+/** YYYY-MM-01, shifted by `delta` whole months. */
+export function addMonthsIso(iso: string, delta: number): string {
+  const d = new Date(`${startOfMonthIso(iso)}T00:00:00`)
+  d.setMonth(d.getMonth() + delta)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`
+}
+
+/** Weekday of `iso` as 0 = Monday … 6 = Sunday. */
+export function mondayIndex(iso: string): number {
+  return (new Date(`${iso}T00:00:00`).getDay() + 6) % 7
+}
+
+/** Number of days in the month containing `iso`. */
+export function daysInMonth(iso: string): number {
+  const d = new Date(`${startOfMonthIso(iso)}T00:00:00`)
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+}
+
+/** "September 2026" for the month containing `iso`. */
+export function monthLabel(iso: string): string {
+  return new Date(`${startOfMonthIso(iso)}T00:00:00`).toLocaleDateString([], {
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+/** "Thursday 17 September 2026" */
+export function formatLongDate(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString([], {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+/** "Thu 17 Sep" — compact form for chips / headers. */
+export function formatShortDate(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString([], {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  })
+}

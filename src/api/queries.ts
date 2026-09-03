@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as garageApi from './garage'
+import * as garageScheduleApi from './garageSchedule'
 import * as publicGarageApi from './publicGarage'
 import * as employeesApi from './employees'
 import * as rolesApi from './roles'
@@ -32,6 +33,49 @@ export function useUpdateGarage() {
     mutationFn: (data: Parameters<typeof garageApi.updateGarage>[0]) =>
       garageApi.updateGarage(data),
     onSuccess: (garage) => qc.setQueryData(['garage'], garage),
+  })
+}
+
+// Garage schedule (Settings > Availability)
+export function useGarageSchedule() {
+  return useQuery({
+    queryKey: ['garageSchedule'],
+    queryFn: garageScheduleApi.getGarageSchedule,
+  })
+}
+
+export function useUpdateScheduleSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: garageScheduleApi.ScheduleSettingsInput) =>
+      garageScheduleApi.updateScheduleSettings(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['garageSchedule'] }),
+  })
+}
+
+export function useUpdateOpeningHours() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (rows: garageScheduleApi.OpeningHoursInput[]) =>
+      garageScheduleApi.updateOpeningHours(rows),
+    onSuccess: (schedule) => qc.setQueryData(['garageSchedule'], schedule),
+  })
+}
+
+export function useAddScheduleException() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: garageScheduleApi.ScheduleExceptionInput) =>
+      garageScheduleApi.addScheduleException(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['garageSchedule'] }),
+  })
+}
+
+export function useDeleteScheduleException() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => garageScheduleApi.deleteScheduleException(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['garageSchedule'] }),
   })
 }
 
@@ -441,6 +485,38 @@ export function usePublicGarageBySlug(slug: string | undefined) {
     queryFn: () => publicGarageApi.getPublicGarageBySlug(slug as string),
     enabled: !!slug,
     retry: false,
+  })
+}
+
+// Public availability calendar
+export function useGarageAvailability(
+  slug: string | undefined,
+  from?: string,
+  to?: string,
+) {
+  return useQuery({
+    queryKey: ['garageAvailability', slug, from ?? null, to ?? null],
+    queryFn: () =>
+      publicGarageApi.getGarageAvailability(slug as string, from, to),
+    enabled: !!slug,
+    retry: false,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  })
+}
+
+export function useGarageDayAvailability(
+  slug: string | undefined,
+  date: string | undefined,
+) {
+  return useQuery({
+    queryKey: ['garageDayAvailability', slug, date ?? null],
+    queryFn: () =>
+      publicGarageApi.getGarageDayAvailability(slug as string, date as string),
+    enabled: !!slug && !!date,
+    retry: false,
+    staleTime: 10_000,
+    refetchOnWindowFocus: true,
   })
 }
 

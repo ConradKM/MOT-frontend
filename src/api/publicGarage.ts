@@ -62,3 +62,84 @@ export function submitBookingRequest(
     { method: 'POST', body: data, skipAuth: true },
   )
 }
+
+// --- Availability calendar ------------------------------------------------
+
+/** How busy a whole day is. `full` also covers "open but nothing bookable". */
+export type DayLevel = 'available' | 'limited' | 'full' | 'closed' | 'past'
+export type SlotStatus = 'available' | 'limited' | 'booked'
+
+export interface AvailabilityRules {
+  slot_interval_minutes: number
+  min_lead_time_hours: number
+  max_advance_days: number
+  /** YYYY-MM-DD */
+  booking_window_start: string
+  /** YYYY-MM-DD */
+  booking_window_end: string
+}
+
+export interface OpeningHoursEntry {
+  /** 0 = Monday … 6 = Sunday */
+  weekday: number
+  opens_at: string
+  closes_at: string
+  is_closed: boolean
+}
+
+export interface DayAvailability {
+  /** YYYY-MM-DD */
+  date: string
+  weekday: number
+  is_open: boolean
+  level: DayLevel
+  open_slots: number
+  total_slots: number
+}
+
+export interface AvailabilityRange {
+  garage: { slug: string; name: string }
+  rules: AvailabilityRules
+  opening_hours: OpeningHoursEntry[]
+  days: DayAvailability[]
+}
+
+export interface AvailabilitySlot {
+  /** "HH:MM" */
+  start: string
+  status: SlotStatus
+  remaining: number
+  capacity: number
+}
+
+export interface DayAvailabilityDetail {
+  date: string
+  is_open: boolean
+  level: DayLevel
+  slots: AvailabilitySlot[]
+}
+
+export function getGarageAvailability(
+  slug: string,
+  from?: string,
+  to?: string,
+): Promise<AvailabilityRange> {
+  const qs = new URLSearchParams()
+  if (from) qs.set('from', from)
+  if (to) qs.set('to', to)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  return apiFetch<AvailabilityRange>(
+    `/api/public/${slug}/availability${suffix}`,
+    { skipAuth: true },
+  )
+}
+
+export function getGarageDayAvailability(
+  slug: string,
+  date: string,
+): Promise<DayAvailabilityDetail> {
+  return apiFetch<DayAvailabilityDetail>(
+    `/api/public/${slug}/availability/${date}`,
+    { skipAuth: true },
+  )
+}
