@@ -11,7 +11,9 @@ import * as appointmentTypesApi from './appointmentTypes'
 import * as checklistTemplatesApi from './checklistTemplates'
 import * as appointmentChecklistsApi from './appointmentChecklists'
 import * as customerAccountApi from './customerAccount'
+import * as bookingRequestsApi from './bookingRequests'
 import { getCustomerAccessToken } from './customerTokens'
+import type { BookingRequestStatus } from './bookingRequests'
 import type { CustomerInput } from './customers'
 import type { VehicleInput, VehicleListParams } from './vehicles'
 import type { MOTRecordInput } from './motRecords'
@@ -359,6 +361,51 @@ export function usePublicGarage(id: string | undefined) {
     queryFn: () => publicGarageApi.getPublicGarage(id as string),
     enabled: !!id,
     retry: false,
+  })
+}
+
+export function usePublicGarageBySlug(slug: string | undefined) {
+  return useQuery({
+    queryKey: ['publicGarageBySlug', slug],
+    queryFn: () => publicGarageApi.getPublicGarageBySlug(slug as string),
+    enabled: !!slug,
+    retry: false,
+  })
+}
+
+// Booking requests (staff review of public submissions)
+export function useBookingRequests(status?: BookingRequestStatus) {
+  return useQuery({
+    queryKey: ['bookingRequests', { status }],
+    queryFn: () => bookingRequestsApi.listBookingRequests({ status }),
+  })
+}
+
+export function useApproveBookingRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: bookingRequestsApi.ApproveBookingRequestInput
+    }) => bookingRequestsApi.approveBookingRequest(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bookingRequests'] })
+      qc.invalidateQueries({ queryKey: ['appointments'] })
+      qc.invalidateQueries({ queryKey: ['customers'] })
+      qc.invalidateQueries({ queryKey: ['vehicles'] })
+    },
+  })
+}
+
+export function useRejectBookingRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, staff_notes }: { id: string; staff_notes?: string | null }) =>
+      bookingRequestsApi.rejectBookingRequest(id, { staff_notes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bookingRequests'] }),
   })
 }
 

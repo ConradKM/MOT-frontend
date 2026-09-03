@@ -1,5 +1,12 @@
 import { Link, Navigate } from 'react-router-dom'
-import { useAppointments, useAppointmentTypes, useCustomers, useGarage, useVehicles } from '../api/queries'
+import {
+  useAppointments,
+  useAppointmentTypes,
+  useBookingRequests,
+  useCustomers,
+  useGarage,
+  useVehicles,
+} from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
 import { formatTimeRange, todayIso } from '../lib/datetime'
 import { appointmentStatusClasses, appointmentStatusLabels } from '../lib/appointments'
@@ -20,6 +27,7 @@ export function Dashboard() {
   const { data: vehicles } = useVehicles()
   const { data: todaysAppointments } = useAppointments({ date: todayIso() })
   const { data: appointmentTypes } = useAppointmentTypes()
+  const { data: pendingRequests } = useBookingRequests('PENDING')
 
   const expiringSoon = (vehicles ?? []).filter((v) => {
     if (!v.mot_expiry_date) return false
@@ -69,6 +77,21 @@ export function Dashboard() {
           </p>
         </Link>
       </div>
+
+      {(pendingRequests?.length ?? 0) > 0 && (
+        <div className="mt-6 rounded-lg border border-violet-200 bg-violet-50 p-5">
+          <p className="text-sm font-medium text-violet-800">
+            {pendingRequests!.length} public booking request
+            {pendingRequests!.length === 1 ? '' : 's'} waiting for review
+          </p>
+          <Link
+            to={`/${garageId}/booking-requests`}
+            className="mt-2 inline-block text-sm font-medium text-violet-900 underline"
+          >
+            Review requests
+          </Link>
+        </div>
+      )}
 
       {expiringSoon.length > 0 && (
         <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">

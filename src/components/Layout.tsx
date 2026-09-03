@@ -22,6 +22,7 @@ export function Layout() {
     { to: `/${garageId}/customers`, label: 'Customers' },
     { to: `/${garageId}/vehicles`, label: 'Vehicles' },
     { to: `/${garageId}/appointments`, label: 'Appointments' },
+    { to: `/${garageId}/booking-requests`, label: 'Requests' },
     { to: `/${garageId}/settings`, label: 'Settings' },
   ]
 

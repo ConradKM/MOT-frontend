@@ -1,18 +1,19 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { WizardStepper, type WizardStep } from '../../components/customer/WizardStepper'
 import { todayIso } from '../../lib/datetime'
-import { usePublicGarage, usePublicGarages } from '../../api/queries'
-import type { PublicGarage } from '../../api/publicGarage'
+import { errorMessage, fieldErrors } from '../../lib/errors'
+import { usePublicGarage, usePublicGarageBySlug, usePublicGarages } from '../../api/queries'
+import { submitBookingRequest } from '../../api/publicGarage'
+import type { PublicAppointmentType, PublicGarage } from '../../api/publicGarage'
+import { Captcha, captchaEnabled } from '../../components/Captcha'
 import { RichDropdown } from '../../components/rich/RichDropdown'
 import { RichStaticField } from '../../components/rich/RichStaticField'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
 
-type AppointmentTypeChoice = 'MOT' | 'MOT_AND_SERVICE'
-
 interface WizardData {
-  garageId: string
+  garageSlug: string
   firstName: string
   lastName: string
   email: string
@@ -25,12 +26,12 @@ interface WizardData {
   date: string
   time: string
   preferredMechanic: string
-  appointmentType: AppointmentTypeChoice
+  appointmentTypeId: string
   notes: string
 }
 
 const initialData: WizardData = {
-  garageId: '',
+  garageSlug: '',
   firstName: '',
   lastName: '',
   email: '',
@@ -43,11 +44,11 @@ const initialData: WizardData = {
   date: '',
   time: '',
   preferredMechanic: '',
-  appointmentType: 'MOT',
+  appointmentTypeId: '',
   notes: '',
 }
 
-type FieldErrors = Partial<Record<keyof WizardData, string>>
+type FieldErrors = Partial<Record<keyof WizardData, string>> & { form?: string }
 
 const STEPS: WizardStep[] = [
   { id: 1, label: 'Customer Details' },
@@ -56,16 +57,11 @@ const STEPS: WizardStep[] = [
   { id: 4, label: 'Confirm' },
 ]
 
-const appointmentTypeLabels: Record<AppointmentTypeChoice, string> = {
-  MOT: 'MOT',
-  MOT_AND_SERVICE: 'MOT + Service',
-}
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validateStep1(d: WizardData): FieldErrors {
   const errors: FieldErrors = {}
-  if (!d.garageId) errors.garageId = 'Please choose a garage.'
+  if (!d.garageSlug) errors.garageSlug = 'Please choose a garage.'
   if (!d.firstName.trim()) errors.firstName = 'First name is required.'
   if (!d.lastName.trim()) errors.lastName = 'Last name is required.'
   if (!d.email.trim()) errors.email = 'Email is required.'
@@ -100,15 +96,21 @@ export function BookingWizard() {
   } = usePublicGarages(!urlGarageId)
 
   const [step, setStep] = useState(1)
-  const [data, setData] = useState<WizardData>(() => ({ ...initialData, garageId: urlGarageId ?? '' }))
+  const [data, setData] = useState<WizardData>(initialData)
   const [errors, setErrors] = useState<FieldErrors>({})
+  const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState('')
 
-  // Keep the wizard's garage in sync if the URL param is present (it's fixed either way —
-  // this just covers the id arriving after the initial render).
+  // If a garage id is in the URL, resolve it to a slug once it loads.
   useEffect(() => {
-    if (urlGarageId) setData((d) => ({ ...d, garageId: urlGarageId }))
-  }, [urlGarageId])
+    if (urlGarage?.slug) setData((d) => ({ ...d, garageSlug: urlGarage.slug }))
+  }, [urlGarage?.slug])
+
+  const { data: garageDetail } = usePublicGarageBySlug(data.garageSlug || undefined)
+  const appointmentTypes = garageDetail?.appointment_types ?? []
+
+  const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
 
   const update = (field: keyof WizardData, value: string) => {
     setData((d) => ({ ...d, [field]: value }))
@@ -117,7 +119,13 @@ export function BookingWizard() {
 
   const goNext = () => {
     const stepErrors =
-      step === 1 ? validateStep1(data) : step === 2 ? validateStep2(data) : step === 3 ? validateStep3(data) : {}
+      step === 1
+        ? validateStep1(data)
+        : step === 2
+          ? validateStep2(data)
+          : step === 3
+            ? validateStep3(data)
+            : {}
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors)
       return
@@ -133,14 +141,49 @@ export function BookingWizard() {
     setStep(target)
   }
 
-  const handleSubmit = () => {
-    // There is no public/unauthenticated booking endpoint on the backend — every
-    // customer/vehicle/appointment endpoint requires a garage employee's JWT and infers
-    // the garage from it (see MOT-frontend/README.md, "Known gap: public booking API").
-    // This simulates a successful submission so the intended flow can be reviewed end to
-    // end; it does not create a real customer, vehicle, or appointment anywhere.
-    console.info('Booking request captured (not sent — no public booking API exists yet):', data)
-    setSubmitted(true)
+  const handleSubmit = async () => {
+    if (captchaEnabled && !captchaToken) {
+      setErrors({ form: 'Please complete the verification challenge.' })
+      return
+    }
+    setSubmitting(true)
+    setErrors({})
+    try {
+      await submitBookingRequest(data.garageSlug, {
+        customer_first_name: data.firstName.trim(),
+        customer_last_name: data.lastName.trim(),
+        customer_email: data.email.trim(),
+        customer_phone: data.phone.trim() || null,
+        vehicle_registration: data.registration.trim(),
+        vehicle_make: data.make.trim() || null,
+        vehicle_model: data.model.trim() || null,
+        vehicle_year: data.year ? Number(data.year) : null,
+        vehicle_mileage: data.mileage ? Number(data.mileage) : null,
+        appointment_type_id: data.appointmentTypeId || null,
+        preferred_date: data.date,
+        preferred_time: data.time || null,
+        preferred_employee_note: data.preferredMechanic.trim() || null,
+        notes: data.notes.trim() || null,
+        captcha_token: captchaToken,
+      })
+      setSubmitted(true)
+    } catch (err) {
+      const fields = fieldErrors(err)
+      // Map snake_case API field names back onto the wizard's fields where it matters.
+      const mapped: FieldErrors = {}
+      if (fields.customer_email) mapped.email = fields.customer_email
+      if (fields.vehicle_registration) mapped.registration = fields.vehicle_registration
+      if (fields.preferred_date) mapped.date = fields.preferred_date
+      mapped.form =
+        Object.keys(mapped).length > 0 ? 'Please fix the highlighted fields.' : errorMessage(err)
+      setErrors(mapped)
+      // Jump back to the earliest step with an error.
+      if (mapped.email) setStep(1)
+      else if (mapped.registration) setStep(2)
+      else if (mapped.date) setStep(3)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const restart = () => {
@@ -148,10 +191,19 @@ export function BookingWizard() {
     setErrors({})
     setStep(1)
     setSubmitted(false)
+    setCaptchaToken('')
   }
 
   if (submitted) {
-    return <ConfirmationScreen data={data} onRestart={restart} />
+    return (
+      <ConfirmationScreen
+        firstName={data.firstName}
+        date={data.date}
+        time={data.time}
+        email={data.email}
+        onRestart={restart}
+      />
+    )
   }
 
   return (
@@ -171,8 +223,22 @@ export function BookingWizard() {
           />
         )}
         {step === 2 && <VehicleDetailsStep data={data} errors={errors} update={update} />}
-        {step === 3 && <AppointmentStep data={data} errors={errors} update={update} />}
-        {step === 4 && <SummaryStep data={data} onEditStep={goToStep} />}
+        {step === 3 && (
+          <AppointmentStep
+            data={data}
+            errors={errors}
+            update={update}
+            appointmentTypes={appointmentTypes}
+            onCaptchaToken={handleCaptchaToken}
+          />
+        )}
+        {step === 4 && (
+          <SummaryStep data={data} appointmentTypes={appointmentTypes} onEditStep={goToStep} />
+        )}
+
+        {errors.form && (
+          <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{errors.form}</p>
+        )}
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6">
           {step > 1 ? (
@@ -198,9 +264,10 @@ export function BookingWizard() {
             <button
               type="button"
               onClick={handleSubmit}
-              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              disabled={submitting}
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
             >
-              Confirm booking request
+              {submitting ? 'Sending…' : 'Confirm booking request'}
             </button>
           )}
         </div>
@@ -258,7 +325,7 @@ function CustomerDetailsStep({
     <div>
       <h2 className="text-lg font-semibold text-slate-900">1. Customer Details</h2>
       <div className="mt-4 space-y-4">
-        <Field label="Garage" required error={errors.garageId}>
+        <Field label="Garage" required error={errors.garageSlug}>
           {urlGarage ? (
             <RichStaticField
               title={urlGarage.garage?.name ?? (urlGarage.loading ? 'Loading…' : undefined)}
@@ -266,9 +333,9 @@ function CustomerDetailsStep({
             />
           ) : (
             <RichDropdown
-              options={(garages ?? []).map((g) => ({ value: g.id, title: g.name }))}
-              value={data.garageId}
-              onChange={(value) => update('garageId', value)}
+              options={(garages ?? []).map((g) => ({ value: g.slug, title: g.name }))}
+              value={data.garageSlug}
+              onChange={(value) => update('garageSlug', value)}
               placeholder={
                 garagesError
                   ? 'Unable to load garages'
@@ -338,7 +405,18 @@ function VehicleDetailsStep({ data, errors, update }: StepProps) {
   )
 }
 
-function AppointmentStep({ data, errors, update }: StepProps) {
+interface AppointmentStepProps extends StepProps {
+  appointmentTypes: PublicAppointmentType[]
+  onCaptchaToken: (token: string) => void
+}
+
+function AppointmentStep({
+  data,
+  errors,
+  update,
+  appointmentTypes,
+  onCaptchaToken,
+}: AppointmentStepProps) {
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">3. Appointment</h2>
@@ -369,15 +447,19 @@ function AppointmentStep({ data, errors, update }: StepProps) {
           </p>
         </Field>
 
-        <Field label="Appointment type" required>
-          <RichDropdown
-            options={(['MOT', 'MOT_AND_SERVICE'] as const).map((type) => ({
-              value: type,
-              title: appointmentTypeLabels[type],
-            }))}
-            value={data.appointmentType}
-            onChange={(v) => update('appointmentType', v)}
-          />
+        <Field label="Appointment type" error={errors.appointmentTypeId}>
+          {appointmentTypes.length > 0 ? (
+            <RichDropdown
+              options={[
+                { value: '', title: 'Not sure / let the garage decide' },
+                ...appointmentTypes.map((t) => ({ value: t.id, title: t.name })),
+              ]}
+              value={data.appointmentTypeId}
+              onChange={(v) => update('appointmentTypeId', v)}
+            />
+          ) : (
+            <RichStaticField placeholder="This garage hasn't published any services yet" />
+          )}
         </Field>
 
         <Field label="Additional notes" error={errors.notes}>
@@ -388,12 +470,29 @@ function AppointmentStep({ data, errors, update }: StepProps) {
             className={`${richFieldBoxClass} ${richFieldFocusClass}`}
           />
         </Field>
+
+        {captchaEnabled && (
+          <Field label="Verification" required>
+            <Captcha onToken={onCaptchaToken} />
+          </Field>
+        )}
       </div>
     </div>
   )
 }
 
-function SummaryStep({ data, onEditStep }: { data: WizardData; onEditStep: (step: number) => void }) {
+function SummaryStep({
+  data,
+  appointmentTypes,
+  onEditStep,
+}: {
+  data: WizardData
+  appointmentTypes: PublicAppointmentType[]
+  onEditStep: (step: number) => void
+}) {
+  const typeName =
+    appointmentTypes.find((t) => t.id === data.appointmentTypeId)?.name ?? 'Not specified'
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">4. Confirmation</h2>
@@ -408,7 +507,10 @@ function SummaryStep({ data, onEditStep }: { data: WizardData; onEditStep: (step
 
         <SummarySection title="Vehicle Details" onEdit={() => onEditStep(2)}>
           <SummaryRow label="Registration" value={data.registration} />
-          <SummaryRow label="Make / model" value={[data.make, data.model].filter(Boolean).join(' ') || '—'} />
+          <SummaryRow
+            label="Make / model"
+            value={[data.make, data.model].filter(Boolean).join(' ') || '—'}
+          />
           <SummaryRow label="Year" value={data.year || '—'} />
           <SummaryRow label="Current mileage" value={data.mileage || '—'} />
         </SummarySection>
@@ -416,14 +518,14 @@ function SummaryStep({ data, onEditStep }: { data: WizardData; onEditStep: (step
         <SummarySection title="Appointment" onEdit={() => onEditStep(3)}>
           <SummaryRow label="Date" value={data.date} />
           <SummaryRow label="Time" value={data.time} />
-          <SummaryRow label="Type" value={appointmentTypeLabels[data.appointmentType]} />
+          <SummaryRow label="Type" value={typeName} />
           <SummaryRow label="Preferred mechanic" value={data.preferredMechanic || 'No preference'} />
           <SummaryRow label="Notes" value={data.notes || '—'} />
         </SummarySection>
       </div>
 
       <p className="mt-6 text-xs text-slate-400">
-        This is a demo booking flow — submitting won't send a real request to the garage yet.
+        Submitting sends a request to the garage — they'll review it and get back to you to confirm.
       </p>
     </div>
   )
@@ -442,7 +544,11 @@ function SummarySection({
     <div className="rounded-md border border-slate-200 p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-900">{title}</p>
-        <button type="button" onClick={onEdit} className="text-xs font-medium text-slate-500 hover:text-slate-800">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="text-xs font-medium text-slate-500 hover:text-slate-800"
+        >
           Edit
         </button>
       </div>
@@ -460,7 +566,19 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-function ConfirmationScreen({ data, onRestart }: { data: WizardData; onRestart: () => void }) {
+function ConfirmationScreen({
+  firstName,
+  date,
+  time,
+  email,
+  onRestart,
+}: {
+  firstName: string
+  date: string
+  time: string
+  email: string
+  onRestart: () => void
+}) {
   return (
     <div className="mx-auto max-w-lg text-center">
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600">
@@ -468,8 +586,8 @@ function ConfirmationScreen({ data, onRestart }: { data: WizardData; onRestart: 
       </div>
       <h1 className="mt-4 text-2xl font-semibold text-slate-900">Request received</h1>
       <p className="mt-2 text-slate-600">
-        Thanks, {data.firstName}. We've got your request for a {appointmentTypeLabels[data.appointmentType]} on{' '}
-        {data.date} at {data.time}. The garage will be in touch at {data.email} to confirm.
+        Thanks, {firstName}. We've sent your request for {date} at {time}. The garage will review it
+        and be in touch at {email} to confirm.
       </p>
       <div className="mt-6 flex justify-center gap-3">
         <button
