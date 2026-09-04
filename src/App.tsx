@@ -21,6 +21,7 @@ import { ChecklistTemplateViewer } from './pages/appointmentTypes/ChecklistTempl
 import { SettingsHub } from './pages/settings/SettingsHub'
 import { AvailabilitySettings } from './pages/settings/AvailabilitySettings'
 import { BookingRequestsList } from './pages/bookingRequests/BookingRequestsList'
+import { MotRemindersList } from './pages/motReminders/MotRemindersList'
 import { AppointmentStatusesList } from './pages/appointmentStatuses/AppointmentStatusesList'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="vehicles/:id/edit" element={<VehicleForm />} />
 
           <Route path="booking-requests" element={<BookingRequestsList />} />
+          <Route path="mot-reminders" element={<MotRemindersList />} />
 
           <Route path="appointments" element={<AppointmentsCalendar />} />
           <Route path="appointments/new" element={<AppointmentForm />} />

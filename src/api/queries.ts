@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as garageApi from './garage'
 import * as garageCapacityApi from './garageCapacity'
 import * as garageScheduleApi from './garageSchedule'
+import * as motRemindersApi from './motReminders'
 import * as publicGarageApi from './publicGarage'
 import * as employeesApi from './employees'
 import * as rolesApi from './roles'
@@ -33,6 +34,13 @@ export function useCapacitySummary() {
     queryKey: ['garageCapacitySummary'],
     queryFn: garageCapacityApi.getCapacitySummary,
     staleTime: 30_000,
+  })
+}
+
+export function useMOTReminders() {
+  return useQuery({
+    queryKey: ['motReminders'],
+    queryFn: motRemindersApi.listMOTReminders,
   })
 }
 

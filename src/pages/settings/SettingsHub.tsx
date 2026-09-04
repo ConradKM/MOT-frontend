@@ -15,6 +15,11 @@ const SETTINGS_PAGES: SettingsPage[] = [
     slug: 'appointments',
   },
   {
+    title: 'MOT Reminders',
+    description: 'Upcoming MOT expiries and the status of each reminder.',
+    slug: 'mot-reminders',
+  },
+  {
     title: 'Employees',
     description: 'See who has an account at your garage and add new staff.',
     slug: 'settings/employees',
