@@ -14,6 +14,7 @@ export interface EmployeeUpdateInput {
   first_name?: string | null
   last_name?: string | null
   role_ids?: string[]
+  is_active?: boolean
 }
 
 export function listEmployees(): Promise<Employee[]> {

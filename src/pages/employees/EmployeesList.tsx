@@ -9,7 +9,6 @@ import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { Disclosure } from '../../components/Disclosure'
-import { formatDateTime } from '../../lib/datetime'
 import type { Employee, Role } from '../../types'
 
 const PAGE_SIZE = 10
@@ -154,6 +153,35 @@ function EditEmployeeRow({
   )
 }
 
+function ActivationToggle({ employee }: { employee: Employee }) {
+  const update = useUpdateEmployee(employee.id)
+  const { showToast } = useToast()
+
+  const toggle = async () => {
+    try {
+      await update.mutateAsync({ is_active: !employee.is_active })
+      showToast(employee.is_active ? 'Account deactivated.' : 'Account activated.', 'success')
+    } catch (err) {
+      showToast(
+        isApiError(err) && err.code === 403
+          ? 'Only the garage owner can change this.'
+          : errorMessage(err),
+      )
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={update.isPending}
+      className="text-sm font-medium text-slate-600 hover:underline disabled:opacity-50"
+    >
+      {employee.is_active ? 'Deactivate' : 'Activate'}
+    </button>
+  )
+}
+
 function AddEmployeeForm({ roles }: { roles: Role[] }) {
   const createMutation = useCreateEmployee()
   const { showToast } = useToast()
@@ -162,6 +190,7 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [roleIds, setRoleIds] = useState<string[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -176,6 +205,10 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
     setErrors({})
     setFormError(null)
     setForbidden(false)
+    if (password !== confirmPassword) {
+      setErrors({ confirm_password: 'Passwords do not match.' })
+      return
+    }
     try {
       await createMutation.mutateAsync({
         email,
@@ -188,6 +221,7 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
       setLastName('')
       setEmail('')
       setPassword('')
+      setConfirmPassword('')
       setRoleIds([])
       showToast('Employee added.', 'success')
     } catch (err) {
@@ -273,6 +307,26 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
         </div>
 
         <div>
+          <label
+            className="block text-sm font-medium text-slate-700"
+            htmlFor="confirm_password"
+          >
+            Confirm password
+          </label>
+          <input
+            id="confirm_password"
+            type="password"
+            required
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+          {errors.confirm_password && (
+            <p className="mt-1 text-sm text-red-600">{errors.confirm_password}</p>
+          )}
+        </div>
+
+        <div>
           <label className="block text-sm font-medium text-slate-700">Roles</label>
           <div className="mt-1">
             <RoleTagPicker roles={roles} selectedIds={roleIds} onToggle={toggleRole} />
@@ -318,7 +372,7 @@ export function EmployeesList() {
                   <th className="px-4 py-2 font-medium">Name</th>
                   <th className="px-4 py-2 font-medium">Email</th>
                   <th className="px-4 py-2 font-medium">Roles</th>
-                  <th className="px-4 py-2 font-medium">Added</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
                   <th className="px-4 py-2 font-medium" />
                 </tr>
               </thead>
@@ -354,14 +408,27 @@ export function EmployeesList() {
                           <span className="text-slate-400">No roles</span>
                         )}
                       </td>
-                      <td className="px-4 py-2 text-slate-500">{formatDateTime(e.created_at)}</td>
-                      <td className="px-4 py-2 text-right">
-                        <button
-                          onClick={() => setEditingId(e.id)}
-                          className="text-sm font-medium text-slate-600 hover:underline"
+                      <td className="px-4 py-2">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                            e.is_active
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
                         >
-                          Edit
-                        </button>
+                          {e.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="flex items-center justify-end gap-3">
+                          <button
+                            onClick={() => setEditingId(e.id)}
+                            className="text-sm font-medium text-slate-600 hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <ActivationToggle employee={e} />
+                        </div>
                       </td>
                     </tr>
                   ),

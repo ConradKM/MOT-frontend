@@ -7,6 +7,8 @@ export function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
   const [garageName, setGarageName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -19,7 +21,7 @@ export function Register() {
     setErrors({})
     setFormError(null)
     try {
-      await register(garageName, email, password)
+      await register(garageName, email, password, firstName, lastName)
       navigate('/dashboard', { replace: true })
     } catch (err) {
       const fields = fieldErrors(err)
@@ -60,9 +62,36 @@ export function Register() {
             )}
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-slate-700" htmlFor="first_name">
+                First name
+              </label>
+              <input
+                id="first_name"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700" htmlFor="last_name">
+                Last name
+              </label>
+              <input
+                id="last_name"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700" htmlFor="email">
-              Email
+              Owner email
             </label>
             <input
               id="email"

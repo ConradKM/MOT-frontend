@@ -8,7 +8,13 @@ interface AuthContextValue {
   isAuthenticated: boolean
   employeeId: string | null
   login: (email: string, password: string) => Promise<void>
-  register: (garageName: string, email: string, password: string) => Promise<void>
+  register: (
+    garageName: string,
+    email: string,
+    password: string,
+    firstName?: string,
+    lastName?: string,
+  ) => Promise<void>
   logout: () => void
 }
 
@@ -34,8 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     applyTokens(tokens.access_token, tokens.refresh_token)
   }
 
-  const register = async (garageName: string, email: string, password: string) => {
-    const tokens = await authApi.registerGarage({ garage_name: garageName, email, password })
+  const register = async (
+    garageName: string,
+    email: string,
+    password: string,
+    firstName?: string,
+    lastName?: string,
+  ) => {
+    const tokens = await authApi.registerGarage({
+      garage_name: garageName,
+      email,
+      password,
+      first_name: firstName || null,
+      last_name: lastName || null,
+    })
     applyTokens(tokens.access_token, tokens.refresh_token)
   }
 

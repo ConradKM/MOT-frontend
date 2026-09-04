@@ -24,6 +24,7 @@ export interface Employee {
   email: string
   first_name: string | null
   last_name: string | null
+  is_active: boolean
   roles: Role[]
   created_at: string
   updated_at: string
