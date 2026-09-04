@@ -8,7 +8,6 @@ const SECTIONS = [
   { slug: 'appointment-types', label: 'Appointment Types' },
   { slug: 'appointment-statuses', label: 'Appointment Statuses' },
   { slug: 'availability', label: 'Availability' },
-  { slug: 'garage', label: 'Garage Details' },
 ]
 
 /** Wraps a settings subsection page with a mini nav for jumping between subsections. */

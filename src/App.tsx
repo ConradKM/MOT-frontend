@@ -13,7 +13,6 @@ import { AppointmentsCalendar } from './pages/appointments/AppointmentsCalendar'
 import { AppointmentForm } from './pages/appointments/AppointmentForm'
 import { AppointmentOverview } from './pages/appointments/AppointmentOverview'
 import { AppointmentChecklistPage } from './pages/appointments/AppointmentChecklistPage'
-import { GarageSettings } from './pages/garage/GarageSettings'
 import { EmployeesList } from './pages/employees/EmployeesList'
 import { RolesList } from './pages/roles/RolesList'
 import { AppointmentTypesList } from './pages/appointmentTypes/AppointmentTypesList'
@@ -93,7 +92,6 @@ export default function App() {
           <Route path="settings/appointment-types" element={<AppointmentTypesList />} />
           <Route path="settings/appointment-statuses" element={<AppointmentStatusesList />} />
           <Route path="settings/availability" element={<AvailabilitySettings />} />
-          <Route path="settings/garage" element={<GarageSettings />} />
         </Route>
       </Route>
 

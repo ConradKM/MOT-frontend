@@ -4,10 +4,11 @@ import {
   useAppointmentStatuses,
   useAppointmentTypes,
   useBookingRequests,
+  useCapacitySummary,
   useCustomers,
   useGarage,
-  useVehicles,
 } from '../api/queries'
+import type { CapacityLevel } from '../api/garageCapacity'
 import { useGarageId } from '../hooks/useGarageId'
 import { formatTimeRange, todayIso } from '../lib/datetime'
 import { statusBadgeClass, statusLabel } from '../lib/appointmentStatuses'
@@ -21,21 +22,45 @@ export function DashboardRedirect() {
   return <Navigate to={`/${garage.id}/dashboard`} replace />
 }
 
+const LEVEL_STYLE: Record<CapacityLevel, { card: string; text: string; label: string }> = {
+  green: { card: 'border-emerald-300 bg-emerald-50', text: 'text-emerald-900', label: 'Available' },
+  amber: { card: 'border-amber-300 bg-amber-50', text: 'text-amber-900', label: 'Filling up' },
+  red: { card: 'border-rose-300 bg-rose-50', text: 'text-rose-900', label: 'Full' },
+}
+
+function CapacityCard({
+  title,
+  booked,
+  capacity,
+  level,
+}: {
+  title: string
+  booked?: number
+  capacity?: number
+  level?: CapacityLevel
+}) {
+  const style = level ? LEVEL_STYLE[level] : null
+  return (
+    <div className={`rounded-lg border p-5 shadow-sm ${style?.card ?? 'border-slate-200 bg-white'}`}>
+      <p className="text-sm font-medium text-slate-500">{title}</p>
+      <p className={`mt-1 text-3xl font-semibold ${style?.text ?? 'text-slate-900'}`}>
+        {booked ?? '—'}{' '}
+        <span className="text-xl font-normal text-slate-400">/ {capacity ?? '—'}</span>
+      </p>
+      {style && <p className={`mt-1 text-sm font-medium ${style.text}`}>{style.label}</p>}
+    </div>
+  )
+}
+
 export function Dashboard() {
   const garageId = useGarageId()
   const { data: garage } = useGarage()
   const { data: customers } = useCustomers()
-  const { data: vehicles } = useVehicles()
+  const { data: capacity } = useCapacitySummary()
   const { data: todaysAppointments } = useAppointments({ date: todayIso() })
   const { data: appointmentTypes } = useAppointmentTypes()
   const { data: pendingRequests } = useBookingRequests('PENDING')
   const { data: statusConfig } = useAppointmentStatuses()
-
-  const expiringSoon = (vehicles ?? []).filter((v) => {
-    if (!v.mot_expiry_date) return false
-    const days = (new Date(v.mot_expiry_date).getTime() - Date.now()) / 86_400_000
-    return days < 30
-  })
 
   const customerName = (id: string) => {
     const c = customers?.find((c) => c.id === id)
@@ -55,28 +80,25 @@ export function Dashboard() {
       <p className="mt-1 text-sm text-slate-500">Here's what's going on today.</p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Link
-          to={`/${garageId}/customers`}
-          className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300"
-        >
-          <p className="text-sm font-medium text-slate-500">Customers</p>
-          <p className="mt-1 text-3xl font-semibold text-slate-900">{customers?.length ?? '—'}</p>
-        </Link>
-        <Link
-          to={`/${garageId}/vehicles`}
-          className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300"
-        >
-          <p className="text-sm font-medium text-slate-500">Vehicles</p>
-          <p className="mt-1 text-3xl font-semibold text-slate-900">{vehicles?.length ?? '—'}</p>
-        </Link>
+        <CapacityCard
+          title="Today's appointments"
+          booked={capacity?.today.booked}
+          capacity={capacity?.today.capacity}
+          level={capacity?.today.level}
+        />
+        <CapacityCard
+          title="This week's appointments"
+          booked={capacity?.week.booked}
+          capacity={capacity?.week.capacity}
+          level={capacity?.week.level}
+        />
         <Link
           to={`/${garageId}/appointments`}
-          className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300"
+          className="flex flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300"
         >
-          <p className="text-sm font-medium text-slate-500">Today's appointments</p>
-          <p className="mt-1 text-3xl font-semibold text-slate-900">
-            {todaysAppointments?.length ?? '—'}
-          </p>
+          <p className="text-sm font-semibold text-slate-900">Edit appointments</p>
+          <p className="mt-1 text-sm text-slate-500">View, add or modify appointments.</p>
+          <p className="mt-auto pt-3 text-sm font-medium text-slate-900">Manage appointments →</p>
         </Link>
       </div>
 
@@ -91,21 +113,6 @@ export function Dashboard() {
             className="mt-2 inline-block text-sm font-medium text-violet-900 underline"
           >
             Review requests
-          </Link>
-        </div>
-      )}
-
-      {expiringSoon.length > 0 && (
-        <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
-          <p className="text-sm font-medium text-amber-800">
-            {expiringSoon.length} vehicle{expiringSoon.length === 1 ? '' : 's'} with an MOT
-            expired or expiring within 30 days
-          </p>
-          <Link
-            to={`/${garageId}/vehicles`}
-            className="mt-2 inline-block text-sm font-medium text-amber-900 underline"
-          >
-            Review vehicles
           </Link>
         </div>
       )}

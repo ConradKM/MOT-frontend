@@ -4,6 +4,7 @@ import {
   useCreateMOTRecord,
   useCustomer,
   useDeleteVehicle,
+  useGarage,
   useMOTRecords,
   useVehicle,
 } from '../../api/queries'
@@ -21,6 +22,7 @@ export function VehicleDetail() {
 
   const { data: vehicle, isLoading } = useVehicle(vehicleId)
   const { data: customer } = useCustomer(vehicle?.customer_id)
+  const { data: garage } = useGarage()
   const { data: records } = useMOTRecords(vehicleId)
   const deleteMutation = useDeleteVehicle()
   const createRecordMutation = useCreateMOTRecord(vehicleId ?? '')
@@ -92,6 +94,12 @@ export function VehicleDetail() {
             ) : (
               '—'
             )}
+            {customer && (
+              <span className="text-slate-400">
+                {' '}
+                · {customer.email ?? 'No email'} · {customer.phone ?? 'No phone'}
+              </span>
+            )}
           </p>
           <p className="mt-1 text-sm text-slate-500">
             MOT expiry: {vehicle.mot_expiry_date ?? 'No MOT records yet'}
@@ -115,7 +123,14 @@ export function VehicleDetail() {
 
       <div className="mt-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">MOT history</h2>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">
+              MOT history at {garage?.name ?? 'this garage'}
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-400">
+              MOT tests recorded by this garage — not a full DVLA national history.
+            </p>
+          </div>
           <button
             onClick={() => setShowAddRecord((v) => !v)}
             className="text-sm font-medium text-slate-900 hover:underline"

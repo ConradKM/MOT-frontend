@@ -20,7 +20,6 @@ export function Layout() {
   const navItems = [
     { to: `/${garageId}/dashboard`, label: 'Dashboard', end: true },
     { to: `/${garageId}/customers`, label: 'Customers' },
-    { to: `/${garageId}/vehicles`, label: 'Vehicles' },
     { to: `/${garageId}/appointments`, label: 'Appointments' },
     { to: `/${garageId}/booking-requests`, label: 'Requests' },
     { to: `/${garageId}/settings`, label: 'Settings' },

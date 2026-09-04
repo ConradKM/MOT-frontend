@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as garageApi from './garage'
+import * as garageCapacityApi from './garageCapacity'
 import * as garageScheduleApi from './garageSchedule'
 import * as publicGarageApi from './publicGarage'
 import * as employeesApi from './employees'
@@ -25,6 +26,14 @@ import type { AppointmentTypeStatus } from '../types'
 // Garage
 export function useGarage() {
   return useQuery({ queryKey: ['garage'], queryFn: garageApi.getGarage })
+}
+
+export function useCapacitySummary() {
+  return useQuery({
+    queryKey: ['garageCapacitySummary'],
+    queryFn: garageCapacityApi.getCapacitySummary,
+    staleTime: 30_000,
+  })
 }
 
 export function useUpdateGarage() {

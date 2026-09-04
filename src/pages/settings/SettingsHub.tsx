@@ -39,11 +39,6 @@ const SETTINGS_PAGES: SettingsPage[] = [
     description: 'Opening hours, slot length, booking window, and one-off closures.',
     slug: 'settings/availability',
   },
-  {
-    title: 'Garage Settings',
-    description: "Your garage's name, contact details, and address.",
-    slug: 'settings/garage',
-  },
 ]
 
 export function SettingsHub() {
