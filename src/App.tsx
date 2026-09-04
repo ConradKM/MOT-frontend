@@ -25,7 +25,6 @@ import { BookingRequestsList } from './pages/bookingRequests/BookingRequestsList
 import { AppointmentStatusesList } from './pages/appointmentStatuses/AppointmentStatusesList'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
-import { CustomerLanding } from './pages/customer/CustomerLanding'
 import { BookingWizard } from './pages/customer/BookingWizard'
 import { CustomerLogin } from './pages/customer/CustomerLogin'
 import { CustomerAccount } from './pages/customer/CustomerAccount'
@@ -39,7 +38,9 @@ export default function App() {
       <Route path="/register" element={<Register />} />
 
       <Route element={<CustomerLayout />}>
-        <Route path="/" element={<CustomerLanding />} />
+        {/* Customer booking is always entered via a garage-specific URL
+            (/book/<garage id>). There is no generic landing or garage picker. */}
+        <Route path="/" element={<Navigate to="/book" replace />} />
         <Route path="/book" element={<BookingWizard />} />
         <Route path="/book/:garageId" element={<BookingWizard />} />
         <Route path="/customer/login" element={<CustomerLogin />} />
@@ -50,7 +51,6 @@ export default function App() {
             element={<CustomerAppointmentDetail />}
           />
         </Route>
-        <Route path="/:garageId" element={<CustomerLanding />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>
@@ -97,7 +97,7 @@ export default function App() {
         </Route>
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/book" replace />} />
     </Routes>
   )
 }

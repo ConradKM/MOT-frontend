@@ -168,6 +168,6 @@ describe('BookingWizard — 3-step flow', () => {
       </ToastProvider>,
       { route: '/book' },
     )
-    expect(await screen.findByText('Choose your garage')).toBeInTheDocument()
+    expect(await screen.findByText('Booking link needed')).toBeInTheDocument()
   })
 })

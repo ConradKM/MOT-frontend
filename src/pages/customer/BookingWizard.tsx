@@ -222,8 +222,8 @@ export function BookingWizard() {
   if (!urlGarageId) {
     return (
       <GarageNotice
-        title="Choose your garage"
-        body="Open the booking link your garage gave you to get started."
+        title="Booking link needed"
+        body="Please use your garage's booking link to start a booking."
       />
     )
   }
@@ -412,7 +412,7 @@ function DetailsStep({ data, errors, update }: StepProps) {
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Year" error={errors.year}>
+            <Field label="Year" optional error={errors.year}>
               <RichTextInput type="number" value={data.year} onChange={(v) => update('year', v)} />
             </Field>
             <Field label="Current mileage" optional error={errors.mileage}>
@@ -563,12 +563,6 @@ function GarageNotice({ title, body }: { title: string; body: string }) {
     <div className="mx-auto max-w-lg text-center">
       <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
       <p className="mt-2 text-slate-600">{body}</p>
-      <Link
-        to="/"
-        className="mt-6 inline-block rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-      >
-        Back to home
-      </Link>
     </div>
   )
 }
