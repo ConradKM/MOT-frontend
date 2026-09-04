@@ -2,6 +2,7 @@ import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useGarage } from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
+import { resolveLayoutVariant } from '../lib/layoutVariant'
 
 export function Layout() {
   const { logout } = useAuth()
@@ -25,8 +26,11 @@ export function Layout() {
     { to: `/${garageId}/settings`, label: 'Settings' },
   ]
 
+  // Shared layout for every tenant. A garage pinned to a registered variant
+  // (platform-controlled, set at onboarding) exposes it as a data-attribute /
+  // CSS hook - no per-garage branching here or anywhere else.
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50" data-layout-variant={resolveLayoutVariant(garage)}>
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex items-center gap-8">

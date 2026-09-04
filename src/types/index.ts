@@ -1,6 +1,10 @@
 export interface Garage {
   id: string
   name: string
+  /** Public, generated at onboarding, immutable. Not editable by garage users. */
+  slug: string
+  /** Platform-controlled layout key (see lib/layoutVariant). null = shared default. */
+  layout_variant: string | null
   email: string | null
   phone: string | null
   address: string | null
