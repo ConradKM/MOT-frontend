@@ -11,5 +11,8 @@ export default defineConfig({
     globals: true,
     setupFiles: ['src/test/setup.ts'],
     css: false,
+    // Don't let a developer's .env.local (e.g. Turnstile dev keys) change how
+    // tests behave. Suites that need the CAPTCHA on mock the component instead.
+    env: { VITE_CAPTCHA_PROVIDER: '', VITE_CAPTCHA_SITE_KEY: '' },
   },
 })

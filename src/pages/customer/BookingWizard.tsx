@@ -143,7 +143,7 @@ export function BookingWizard() {
 
   const handleSubmit = async () => {
     if (captchaEnabled && !captchaToken) {
-      setErrors({ form: 'Please complete the verification challenge.' })
+      setErrors({ form: 'Please confirm that you are not a robot.' })
       return
     }
     setSubmitting(true)
@@ -179,6 +179,17 @@ export function BookingWizard() {
           form: `${errorMessage(err)} We've refreshed the calendar — please pick another time.`,
         })
         setStep(STEP_TIME)
+        return
+      }
+
+      // CAPTCHA rejected / expired server-side (the only 400 this endpoint
+      // returns). Void the stale token and let the customer verify again -
+      // their date/time and form details are untouched.
+      if (isApiError(err) && err.code === 400) {
+        setCaptchaToken('')
+        setErrors({
+          form: 'Verification failed or expired. Please confirm that you are not a robot and try again.',
+        })
         return
       }
 
