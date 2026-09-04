@@ -9,7 +9,7 @@ import {
 import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage, isApiError } from '../../lib/errors'
-import { CHECKLIST_ITEM_STATUSES, checklistItemStatusClasses, checklistItemStatusLabels } from '../../lib/checklist'
+import { resultOptionClasses, resultOptionLabel } from '../../lib/checklist'
 import type { AppointmentChecklistItem, ChecklistItemStatus } from '../../types'
 
 function ChecklistItemRow({
@@ -48,7 +48,12 @@ function ChecklistItemRow({
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium text-slate-900">{item.label}</p>
+        <div>
+          <p className="text-sm font-medium text-slate-900">{item.label}</p>
+          {item.description && (
+            <p className="mt-0.5 text-xs text-slate-500">{item.description}</p>
+          )}
+        </div>
         {item.is_compulsory && (
           <span className="shrink-0 rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
             Compulsory
@@ -57,25 +62,25 @@ function ChecklistItemRow({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {CHECKLIST_ITEM_STATUSES.map((status) => (
+        {item.result_options.map((status) => (
           <button
             key={status}
             type="button"
             onClick={() => handleStatusChange(status)}
             className={`rounded-full px-2.5 py-1 text-xs font-medium ${
               item.status === status
-                ? `${checklistItemStatusClasses[status]} ring-2 ring-offset-1 ring-slate-900`
-                : `${checklistItemStatusClasses[status]} opacity-50 hover:opacity-100`
+                ? `${resultOptionClasses(status)} ring-2 ring-offset-1 ring-slate-900`
+                : `${resultOptionClasses(status)} opacity-50 hover:opacity-100`
             }`}
           >
-            {checklistItemStatusLabels[status]}
+            {resultOptionLabel(status)}
           </button>
         ))}
       </div>
 
       {mediaRequired && (
         <p className="mt-2 text-xs text-amber-700">
-          {checklistItemStatusLabels[item.status]} requires photo/video evidence on this step —
+          {resultOptionLabel(item.status)} requires photo/video evidence on this step —
           upload isn't available yet, so this is a reminder rather than a hard block.
         </p>
       )}

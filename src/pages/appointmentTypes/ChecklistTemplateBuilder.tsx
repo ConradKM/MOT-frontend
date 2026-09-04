@@ -11,8 +11,14 @@ import {
 import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage, isApiError } from '../../lib/errors'
-import { CHECKLIST_ITEM_STATUSES, checklistItemStatusLabels } from '../../lib/checklist'
-import type { ChecklistItemMediaType, ChecklistItemStatus, ChecklistTemplateItem } from '../../types'
+import { resultOptionLabel } from '../../lib/checklist'
+import {
+  AUTOMOTIVE_RESULT_OPTIONS,
+  GENERIC_RESULT_OPTIONS,
+  type ChecklistItemMediaType,
+  type ChecklistItemStatus,
+  type ChecklistTemplateItem,
+} from '../../types'
 
 const MEDIA_TYPES: ChecklistItemMediaType[] = ['NONE', 'PHOTO', 'VIDEO', 'EITHER']
 const mediaTypeLabels: Record<ChecklistItemMediaType, string> = {
@@ -43,19 +49,44 @@ function ItemRow({
   const { showToast } = useToast()
 
   const [label, setLabel] = useState(item.label)
+  const [description, setDescription] = useState(item.description ?? '')
   const [isCompulsory, setIsCompulsory] = useState(item.is_compulsory)
+  const [visibleToCustomer, setVisibleToCustomer] = useState(item.visible_to_customer)
   const [mediaType, setMediaType] = useState(item.media_type)
   const [mediaStatuses, setMediaStatuses] = useState(item.media_required_for_statuses)
+  const [resultOptions, setResultOptions] = useState(item.result_options)
+  const [newOption, setNewOption] = useState('')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const dirty =
     label !== item.label ||
+    description !== (item.description ?? '') ||
     isCompulsory !== item.is_compulsory ||
+    visibleToCustomer !== item.visible_to_customer ||
     mediaType !== item.media_type ||
-    mediaStatuses.join(',') !== item.media_required_for_statuses.join(',')
+    mediaStatuses.join(',') !== item.media_required_for_statuses.join(',') ||
+    resultOptions.join(',') !== item.result_options.join(',')
 
   const toggleStatus = (status: ChecklistItemStatus) => {
     setMediaStatuses((s) => (s.includes(status) ? s.filter((x) => x !== status) : [...s, status]))
+  }
+
+  const applyResultOptions = (options: ChecklistItemStatus[]) => {
+    setResultOptions(options)
+    // A media requirement pointing at a result this item no longer offers
+    // isn't valid - keep only what's still selectable.
+    setMediaStatuses((s) => s.filter((status) => options.includes(status)))
+  }
+
+  const addCustomOption = () => {
+    const value = newOption.trim().toUpperCase().replace(/\s+/g, '_')
+    if (!value || resultOptions.includes(value)) return
+    applyResultOptions([...resultOptions, value])
+    setNewOption('')
+  }
+
+  const removeOption = (status: ChecklistItemStatus) => {
+    applyResultOptions(resultOptions.filter((s) => s !== status))
   }
 
   const handleSave = async () => {
@@ -64,9 +95,12 @@ function ItemRow({
         itemId: item.id,
         data: {
           label,
+          description: description.trim() || null,
           is_compulsory: isCompulsory,
+          visible_to_customer: visibleToCustomer,
           media_type: mediaType,
           media_required_for_statuses: mediaStatuses,
+          result_options: resultOptions,
         },
       })
       showToast('Step saved.', 'success')
@@ -116,6 +150,12 @@ function ItemRow({
             className={`w-full ${inputClass}`}
             placeholder="Step description"
           />
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className={`w-full ${inputClass}`}
+            placeholder="Extra instruction (optional)"
+          />
 
           <div className="flex flex-wrap items-center gap-4">
             <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -125,6 +165,15 @@ function ItemRow({
                 onChange={(e) => setIsCompulsory(e.target.checked)}
               />
               Compulsory
+            </label>
+
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={visibleToCustomer}
+                onChange={(e) => setVisibleToCustomer(e.target.checked)}
+              />
+              Show to customer
             </label>
 
             <label className="flex items-center gap-2 text-sm text-slate-700">
@@ -143,13 +192,71 @@ function ItemRow({
             </label>
           </div>
 
+          <div>
+            <p className="text-xs font-medium text-slate-500">Results this step can be logged as:</p>
+            <div className="mt-1 flex flex-wrap gap-2">
+              {resultOptions.map((status) => (
+                <span
+                  key={status}
+                  className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600"
+                >
+                  {resultOptionLabel(status)}
+                  <button
+                    type="button"
+                    onClick={() => removeOption(status)}
+                    aria-label={`Remove ${resultOptionLabel(status)}`}
+                    className="text-slate-400 hover:text-red-600"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => applyResultOptions(GENERIC_RESULT_OPTIONS)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Simple (Done / N/A)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyResultOptions(AUTOMOTIVE_RESULT_OPTIONS)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                MOT-style grading
+              </button>
+              <input
+                value={newOption}
+                onChange={(e) => setNewOption(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addCustomOption()
+                  }
+                }}
+                placeholder="Add custom result…"
+                className={inputClass}
+              />
+              <button
+                type="button"
+                onClick={addCustomOption}
+                disabled={!newOption.trim()}
+                className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+
           {mediaType !== 'NONE' && (
             <div>
               <p className="text-xs font-medium text-slate-500">
                 Require media when the result is:
               </p>
               <div className="mt-1 flex flex-wrap gap-2">
-                {CHECKLIST_ITEM_STATUSES.map((status) => (
+                {resultOptions.map((status) => (
                   <label
                     key={status}
                     className="flex items-center gap-1.5 rounded-full border border-slate-200 px-2 py-1 text-xs text-slate-600"
@@ -159,7 +266,7 @@ function ItemRow({
                       checked={mediaStatuses.includes(status)}
                       onChange={() => toggleStatus(status)}
                     />
-                    {checklistItemStatusLabels[status]}
+                    {resultOptionLabel(status)}
                   </label>
                 ))}
               </div>
@@ -299,7 +406,7 @@ export function ChecklistTemplateBuilder() {
         Checklist for {appointmentType?.name ?? '…'}
       </h1>
       <p className="mt-1 text-sm text-slate-500">
-        Steps mechanics work through during this appointment type. Only garage owners can
+        Steps staff work through during this appointment type. Only garage owners can
         make changes here.
       </p>
 

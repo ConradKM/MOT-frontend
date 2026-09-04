@@ -5,6 +5,10 @@ import { SLOT_STATUS } from '../../lib/availability'
 interface Props {
   slug: string
   date: string
+  /** The chosen service's id - its duration determines which times are
+   * offered (see app/public_booking/availability.py). Undefined for a
+   * garage with no appointment types configured. */
+  appointmentTypeId?: string
   selectedTime: string | null
   onSelectSlot: (time: string) => void
 }
@@ -12,11 +16,12 @@ interface Props {
 export function TimeSlotPicker({
   slug,
   date,
+  appointmentTypeId,
   selectedTime,
   onSelectSlot,
 }: Props) {
   const { data, isLoading, isError, refetch, isFetching } =
-    useGarageDayAvailability(slug, date)
+    useGarageDayAvailability(slug, date, appointmentTypeId)
 
   return (
     <div className="mt-4 rounded-lg border border-slate-200 p-4">

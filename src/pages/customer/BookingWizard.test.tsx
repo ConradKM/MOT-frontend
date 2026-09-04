@@ -17,7 +17,7 @@ vi.mock('../../api/publicGarage', async (orig) => ({
 }))
 
 const TODAY = '2026-09-10'
-const GARAGE = { id: 'gid', name: 'Test Garage', slug: 'test-garage' }
+const GARAGE = { id: 'gid', name: 'Test Garage', slug: 'test-garage', appointment_types: [] }
 
 function renderWizard() {
   return renderWithProviders(
@@ -33,7 +33,7 @@ function renderWizard() {
 async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
   // Step 1 — garage name shown, no garage picker
   await screen.findByText('Test Garage')
-  expect(screen.getByText('Book your vehicle in')).toBeInTheDocument()
+  expect(screen.getByText('Book an appointment')).toBeInTheDocument()
 
   await user.click(
     await screen.findByRole('gridcell', {
@@ -48,6 +48,7 @@ async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
   await user.type(inputs[3], 'Alex') // first name
   await user.type(inputs[4], 'Turner') // last name
   await user.type(inputs[5], 'alex@example.com') // email
+  await user.type(inputs[6], '07123456789') // mobile number
   await user.type(inputs[7], 'Please call first') // notes
   await user.click(screen.getByRole('button', { name: 'Continue' }))
 
@@ -157,6 +158,150 @@ describe('BookingWizard — 3-step flow', () => {
     expect(inputs[0]).toHaveValue('PB11REQ')
     expect(inputs[5]).toHaveValue('alex@example.com')
     expect(inputs[7]).toHaveValue('Please call first')
+  })
+
+  it('requires a mobile number before continuing to review', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+
+    await screen.findByText('Test Garage')
+    await user.click(
+      await screen.findByRole('gridcell', {
+        name: /10 September 2026 — Good availability, selectable/,
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+
+    const inputs = await screen.findAllByRole('textbox')
+    await user.type(inputs[0], 'PB11REQ')
+    await user.type(inputs[3], 'Alex')
+    await user.type(inputs[4], 'Turner')
+    await user.type(inputs[5], 'alex@example.com')
+    // Mobile number left blank.
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    expect(screen.getByText('Mobile number is required.')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Review' })).not.toBeInTheDocument()
+
+    await user.type(inputs[6], '0123456789') // landline-shaped, not a mobile
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(screen.getByText(/valid UK mobile number/)).toBeInTheDocument()
+  })
+
+  it('lets the customer choose a service between date and time, and sends it', async () => {
+    const garageWithTypes = {
+      ...GARAGE,
+      appointment_types: [
+        {
+          id: 'type-full-service',
+          name: 'Full Service',
+          description: 'Comprehensive service.',
+          base_price: '189.00',
+          default_duration_minutes: 90,
+          included_items: [{ label: 'Oil and filter', description: null }],
+        },
+        {
+          id: 'type-diagnostic',
+          name: 'Diagnostic Check',
+          description: null,
+          base_price: '54.85',
+          default_duration_minutes: 30,
+          included_items: [],
+        },
+      ],
+    }
+    vi.mocked(api.getPublicGarage).mockResolvedValue(garageWithTypes)
+    vi.mocked(api.submitBookingRequest).mockResolvedValue({ id: 'r1', status: 'PENDING' })
+    const user = userEvent.setup()
+    renderWizard()
+
+    await screen.findByText('Test Garage')
+    await user.click(
+      await screen.findByRole('gridcell', {
+        name: /10 September 2026 — Good availability, selectable/,
+      }),
+    )
+
+    // Times aren't offered until a service is chosen.
+    await screen.findByText('What would you like to book?')
+    expect(screen.queryByRole('button', { name: '09:00 — Available' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /Full Service/ }))
+    expect(screen.getByText("What's included")).toBeInTheDocument()
+
+    await waitFor(() =>
+      expect(api.getGarageDayAvailability).toHaveBeenLastCalledWith(
+        'test-garage',
+        TODAY,
+        'type-full-service',
+      ),
+    )
+
+    await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+
+    const inputs = await screen.findAllByRole('textbox')
+    await user.type(inputs[0], 'PB11REQ')
+    await user.type(inputs[3], 'Alex')
+    await user.type(inputs[4], 'Turner')
+    await user.type(inputs[5], 'alex@example.com')
+    await user.type(inputs[6], '07123456789')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await screen.findByRole('heading', { name: 'Review' })
+    expect(screen.getByText('Full Service')).toBeInTheDocument()
+    expect(screen.getByText('£189.00')).toBeInTheDocument()
+    expect(screen.getByText('09:00–10:30')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await waitFor(() =>
+      expect(api.submitBookingRequest).toHaveBeenCalledWith(
+        'test-garage',
+        expect.objectContaining({ appointment_type_id: 'type-full-service' }),
+      ),
+    )
+  })
+
+  it('re-fetches times when the customer changes their chosen service', async () => {
+    const garageWithTypes = {
+      ...GARAGE,
+      appointment_types: [
+        {
+          id: 'type-a',
+          name: 'Service A',
+          description: null,
+          base_price: null,
+          default_duration_minutes: 30,
+          included_items: [],
+        },
+        {
+          id: 'type-b',
+          name: 'Service B',
+          description: null,
+          base_price: null,
+          default_duration_minutes: 90,
+          included_items: [],
+        },
+      ],
+    }
+    vi.mocked(api.getPublicGarage).mockResolvedValue(garageWithTypes)
+    const user = userEvent.setup()
+    renderWizard()
+
+    await screen.findByText('Test Garage')
+    await user.click(
+      await screen.findByRole('gridcell', {
+        name: /10 September 2026 — Good availability, selectable/,
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: /Service A/ }))
+    await waitFor(() =>
+      expect(api.getGarageDayAvailability).toHaveBeenLastCalledWith('test-garage', TODAY, 'type-a'),
+    )
+
+    await user.click(await screen.findByRole('button', { name: /Service B/ }))
+    await waitFor(() =>
+      expect(api.getGarageDayAvailability).toHaveBeenLastCalledWith('test-garage', TODAY, 'type-b'),
+    )
   })
 
   it('shows a notice instead of the wizard when no garage is in the URL', async () => {

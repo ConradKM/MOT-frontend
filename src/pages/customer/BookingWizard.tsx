@@ -8,7 +8,7 @@ import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner
 import { formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { usePublicGarage } from '../../api/queries'
-import { submitBookingRequest } from '../../api/publicGarage'
+import { submitBookingRequest, type PublicAppointmentType } from '../../api/publicGarage'
 import { Captcha, captchaEnabled } from '../../components/Captcha'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
@@ -24,6 +24,7 @@ interface WizardData {
   year: string
   mileage: string
   date: string
+  appointmentTypeId: string
   time: string
   notes: string
 }
@@ -39,8 +40,18 @@ const initialData: WizardData = {
   year: '',
   mileage: '',
   date: '',
+  appointmentTypeId: '',
   time: '',
   notes: '',
+}
+
+/** "09:00" + 90 -> "10:30" - the expected finish time shown on review. */
+function addMinutesToTime(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number)
+  const total = h * 60 + m + minutes
+  const hh = Math.floor((total % (24 * 60)) / 60)
+  const mm = total % 60
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
 }
 
 type FieldErrors = Partial<Record<keyof WizardData, string>> & { form?: string }
@@ -57,10 +68,22 @@ const STEPS: WizardStep[] = [
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function validateTime(d: WizardData): FieldErrors {
+// A light client-side sanity check only - the server (app/phone.py) does the
+// real, authoritative parsing/normalisation to E.164. This just gives fast
+// feedback without making the customer type "+44" themselves: 07…, +447…
+// and 00447… are all accepted, spaces/dashes/brackets are ignored.
+const UK_MOBILE_RE = /^(?:\+44|0044|0)7\d{9}$/
+
+function isPlausibleUkMobile(value: string): boolean {
+  return UK_MOBILE_RE.test(value.replace(/[\s\-()]/g, ''))
+}
+
+function validateTime(d: WizardData, requiresType: boolean): FieldErrors {
   const errors: FieldErrors = {}
   if (!d.date) errors.form = 'Please choose an available date.'
-  else if (!d.time) errors.form = 'Please choose an available time.'
+  else if (requiresType && !d.appointmentTypeId) {
+    errors.form = 'Please choose what you would like to book.'
+  } else if (!d.time) errors.form = 'Please choose an available time.'
   return errors
 }
 
@@ -75,11 +98,15 @@ function validateDetails(d: WizardData): FieldErrors {
   if (!d.lastName.trim()) errors.lastName = 'Last name is required.'
   if (!d.email.trim()) errors.email = 'Email is required.'
   else if (!EMAIL_RE.test(d.email)) errors.email = 'Enter a valid email address.'
+  if (!d.phone.trim()) errors.phone = 'Mobile number is required.'
+  else if (!isPlausibleUkMobile(d.phone)) {
+    errors.phone = 'Enter a valid UK mobile number, e.g. 07123 456789.'
+  }
   return errors
 }
 
-function validateForStep(step: number, d: WizardData): FieldErrors {
-  if (step === STEP_TIME) return validateTime(d)
+function validateForStep(step: number, d: WizardData, requiresType: boolean): FieldErrors {
+  if (step === STEP_TIME) return validateTime(d, requiresType)
   if (step === STEP_DETAILS) return validateDetails(d)
   return {}
 }
@@ -109,7 +136,16 @@ export function BookingWizard() {
   }
 
   const selectDate = (date: string) => {
+    // The chosen service persists across a date change (still driving
+    // duration once a new time is picked) - only the stale time resets.
     setData((d) => ({ ...d, date, time: '' }))
+    setErrors((e) => ({ ...e, form: undefined }))
+  }
+
+  const selectType = (appointmentTypeId: string) => {
+    // Duration just changed, so any previously-picked time may no longer be
+    // valid (item 13) - clear it and let the customer re-pick.
+    setData((d) => ({ ...d, appointmentTypeId, time: '' }))
     setErrors((e) => ({ ...e, form: undefined }))
   }
 
@@ -119,8 +155,10 @@ export function BookingWizard() {
     setStep(STEP_DETAILS)
   }
 
+  const requiresType = (garage?.appointment_types.length ?? 0) > 0
+
   const goNext = () => {
-    const stepErrors = validateForStep(step, data)
+    const stepErrors = validateForStep(step, data, requiresType)
     if (Object.keys(stepErrors).length > 0) {
       setErrors(stepErrors)
       return
@@ -153,16 +191,18 @@ export function BookingWizard() {
         customer_first_name: data.firstName.trim(),
         customer_last_name: data.lastName.trim(),
         customer_email: data.email.trim(),
-        customer_phone: data.phone.trim() || null,
+        // Required (validated above) - the server normalises it to E.164.
+        customer_phone: data.phone.trim(),
         vehicle_registration: data.registration.trim(),
         vehicle_make: data.make.trim() || null,
         vehicle_model: data.model.trim() || null,
         vehicle_year: data.year ? Number(data.year) : null,
         vehicle_mileage: data.mileage ? Number(data.mileage) : null,
-        // The customer no longer picks a type or a mechanic — staff assign
-        // both when they review the request. The API keeps accepting these
-        // fields, so send them as null.
-        appointment_type_id: null,
+        // The customer's chosen service - its duration is what determined
+        // which times were even offered (item 2/12). Null only for a garage
+        // with no appointment types configured; staff assign a mechanic
+        // either way when they review the request.
+        appointment_type_id: data.appointmentTypeId || null,
         preferred_date: data.date,
         preferred_time: data.time || null,
         preferred_employee_note: null,
@@ -255,7 +295,7 @@ export function BookingWizard() {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-6">
-        <p className="text-sm font-medium text-slate-500">Book your vehicle in</p>
+        <p className="text-sm font-medium text-slate-500">Book an appointment</p>
         <h1 className="text-xl font-semibold text-slate-900">{garage.name}</h1>
       </div>
 
@@ -274,8 +314,11 @@ export function BookingWizard() {
           <DateTimeStep
             slug={garageSlug}
             date={data.date}
+            appointmentTypes={garage.appointment_types}
+            appointmentTypeId={data.appointmentTypeId}
             time={data.time}
             onSelectDate={selectDate}
+            onSelectType={selectType}
             onSelectSlot={selectSlot}
           />
         )}
@@ -286,6 +329,7 @@ export function BookingWizard() {
           <ReviewStep
             data={data}
             garageName={garage.name}
+            appointmentType={garage.appointment_types.find((t) => t.id === data.appointmentTypeId)}
             onEditStep={goToStep}
             onCaptchaToken={handleCaptchaToken}
           />
@@ -366,16 +410,25 @@ function Field({
 function DateTimeStep({
   slug,
   date,
+  appointmentTypes,
+  appointmentTypeId,
   time,
   onSelectDate,
+  onSelectType,
   onSelectSlot,
 }: {
   slug: string
   date: string
+  appointmentTypes: PublicAppointmentType[]
+  appointmentTypeId: string
   time: string
   onSelectDate: (date: string) => void
+  onSelectType: (id: string) => void
   onSelectSlot: (time: string) => void
 }) {
+  const hasTypes = appointmentTypes.length > 0
+  const readyForTimes = !hasTypes || !!appointmentTypeId
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">Pick a date &amp; time</h2>
@@ -389,13 +442,96 @@ function DateTimeStep({
           onSelectDate={onSelectDate}
         />
       </div>
-      {date && (
+      {date && hasTypes && (
+        <AppointmentTypeStep
+          appointmentTypes={appointmentTypes}
+          selectedId={appointmentTypeId}
+          onSelect={onSelectType}
+        />
+      )}
+      {date && readyForTimes && (
         <TimeSlotPicker
           slug={slug}
           date={date}
+          appointmentTypeId={appointmentTypeId || undefined}
           selectedTime={time || null}
           onSelectSlot={onSelectSlot}
         />
+      )}
+    </div>
+  )
+}
+
+function AppointmentTypeStep({
+  appointmentTypes,
+  selectedId,
+  onSelect,
+}: {
+  appointmentTypes: PublicAppointmentType[]
+  selectedId: string
+  onSelect: (id: string) => void
+}) {
+  const selected = appointmentTypes.find((t) => t.id === selectedId)
+
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 p-4">
+      <h3 className="text-sm font-semibold text-slate-900">What would you like to book?</h3>
+      <ul className="mt-3 space-y-2">
+        {appointmentTypes.map((type) => {
+          const isSelected = type.id === selectedId
+          return (
+            <li key={type.id}>
+              <button
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => onSelect(type.id)}
+                className={[
+                  'w-full rounded-md border px-3 py-2 text-left transition',
+                  isSelected
+                    ? 'border-slate-900 bg-slate-900 text-white'
+                    : 'border-slate-300 hover:border-slate-500',
+                ].join(' ')}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">{type.name}</span>
+                  <span className={`text-sm ${isSelected ? 'text-slate-200' : 'text-slate-500'}`}>
+                    {[
+                      type.base_price != null ? `£${type.base_price}` : null,
+                      type.default_duration_minutes != null
+                        ? `${type.default_duration_minutes} min`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </div>
+                {type.description && (
+                  <p
+                    className={`mt-0.5 text-xs ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}
+                  >
+                    {type.description}
+                  </p>
+                )}
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+
+      {selected && selected.included_items.length > 0 && (
+        <details className="mt-3 text-sm text-slate-600">
+          <summary className="cursor-pointer font-medium text-slate-700">What's included</summary>
+          <ul className="mt-2 space-y-1 pl-1">
+            {selected.included_items.map((item, i) => (
+              <li key={i}>
+                <span aria-hidden="true">✓</span> {item.label}
+                {item.description && (
+                  <span className="text-slate-400"> — {item.description}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   )
@@ -452,9 +588,18 @@ function DetailsStep({ data, errors, update }: StepProps) {
           <Field label="Email" required error={errors.email}>
             <RichTextInput type="email" value={data.email} onChange={(v) => update('email', v)} />
           </Field>
-          <Field label="Phone number" error={errors.phone}>
-            <RichTextInput type="tel" value={data.phone} onChange={(v) => update('phone', v)} />
+          <Field label="Mobile number" required error={errors.phone}>
+            <RichTextInput
+              type="tel"
+              value={data.phone}
+              onChange={(v) => update('phone', v)}
+              placeholder="07123 456789"
+            />
           </Field>
+          <p className="-mt-2 text-xs text-slate-400">
+            We'll text you about this booking - no need to add +44, just enter it as you normally
+            would.
+          </p>
         </div>
       </section>
 
@@ -477,14 +622,21 @@ function DetailsStep({ data, errors, update }: StepProps) {
 function ReviewStep({
   data,
   garageName,
+  appointmentType,
   onEditStep,
   onCaptchaToken,
 }: {
   data: WizardData
   garageName: string
+  appointmentType: PublicAppointmentType | undefined
   onEditStep: (step: number) => void
   onCaptchaToken: (token: string) => void
 }) {
+  const finishTime =
+    data.time && appointmentType?.default_duration_minutes != null
+      ? addMinutesToTime(data.time, appointmentType.default_duration_minutes)
+      : null
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">Review</h2>
@@ -493,8 +645,15 @@ function ReviewStep({
       <div className="mt-4 space-y-4">
         <SummarySection title="Appointment" onEdit={() => onEditStep(STEP_TIME)}>
           <SummaryRow label="Garage" value={garageName} />
+          {appointmentType && <SummaryRow label="Service" value={appointmentType.name} />}
+          {appointmentType?.base_price != null && (
+            <SummaryRow label="Price" value={`£${appointmentType.base_price}`} />
+          )}
           <SummaryRow label="Date" value={data.date ? formatLongDate(data.date) : '—'} />
-          <SummaryRow label="Time" value={data.time || '—'} />
+          <SummaryRow
+            label="Time"
+            value={data.time ? (finishTime ? `${data.time}–${finishTime}` : data.time) : '—'}
+          />
         </SummarySection>
 
         <SummarySection title="Vehicle" onEdit={() => onEditStep(STEP_DETAILS)}>
@@ -510,7 +669,7 @@ function ReviewStep({
         <SummarySection title="Your details" onEdit={() => onEditStep(STEP_DETAILS)}>
           <SummaryRow label="Name" value={`${data.firstName} ${data.lastName}`.trim()} />
           <SummaryRow label="Email" value={data.email} />
-          <SummaryRow label="Phone" value={data.phone || '—'} />
+          <SummaryRow label="Mobile number" value={data.phone || '—'} />
         </SummarySection>
 
         <SummarySection title="Additional information" onEdit={() => onEditStep(STEP_DETAILS)}>

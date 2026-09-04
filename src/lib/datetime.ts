@@ -1,5 +1,22 @@
 const pad = (n: number) => String(n).padStart(2, '0')
 
+// Pinned explicitly everywhere below rather than relying on the runtime's
+// default locale ([]) - that default happens to already be UK-ish in this
+// dev environment, but a production host is not guaranteed to have the same
+// OS/ICU locale, and this app's UI should read the same (UK-friendly) way
+// regardless of where it's deployed. Internal/API values stay ISO - this is
+// presentation only.
+const UK_LOCALE = 'en-GB'
+
+// Built by hand (not read from Intl) so every month is a consistent 3
+// letters - en-GB's own Intl data abbreviates September as "Sept" while
+// every other month is 3 letters, which is inconsistent for a table column.
+const MONTH_ABBR = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+]
+const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
 /** Today's date as YYYY-MM-DD, in the browser's local timezone. */
 export function todayIso(): string {
   const d = new Date()
@@ -25,15 +42,30 @@ export function localInputValueToIso(value: string): string {
 }
 
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString(UK_LOCALE, { hour: '2-digit', minute: '2-digit' })
 }
 
 export function formatTimeRange(startIso: string, endIso: string): string {
   return `${formatTime(startIso)} – ${formatTime(endIso)}`
 }
 
+/** "14 Sep 2026" — the default table-cell/list date format used throughout
+ * the app (Customers, Appointments, Requests, MOT history, ...). Accepts a
+ * full ISO datetime or a bare YYYY-MM-DD date. */
+export function formatDateShort(iso: string): string {
+  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
+  return `${d.getDate()} ${MONTH_ABBR[d.getMonth()]} ${d.getFullYear()}`
+}
+
+/** "14/09/2026" — compact numeric form for tight spaces. */
+export function formatDateNumeric(iso: string): string {
+  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
+}
+
+/** "14 Sep 2026, 09:05" */
 export function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+  return `${formatDateShort(iso)}, ${formatTime(iso)}`
 }
 
 /** YYYY-MM-DD of an ISO datetime, in the browser's local timezone. */
@@ -88,15 +120,16 @@ export function daysInMonth(iso: string): number {
 
 /** "September 2026" for the month containing `iso`. */
 export function monthLabel(iso: string): string {
-  return new Date(`${startOfMonthIso(iso)}T00:00:00`).toLocaleDateString([], {
+  return new Date(`${startOfMonthIso(iso)}T00:00:00`).toLocaleDateString(UK_LOCALE, {
     month: 'long',
     year: 'numeric',
   })
 }
 
-/** "Thursday 17 September 2026" */
+/** "Thursday, 14 September 2026" — full month names are unambiguous, so this
+ * one can safely use Intl rather than a hand-built table. */
 export function formatLongDate(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString([], {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(UK_LOCALE, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -104,11 +137,8 @@ export function formatLongDate(iso: string): string {
   })
 }
 
-/** "Thu 17 Sep" — compact form for chips / headers. */
+/** "Thu 17 Sep" — compact form for chips / calendar headers (no year). */
 export function formatShortDate(iso: string): string {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString([], {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  })
+  const d = new Date(`${iso}T00:00:00`)
+  return `${WEEKDAY_ABBR[d.getDay()]} ${d.getDate()} ${MONTH_ABBR[d.getMonth()]}`
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useCustomers, useVehicles } from '../../api/queries'
 import { MotBadge } from '../../components/MotBadge'
 import { useGarageId } from '../../hooks/useGarageId'
+import { formatDateShort } from '../../lib/datetime'
 
 export function VehiclesList() {
   const garageId = useGarageId()
@@ -111,7 +112,9 @@ export function VehiclesList() {
                     {[v.make, v.model].filter(Boolean).join(' ') || '—'}
                   </td>
                   <td className="px-4 py-2 text-slate-600">{customerName(v.customer_id)}</td>
-                  <td className="px-4 py-2 text-slate-600">{v.mot_expiry_date ?? '—'}</td>
+                  <td className="px-4 py-2 text-slate-600">
+                    {v.mot_expiry_date ? formatDateShort(v.mot_expiry_date) : '—'}
+                  </td>
                   <td className="px-4 py-2">
                     <MotBadge motExpiryDate={v.mot_expiry_date} />
                   </td>

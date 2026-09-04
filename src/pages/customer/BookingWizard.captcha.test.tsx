@@ -28,7 +28,7 @@ vi.mock('../../api/publicGarage', async (orig) => ({
 }))
 
 const TODAY = '2026-09-10'
-const GARAGE = { id: 'gid', name: 'Test Garage', slug: 'test-garage' }
+const GARAGE = { id: 'gid', name: 'Test Garage', slug: 'test-garage', appointment_types: [] }
 
 function renderWizard() {
   return renderWithProviders(
@@ -54,6 +54,7 @@ async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
   await user.type(inputs[3], 'Alex')
   await user.type(inputs[4], 'Turner')
   await user.type(inputs[5], 'alex@example.com')
+  await user.type(inputs[6], '07123456789')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   await screen.findByRole('heading', { name: 'Review' })
 }

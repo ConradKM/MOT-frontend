@@ -6,18 +6,25 @@ import {
   useAppointmentTypes,
   useCancelAppointment,
   useCustomers,
+  useEmployees,
+  useGarageSchedule,
   useVehicles,
 } from '../../api/queries'
 import {
   addDaysIso,
+  formatDateShort,
+  formatShortDate,
   formatTimeRange,
   localDateKey,
   todayIso,
   weekDatesIso,
 } from '../../lib/datetime'
+import { resolveDayHours } from '../../lib/calendarLayout'
 import { statusBadgeClass, statusLabel } from '../../lib/appointmentStatuses'
+import { employeeDisplayName, employeeNameById } from '../../lib/employees'
 import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
+import { RichDropdown } from '../../components/rich/RichDropdown'
 import { TimeGridCalendar, type CalendarColumn } from '../../components/TimeGridCalendar'
 import { useGarageId } from '../../hooks/useGarageId'
 import type { Appointment } from '../../types'
@@ -61,46 +68,63 @@ export function AppointmentsCalendar() {
   const { data: appointments, isLoading, isError } = useAppointments(listParams)
   const { data: customers } = useCustomers()
   const { data: vehicles } = useVehicles()
+  const { data: employees } = useEmployees()
   const { data: appointmentTypes } = useAppointmentTypes()
   const { data: statusConfig } = useAppointmentStatuses()
+  const { data: schedule } = useGarageSchedule()
   const cancelMutation = useCancelAppointment()
+
+  const activeEmployees = useMemo(
+    () => (employees ?? []).filter((e) => e.is_active),
+    [employees],
+  )
+
+  const employeeFilterOptions = useMemo(
+    () => [
+      { value: '', title: 'All employees' },
+      ...activeEmployees.map((e) => ({ value: e.id, title: employeeDisplayName(e) })),
+    ],
+    [activeEmployees],
+  )
 
   const customerName = (id: string) => {
     const c = customers?.find((c) => c.id === id)
-    return c ? `${c.first_name} ${c.last_name}` : `Customer #${id}`
+    return c ? `${c.first_name} ${c.last_name}` : 'Unknown customer'
   }
   const vehicleReg = (id: string | null) => {
     if (id === null) return null
-    return vehicles?.find((v) => v.id === id)?.registration_number ?? `Vehicle #${id}`
+    return vehicles?.find((v) => v.id === id)?.registration_number ?? null
   }
   const appointmentTypeName = (id: string) => {
     return appointmentTypes?.find((t) => t.id === id)?.name ?? 'Unknown type'
   }
 
+  // Day view: one column per active employee (or just the filtered one), so
+  // the working-day grid always shows - even with zero appointments - rather
+  // than depending on appointments existing to know which columns to draw.
   const dayColumns: CalendarColumn[] = useMemo(() => {
     const list = appointments ?? []
-    const employeeIds = employeeId
-      ? [employeeId]
-      : [...new Set(list.map((a) => a.employee_id))].sort()
-    return employeeIds.map((id) => ({
-      key: id,
-      label: `Employee #${id}`,
-      appointments: list.filter((a) => a.employee_id === id),
+    const dayHours = resolveDayHours(schedule, date)
+    const shown = employeeId
+      ? activeEmployees.filter((e) => e.id === employeeId)
+      : activeEmployees
+    return shown.map((e) => ({
+      key: e.id,
+      label: employeeDisplayName(e),
+      appointments: list.filter((a) => a.employee_id === e.id),
+      hours: dayHours,
     }))
-  }, [appointments, employeeId])
+  }, [appointments, activeEmployees, employeeId, schedule, date])
 
   const weekColumns: CalendarColumn[] = useMemo(() => {
     const list = appointments ?? []
     return weekDates.map((d) => ({
       key: d,
-      label: new Date(`${d}T00:00:00`).toLocaleDateString(undefined, {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-      }),
+      label: formatShortDate(d),
       appointments: list.filter((a) => localDateKey(a.start_time) === d),
+      hours: resolveDayHours(schedule, d),
     }))
-  }, [appointments, weekDates])
+  }, [appointments, weekDates, schedule])
 
   const grouped = useMemo(() => {
     const byEmployee = new Map<string, Appointment[]>()
@@ -112,8 +136,10 @@ export function AppointmentsCalendar() {
     for (const list of byEmployee.values()) {
       list.sort((a, b) => a.start_time.localeCompare(b.start_time))
     }
-    return [...byEmployee.entries()].sort(([a], [b]) => a.localeCompare(b))
-  }, [appointments])
+    return [...byEmployee.entries()].sort(([a], [b]) =>
+      employeeNameById(employees, a).localeCompare(employeeNameById(employees, b)),
+    )
+  }, [appointments, employees])
 
   const handleCancel = async (id: string) => {
     if (!confirm('Cancel this appointment?')) return
@@ -204,13 +230,16 @@ export function AppointmentsCalendar() {
           </div>
         )}
 
-        <input
-          type="text"
-          placeholder="Filter by employee ID…"
-          value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
-          className="w-64 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
-        />
+        <div className="w-64">
+          <RichDropdown
+            options={employeeFilterOptions}
+            value={employeeId}
+            onChange={setEmployeeId}
+            placeholder="All employees"
+            searchable
+            searchPlaceholder="Search employees…"
+          />
+        </div>
       </div>
 
       <div className="mt-6">
@@ -220,7 +249,9 @@ export function AppointmentsCalendar() {
         {!isLoading && !isError && mode === 'day' && (
           <>
             {dayColumns.length === 0 ? (
-              <p className="text-sm text-slate-500">No appointments today.</p>
+              <p className="text-sm text-slate-500">
+                No employees to show a calendar for yet - add one under Settings → Employees.
+              </p>
             ) : (
               <TimeGridCalendar
                 columns={dayColumns}
@@ -245,11 +276,12 @@ export function AppointmentsCalendar() {
             {grouped.map(([empId, list]) => (
               <div key={empId} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
                 <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
-                  Employee #{empId}
+                  {employeeNameById(employees, empId)}
                 </div>
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-slate-200 text-xs uppercase text-slate-500">
                     <tr>
+                      <th className="px-4 py-2 font-medium">Date</th>
                       <th className="px-4 py-2 font-medium">Time</th>
                       <th className="px-4 py-2 font-medium">Customer</th>
                       <th className="px-4 py-2 font-medium">Vehicle</th>
@@ -261,8 +293,10 @@ export function AppointmentsCalendar() {
                   <tbody>
                     {list.map((a) => (
                       <tr key={a.id} className="border-b border-slate-100 last:border-0">
+                        <td className="px-4 py-2 text-slate-500">
+                          {formatDateShort(a.start_time)}
+                        </td>
                         <td className="px-4 py-2 text-slate-600">
-                          <span className="mr-1 text-slate-400">{a.start_time.slice(0, 10)}</span>
                           {formatTimeRange(a.start_time, a.end_time)}
                         </td>
                         <td className="px-4 py-2 text-slate-600">{customerName(a.customer_id)}</td>

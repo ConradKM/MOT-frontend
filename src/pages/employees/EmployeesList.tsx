@@ -9,13 +9,10 @@ import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { Disclosure } from '../../components/Disclosure'
+import { employeeDisplayName } from '../../lib/employees'
 import type { Employee, Role } from '../../types'
 
 const PAGE_SIZE = 10
-
-function employeeName(e: Employee): string {
-  return [e.first_name, e.last_name].filter(Boolean).join(' ')
-}
 
 function RoleTagPicker({
   roles,
@@ -256,6 +253,7 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
             </label>
             <input
               id="first_name"
+              required
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
@@ -267,6 +265,7 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
             </label>
             <input
               id="last_name"
+              required
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
@@ -388,8 +387,7 @@ export function EmployeesList() {
                   ) : (
                     <tr key={e.id} className="border-b border-slate-100 last:border-0">
                       <td className="px-4 py-2">
-                        <p className="font-medium text-slate-900">{employeeName(e) || '—'}</p>
-                        <p className="text-xs text-slate-400">{e.id}</p>
+                        <p className="font-medium text-slate-900">{employeeDisplayName(e)}</p>
                       </td>
                       <td className="px-4 py-2 text-slate-600">{e.email}</td>
                       <td className="px-4 py-2">

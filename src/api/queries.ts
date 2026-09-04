@@ -551,11 +551,15 @@ export function useGarageAvailability(
 export function useGarageDayAvailability(
   slug: string | undefined,
   date: string | undefined,
+  appointmentTypeId?: string,
 ) {
   return useQuery({
-    queryKey: ['garageDayAvailability', slug, date ?? null],
+    // appointmentTypeId is part of the key so switching the selected service
+    // (item 13) immediately refetches rather than showing stale times for
+    // the previous type's duration.
+    queryKey: ['garageDayAvailability', slug, date ?? null, appointmentTypeId ?? null],
     queryFn: () =>
-      publicGarageApi.getGarageDayAvailability(slug as string, date as string),
+      publicGarageApi.getGarageDayAvailability(slug as string, date as string, appointmentTypeId),
     enabled: !!slug && !!date,
     retry: false,
     staleTime: 10_000,

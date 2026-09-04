@@ -3,8 +3,11 @@ import { apiFetch } from './client'
 export type CapacityLevel = 'green' | 'amber' | 'red'
 
 interface CapacityBucket {
-  booked: number
-  capacity: number
+  /** Minutes of scheduling time actually booked - not a count of appointment
+   * rows, since durations vary (see the backend's app/garages/capacity.py). */
+  booked_minutes: number
+  /** Minutes of scheduling time available (open minutes x resource count). */
+  capacity_minutes: number
   level: CapacityLevel
 }
 

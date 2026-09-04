@@ -8,9 +8,24 @@ export interface CustomerInput {
   phone?: string | null
 }
 
-export function listCustomers(params: { search?: string } = {}): Promise<Customer[]> {
+export interface CustomerListParams {
+  search?: string
+  /** Also return archived (soft-deleted) customers. Default false - the
+   * normal list hides them; a customer's own detail page passes true so it
+   * stays reachable after being archived. */
+  include_inactive?: boolean
+}
+
+export interface DeleteResult {
+  /** True if the record had history and was archived instead of removed. */
+  archived: boolean
+  deleted: boolean
+}
+
+export function listCustomers(params: CustomerListParams = {}): Promise<Customer[]> {
   const qs = new URLSearchParams()
   if (params.search) qs.set('search', params.search)
+  if (params.include_inactive) qs.set('include_inactive', 'true')
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return apiFetch<Customer[]>(`/api/customers/${suffix}`)
 }
@@ -27,6 +42,6 @@ export function updateCustomer(id: string, data: Partial<CustomerInput>): Promis
   return apiFetch<Customer>(`/api/customers/${id}`, { method: 'PATCH', body: data })
 }
 
-export function deleteCustomer(id: string): Promise<void> {
-  return apiFetch<void>(`/api/customers/${id}`, { method: 'DELETE' })
+export function deleteCustomer(id: string): Promise<DeleteResult> {
+  return apiFetch<DeleteResult>(`/api/customers/${id}`, { method: 'DELETE' })
 }

@@ -1,5 +1,6 @@
 import { apiFetch } from './client'
 import type { Vehicle } from '../types'
+import type { DeleteResult } from './customers'
 
 export interface VehicleInput {
   customer_id: string
@@ -15,6 +16,8 @@ export interface VehicleListParams {
   registration?: string
   customer_id?: string
   mot_expiry_date?: string
+  /** See CustomerListParams.include_inactive - same idea. */
+  include_inactive?: boolean
 }
 
 export function listVehicles(params: VehicleListParams = {}): Promise<Vehicle[]> {
@@ -22,6 +25,7 @@ export function listVehicles(params: VehicleListParams = {}): Promise<Vehicle[]>
   if (params.registration) qs.set('registration', params.registration)
   if (params.customer_id !== undefined) qs.set('customer_id', params.customer_id)
   if (params.mot_expiry_date) qs.set('mot_expiry_date', params.mot_expiry_date)
+  if (params.include_inactive) qs.set('include_inactive', 'true')
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return apiFetch<Vehicle[]>(`/api/vehicles/${suffix}`)
 }
@@ -38,6 +42,6 @@ export function updateVehicle(id: string, data: Partial<VehicleInput>): Promise<
   return apiFetch<Vehicle>(`/api/vehicles/${id}`, { method: 'PATCH', body: data })
 }
 
-export function deleteVehicle(id: string): Promise<void> {
-  return apiFetch<void>(`/api/vehicles/${id}`, { method: 'DELETE' })
+export function deleteVehicle(id: string): Promise<DeleteResult> {
+  return apiFetch<DeleteResult>(`/api/vehicles/${id}`, { method: 'DELETE' })
 }

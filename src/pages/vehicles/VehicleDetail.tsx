@@ -12,6 +12,7 @@ import { MotBadge } from '../../components/MotBadge'
 import { errorMessage, fieldErrors } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
+import { formatDateShort } from '../../lib/datetime'
 import type { MOTResult } from '../../types'
 
 export function VehicleDetail() {
@@ -38,8 +39,13 @@ export function VehicleDetail() {
   const handleDeleteVehicle = async () => {
     if (!confirm('Delete this vehicle? This cannot be undone.')) return
     try {
-      await deleteMutation.mutateAsync(vehicleId as string)
-      showToast('Vehicle deleted.', 'success')
+      const result = await deleteMutation.mutateAsync(vehicleId as string)
+      showToast(
+        result.archived
+          ? 'This vehicle has MOT history or appointments on file, so it was archived rather than deleted.'
+          : 'Vehicle deleted.',
+        'success',
+      )
       navigate(`/${garageId}/vehicles`)
     } catch (err) {
       showToast(errorMessage(err))
@@ -53,7 +59,9 @@ export function VehicleDetail() {
     try {
       await createRecordMutation.mutateAsync({
         mot_date: motDate,
-        expiry_date: expiryDate,
+        // A FAIL never grants a new expiry - the backend defaults it to
+        // mot_date itself when omitted (see app/mot_records/routes.py).
+        expiry_date: result === 'FAIL' ? null : expiryDate,
         result,
         notes: notes || null,
       })
@@ -80,6 +88,11 @@ export function VehicleDetail() {
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-slate-900">{vehicle.registration_number}</h1>
             <MotBadge motExpiryDate={vehicle.mot_expiry_date} />
+            {!vehicle.is_active && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                Archived
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-slate-500">
             {[vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ') || 'No details'}
@@ -102,7 +115,8 @@ export function VehicleDetail() {
             )}
           </p>
           <p className="mt-1 text-sm text-slate-500">
-            MOT expiry: {vehicle.mot_expiry_date ?? 'No MOT records yet'}
+            MOT expiry:{' '}
+            {vehicle.mot_expiry_date ? formatDateShort(vehicle.mot_expiry_date) : 'No MOT records yet'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -169,13 +183,21 @@ export function VehicleDetail() {
                 <input
                   id="expiry_date"
                   type="date"
-                  required
-                  value={expiryDate}
+                  required={result === 'PASS'}
+                  disabled={result === 'FAIL'}
+                  value={result === 'FAIL' ? '' : expiryDate}
+                  placeholder={result === 'FAIL' ? 'Not applicable' : undefined}
                   onChange={(e) => setExpiryDate(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
                 />
-                {errors.expiry_date && (
-                  <p className="mt-1 text-sm text-red-600">{errors.expiry_date}</p>
+                {result === 'FAIL' ? (
+                  <p className="mt-1 text-xs text-slate-400">
+                    A failed test doesn't grant a new expiry.
+                  </p>
+                ) : (
+                  errors.expiry_date && (
+                    <p className="mt-1 text-sm text-red-600">{errors.expiry_date}</p>
+                  )
                 )}
               </div>
               <div>
@@ -234,8 +256,8 @@ export function VehicleDetail() {
                   .sort((a, b) => b.mot_date.localeCompare(a.mot_date))
                   .map((r) => (
                     <tr key={r.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-2 text-slate-600">{r.mot_date}</td>
-                      <td className="px-4 py-2 text-slate-600">{r.expiry_date}</td>
+                      <td className="px-4 py-2 text-slate-600">{formatDateShort(r.mot_date)}</td>
+                      <td className="px-4 py-2 text-slate-600">{formatDateShort(r.expiry_date)}</td>
                       <td className="px-4 py-2">
                         <span
                           className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${

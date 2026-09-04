@@ -3,6 +3,7 @@ import { useCustomer, useDeleteCustomer, useVehicles } from '../../api/queries'
 import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
+import { formatDateShort } from '../../lib/datetime'
 
 export function CustomerDetail() {
   const garageId = useGarageId()
@@ -11,15 +12,25 @@ export function CustomerDetail() {
   const { showToast } = useToast()
 
   const { data: customer, isLoading } = useCustomer(customerId)
-  const { data: vehicles } = useVehicles({ customer_id: customerId })
+  // include_inactive: an archived-but-historical vehicle must stay visible
+  // here even though it's hidden from the garage-wide vehicles list.
+  const { data: vehicles } = useVehicles({ customer_id: customerId, include_inactive: true })
   const deleteMutation = useDeleteCustomer()
 
   const handleDelete = async () => {
     if (!confirm('Delete this customer? This cannot be undone.')) return
     try {
-      await deleteMutation.mutateAsync(customerId as string)
-      showToast('Customer deleted.', 'success')
-      navigate(`/${garageId}/customers`)
+      const result = await deleteMutation.mutateAsync(customerId as string)
+      if (result.archived) {
+        showToast(
+          'This customer has vehicles or appointments on file, so they were archived rather than deleted.',
+          'success',
+        )
+        navigate(`/${garageId}/customers`)
+      } else {
+        showToast('Customer deleted.', 'success')
+        navigate(`/${garageId}/customers`)
+      }
     } catch (err) {
       showToast(errorMessage(err))
     }
@@ -32,9 +43,16 @@ export function CustomerDetail() {
     <div>
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {customer.first_name} {customer.last_name}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {customer.first_name} {customer.last_name}
+            </h1>
+            {!customer.is_active && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                Archived
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm text-slate-500">
             {customer.email ?? 'No email'} · {customer.phone ?? 'No phone'}
           </p>
@@ -86,11 +104,18 @@ export function CustomerDetail() {
                       <Link to={`/${garageId}/vehicles/${v.id}`} className="font-medium text-slate-900 hover:underline">
                         {v.registration_number}
                       </Link>
+                      {!v.is_active && (
+                        <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                          Archived
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2 text-slate-600">
                       {[v.make, v.model].filter(Boolean).join(' ') || '—'}
                     </td>
-                    <td className="px-4 py-2 text-slate-600">{v.mot_expiry_date ?? '—'}</td>
+                    <td className="px-4 py-2 text-slate-600">
+                      {v.mot_expiry_date ? formatDateShort(v.mot_expiry_date) : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -326,7 +326,7 @@ export function AppointmentTypesList() {
     <SettingsLayout>
       <h1 className="text-2xl font-semibold text-slate-900">Appointment Types</h1>
       <p className="mt-1 text-sm text-slate-500">
-        The services your garage offers. Each type can have one checklist that mechanics work
+        The services your business offers. Each type can have one checklist that staff work
         through, and appears in the public booking form while it's <strong>ACTIVE</strong>.
       </p>
 

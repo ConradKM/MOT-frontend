@@ -45,6 +45,11 @@ export interface Customer {
   last_name: string
   email: string | null
   phone: string | null
+  /** False once archived (soft-deleted) - hidden from the main list but
+   * still reachable by id. See api/customers.ts. */
+  is_active: boolean
+  /** Future SMS use - not actionable anywhere yet. */
+  sms_opt_out: boolean
   created_at: string
   updated_at: string
 }
@@ -59,6 +64,8 @@ export interface Vehicle {
   year: number | null
   current_mileage: number | null
   mot_expiry_date: string | null
+  /** False once archived (soft-deleted) - see api/vehicles.ts. */
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -130,13 +137,19 @@ export interface Appointment {
   appointment_type_id: string
   status: AppointmentStatus
   notes: string | null
+  /** Snapshot of the appointment type's price when this was created - stays
+   * accurate even if the type's price changes later. Decimal string or null. */
+  price_at_booking: string | null
   created_at: string
   updated_at: string
 }
 
 export type ChecklistItemMediaType = 'NONE' | 'PHOTO' | 'VIDEO' | 'EITHER'
 
-/** Mirrors DVSA's MOT grading, extended for day-to-day service/repair work. */
+/** No fixed platform-wide enum - a checklist item's valid results are its own
+ * `result_options` (see ChecklistTemplateItem). This automotive/DVSA-style set
+ * is offered as one selectable preset, not assumed for every business - any
+ * string an item's own result_options names is a real value. */
 export type ChecklistItemStatus =
   | 'PASS'
   | 'ADVISORY'
@@ -148,6 +161,29 @@ export type ChecklistItemStatus =
   | 'CUSTOMER_DECLINED'
   | 'NOT_APPLICABLE'
   | 'NOT_CHECKED'
+  | 'DONE'
+  | (string & {})
+
+/** The generic, non-automotive default a brand-new checklist item gets. */
+export const GENERIC_RESULT_OPTIONS: ChecklistItemStatus[] = [
+  'NOT_CHECKED',
+  'DONE',
+  'NOT_APPLICABLE',
+]
+
+/** The automotive/DVSA-style preset, selectable per item. */
+export const AUTOMOTIVE_RESULT_OPTIONS: ChecklistItemStatus[] = [
+  'PASS',
+  'ADVISORY',
+  'MINOR',
+  'MAJOR',
+  'DANGEROUS',
+  'RECTIFIED',
+  'RECOMMENDED',
+  'CUSTOMER_DECLINED',
+  'NOT_APPLICABLE',
+  'NOT_CHECKED',
+]
 
 export interface ChecklistTemplateItem {
   id: string
@@ -155,16 +191,23 @@ export interface ChecklistTemplateItem {
   checklist_template_id: string
   order: number
   label: string
+  /** Optional extra instruction beyond the label, e.g. "torque to spec". */
+  description: string | null
   is_compulsory: boolean
   media_type: ChecklistItemMediaType
   media_required_for_statuses: ChecklistItemStatus[]
+  /** The values staff can log against this item - configurable per item so
+   * non-automotive businesses aren't forced into DVSA-style grading. */
+  result_options: ChecklistItemStatus[]
+  /** Shown on the public booking page's "what's included" summary when true. */
+  visible_to_customer: boolean
   created_at: string
   updated_at: string
 }
 
-/** One per appointment type. Snapshotted onto an AppointmentChecklist the first time a
- * checklist is opened for an appointment of that type - later edits here don't
- * retroactively change an already-started checklist. */
+/** One per appointment type. Snapshotted onto an AppointmentChecklist as soon
+ * as an appointment of that type is created - later edits here don't
+ * retroactively change an already-created checklist. */
 export interface ChecklistTemplate {
   id: string
   garage_id: string
@@ -181,9 +224,14 @@ export interface AppointmentChecklistItem {
   checklist_template_item_id: string | null
   order: number
   label: string
+  description: string | null
   is_compulsory: boolean
   media_type: ChecklistItemMediaType
   media_required_for_statuses: ChecklistItemStatus[]
+  /** Snapshotted from the template item at creation time - see the module
+   * docstring on the backend AppointmentChecklistItem model. */
+  result_options: ChecklistItemStatus[]
+  visible_to_customer: boolean
   status: ChecklistItemStatus
   notes: string | null
   completed_by_employee_id: string | null

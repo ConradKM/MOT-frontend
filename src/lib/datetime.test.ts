@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   addMonthsIso,
   daysInMonth,
+  formatDateNumeric,
+  formatDateShort,
+  formatDateTime,
+  formatLongDate,
+  formatShortDate,
   mondayIndex,
   monthLabel,
   startOfMonthIso,
@@ -29,5 +34,36 @@ describe('datetime month helpers', () => {
 
   it('monthLabel is human readable', () => {
     expect(monthLabel('2026-09-01')).toMatch(/September 2026/)
+  })
+})
+
+describe('UK-friendly presentation formats', () => {
+  it('formatDateShort always shows a 3-letter month and the year', () => {
+    expect(formatDateShort('2026-09-14')).toBe('14 Sep 2026')
+    // September is the one month en-GB's own Intl data abbreviates to
+    // "Sept" (4 letters) - this must stay consistent with every other month.
+    expect(formatDateShort('2026-09-14')).not.toContain('Sept')
+    expect(formatDateShort('2027-01-05')).toBe('5 Jan 2027')
+  })
+
+  it('formatDateShort accepts a full ISO datetime too', () => {
+    expect(formatDateShort('2026-09-14T09:30:00+00:00')).toBe('14 Sep 2026')
+  })
+
+  it('formatDateNumeric is day/month/year, not US month/day/year', () => {
+    expect(formatDateNumeric('2026-09-14')).toBe('14/09/2026')
+  })
+
+  it('formatDateTime combines the short date and the time', () => {
+    // A winter date/time - no UK daylight-saving offset to account for.
+    expect(formatDateTime('2026-01-14T09:05:00+00:00')).toBe('14 Jan 2026, 09:05')
+  })
+
+  it('formatShortDate is weekday + day + 3-letter month, no year', () => {
+    expect(formatShortDate('2026-09-14')).toBe('Mon 14 Sep')
+  })
+
+  it('formatLongDate is day-first with a comma after the weekday', () => {
+    expect(formatLongDate('2026-09-14')).toBe('Monday, 14 September 2026')
   })
 })

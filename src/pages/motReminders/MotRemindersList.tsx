@@ -5,7 +5,7 @@ import { MotBadge } from '../../components/MotBadge'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
-import { formatDateTime, formatShortDate } from '../../lib/datetime'
+import { formatDateShort, formatDateTime } from '../../lib/datetime'
 import { errorMessage, isApiError } from '../../lib/errors'
 import type {
   MOTReminderRow,
@@ -32,9 +32,9 @@ const STAGE_LABEL: Record<string, string> = {
 function stageStateText(s: ReminderStageRow): string {
   switch (s.state) {
     case 'sent':
-      return s.sent_at ? `Sent ${formatShortDate(s.sent_at.slice(0, 10))}` : 'Sent'
+      return s.sent_at ? `Sent ${formatDateShort(s.sent_at)}` : 'Sent'
     case 'scheduled':
-      return s.scheduled_for ? `Scheduled ${formatShortDate(s.scheduled_for)}` : 'Scheduled'
+      return s.scheduled_for ? `Scheduled ${formatDateShort(s.scheduled_for)}` : 'Scheduled'
     case 'suppressed':
       return 'Paused — MOT booked'
     case 'disabled':
@@ -167,7 +167,7 @@ export function MotRemindersList() {
                         {r.registration_number}
                       </td>
                       <td className="px-4 py-2 text-slate-600">
-                        <span className="mr-2">{formatShortDate(r.mot_expiry_date)}</span>
+                        <span className="mr-2">{formatDateShort(r.mot_expiry_date)}</span>
                         <MotBadge motExpiryDate={r.mot_expiry_date} />
                       </td>
                       <td className="px-4 py-2">
@@ -182,7 +182,7 @@ export function MotRemindersList() {
                       </td>
                       <td className="px-4 py-2 text-slate-600">
                         {r.next_reminder_scheduled ? (
-                          formatShortDate(r.next_reminder_scheduled)
+                          formatDateShort(r.next_reminder_scheduled)
                         ) : r.booking_active ? (
                           <span className="text-slate-400">MOT booked</span>
                         ) : (

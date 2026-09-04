@@ -4,7 +4,7 @@ import { useCustomerAccount } from '../../api/queries'
 import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 import { MotBadge } from '../../components/MotBadge'
 import { appointmentStatusClasses, appointmentStatusLabels } from '../../lib/appointments'
-import { formatDateTime } from '../../lib/datetime'
+import { formatDateShort, formatDateTime } from '../../lib/datetime'
 import { errorMessage } from '../../lib/errors'
 
 export function CustomerAccount() {
@@ -105,12 +105,14 @@ function VehicleCard({ vehicle }: { vehicle: CustomerVehicle }) {
       </div>
       <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <dt className="text-slate-500">MOT expires</dt>
-        <dd className="text-right text-slate-800">{vehicle.mot_expiry_date ?? 'Unknown'}</dd>
+        <dd className="text-right text-slate-800">
+          {vehicle.mot_expiry_date ? formatDateShort(vehicle.mot_expiry_date) : 'Unknown'}
+        </dd>
         {latestMot && (
           <>
             <dt className="text-slate-500">Last test</dt>
             <dd className="text-right text-slate-800">
-              {latestMot.result} · {latestMot.mot_date}
+              {latestMot.result} · {formatDateShort(latestMot.mot_date)}
             </dd>
           </>
         )}

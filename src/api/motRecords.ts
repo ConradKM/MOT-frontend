@@ -3,7 +3,9 @@ import type { MOTRecord } from '../types'
 
 export interface MOTRecordInput {
   mot_date: string
-  expiry_date: string
+  // Optional: a FAIL doesn't need one - the backend defaults it to mot_date
+  // itself (no forward validity granted). Effectively required for PASS.
+  expiry_date?: string | null
   result: MOTRecord['result']
   notes?: string | null
 }

@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useAppointmentType, useChecklistTemplate } from '../../api/queries'
 import { useGarageId } from '../../hooks/useGarageId'
 import { isApiError } from '../../lib/errors'
-import { checklistItemStatusLabels } from '../../lib/checklist'
+import { resultOptionLabel } from '../../lib/checklist'
 
 const mediaTypeLabels: Record<string, string> = {
   NONE: 'No media',
@@ -58,21 +58,32 @@ export function ChecklistTemplateViewer() {
                 <p className="text-sm font-medium text-slate-900">
                   {i + 1}. {item.label}
                 </p>
-                {item.is_compulsory && (
-                  <span className="shrink-0 rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
-                    Compulsory
-                  </span>
-                )}
+                <div className="flex shrink-0 gap-1.5">
+                  {item.visible_to_customer && (
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
+                      Customer-visible
+                    </span>
+                  )}
+                  {item.is_compulsory && (
+                    <span className="rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
+                      Compulsory
+                    </span>
+                  )}
+                </div>
               </div>
+              {item.description && (
+                <p className="mt-1 text-xs text-slate-500">{item.description}</p>
+              )}
+              <p className="mt-1 text-xs text-slate-500">
+                Results: {item.result_options.map(resultOptionLabel).join(', ')}
+              </p>
               <p className="mt-1 text-xs text-slate-500">
                 Media: {mediaTypeLabels[item.media_type]}
                 {item.media_type !== 'NONE' && item.media_required_for_statuses.length > 0 && (
                   <>
                     {' '}
                     — required when result is{' '}
-                    {item.media_required_for_statuses
-                      .map((s) => checklistItemStatusLabels[s])
-                      .join(', ')}
+                    {item.media_required_for_statuses.map(resultOptionLabel).join(', ')}
                   </>
                 )}
               </p>

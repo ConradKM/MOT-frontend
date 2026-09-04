@@ -3,10 +3,13 @@ import type { ChecklistItemMediaType, ChecklistItemStatus, ChecklistTemplate, Ch
 
 export interface ChecklistTemplateItemInput {
   label: string
+  description?: string | null
   order?: number
   is_compulsory?: boolean
   media_type?: ChecklistItemMediaType
   media_required_for_statuses?: ChecklistItemStatus[]
+  result_options?: ChecklistItemStatus[]
+  visible_to_customer?: boolean
 }
 
 export function getChecklistTemplate(appointmentTypeId: string): Promise<ChecklistTemplate> {

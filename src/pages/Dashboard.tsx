@@ -11,6 +11,7 @@ import {
 import type { CapacityLevel } from '../api/garageCapacity'
 import { useGarageId } from '../hooks/useGarageId'
 import { formatTimeRange, todayIso } from '../lib/datetime'
+import { formatDurationMinutes } from '../lib/duration'
 import { statusBadgeClass, statusLabel } from '../lib/appointmentStatuses'
 
 /** `/dashboard` — resolves the signed-in employee's own garage, then redirects to its
@@ -30,18 +31,19 @@ const LEVEL_STYLE: Record<CapacityLevel, { card: string; text: string; label: st
 
 function CapacityCard({
   title,
-  booked,
-  capacity,
+  bookedMinutes,
+  capacityMinutes,
   level,
   to,
 }: {
   title: string
-  booked?: number
-  capacity?: number
+  bookedMinutes?: number
+  capacityMinutes?: number
   level?: CapacityLevel
   to: string
 }) {
   const style = level ? LEVEL_STYLE[level] : null
+  const known = bookedMinutes !== undefined && capacityMinutes !== undefined
   return (
     <Link
       to={to}
@@ -51,8 +53,10 @@ function CapacityCard({
     >
       <p className="text-sm font-medium text-slate-500">{title}</p>
       <p className={`mt-1 text-3xl font-semibold ${style?.text ?? 'text-slate-900'}`}>
-        {booked ?? '—'}{' '}
-        <span className="text-xl font-normal text-slate-400">/ {capacity ?? '—'}</span>
+        {known ? formatDurationMinutes(bookedMinutes) : '—'}{' '}
+        <span className="text-xl font-normal text-slate-400">
+          / {known ? formatDurationMinutes(capacityMinutes) : '—'}
+        </span>
       </p>
       <p className={`mt-1 text-sm font-medium ${style?.text ?? 'text-slate-500'}`}>
         {style ? `${style.label} · View diary →` : 'View diary →'}
@@ -90,16 +94,16 @@ export function Dashboard() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <CapacityCard
-          title="Today's appointments"
-          booked={capacity?.today.booked}
-          capacity={capacity?.today.capacity}
+          title="Today's booked time"
+          bookedMinutes={capacity?.today.booked_minutes}
+          capacityMinutes={capacity?.today.capacity_minutes}
           level={capacity?.today.level}
           to={`/${garageId}/appointments?view=day&date=${todayIso()}`}
         />
         <CapacityCard
-          title="This week's appointments"
-          booked={capacity?.week.booked}
-          capacity={capacity?.week.capacity}
+          title="This week's booked time"
+          bookedMinutes={capacity?.week.booked_minutes}
+          capacityMinutes={capacity?.week.capacity_minutes}
           level={capacity?.week.level}
           to={`/${garageId}/appointments?view=week`}
         />
