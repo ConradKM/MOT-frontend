@@ -77,6 +77,22 @@ describe('AvailabilityCalendar', () => {
     expect(onSelectDate).toHaveBeenCalledTimes(1)
   })
 
+  it('treats today as bookable when the API returns it available, and past days as not', async () => {
+    renderWithProviders(
+      <AvailabilityCalendar slug="g" selectedDate={null} onSelectDate={() => {}} />,
+    )
+    // System time is 2026-09-10; the API returns that date as `available`.
+    const today = await screen.findByRole('gridcell', {
+      name: /10 September 2026 — Good availability, selectable/,
+    })
+    expect(today).toHaveAttribute('aria-disabled', 'false')
+
+    const yesterday = screen.getByRole('gridcell', {
+      name: /, 9 September 2026 — not bookable/,
+    })
+    expect(yesterday).toHaveAttribute('aria-disabled', 'true')
+  })
+
   it('clamps the previous-month button at the window start', async () => {
     renderWithProviders(
       <AvailabilityCalendar slug="g" selectedDate={null} onSelectDate={() => {}} />,

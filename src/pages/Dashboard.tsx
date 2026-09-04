@@ -33,22 +33,31 @@ function CapacityCard({
   booked,
   capacity,
   level,
+  to,
 }: {
   title: string
   booked?: number
   capacity?: number
   level?: CapacityLevel
+  to: string
 }) {
   const style = level ? LEVEL_STYLE[level] : null
   return (
-    <div className={`rounded-lg border p-5 shadow-sm ${style?.card ?? 'border-slate-200 bg-white'}`}>
+    <Link
+      to={to}
+      className={`block cursor-pointer rounded-lg border p-5 shadow-sm transition hover:shadow-md hover:brightness-[0.98] ${
+        style?.card ?? 'border-slate-200 bg-white hover:border-slate-300'
+      }`}
+    >
       <p className="text-sm font-medium text-slate-500">{title}</p>
       <p className={`mt-1 text-3xl font-semibold ${style?.text ?? 'text-slate-900'}`}>
         {booked ?? '—'}{' '}
         <span className="text-xl font-normal text-slate-400">/ {capacity ?? '—'}</span>
       </p>
-      {style && <p className={`mt-1 text-sm font-medium ${style.text}`}>{style.label}</p>}
-    </div>
+      <p className={`mt-1 text-sm font-medium ${style?.text ?? 'text-slate-500'}`}>
+        {style ? `${style.label} · View diary →` : 'View diary →'}
+      </p>
+    </Link>
   )
 }
 
@@ -85,12 +94,14 @@ export function Dashboard() {
           booked={capacity?.today.booked}
           capacity={capacity?.today.capacity}
           level={capacity?.today.level}
+          to={`/${garageId}/appointments?view=day&date=${todayIso()}`}
         />
         <CapacityCard
           title="This week's appointments"
           booked={capacity?.week.booked}
           capacity={capacity?.week.capacity}
           level={capacity?.week.level}
+          to={`/${garageId}/appointments?view=week`}
         />
         <Link
           to={`/${garageId}/appointments`}

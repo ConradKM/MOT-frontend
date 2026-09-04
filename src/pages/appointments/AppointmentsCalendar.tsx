@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   useAppointments,
   useAppointmentStatuses,
@@ -24,10 +24,18 @@ import type { Appointment } from '../../types'
 
 type Mode = 'day' | 'week' | 'list'
 
+const MODES: Mode[] = ['day', 'week', 'list']
+
 export function AppointmentsCalendar() {
   const garageId = useGarageId()
-  const [mode, setMode] = useState<Mode>('day')
-  const [date, setDate] = useState(todayIso())
+  // Dashboard shortcut cards link here with e.g. ?view=week to open a view.
+  const [searchParams] = useSearchParams()
+  const initialMode = MODES.includes(searchParams.get('view') as Mode)
+    ? (searchParams.get('view') as Mode)
+    : 'day'
+  const initialDate = searchParams.get('date') || todayIso()
+  const [mode, setMode] = useState<Mode>(initialMode)
+  const [date, setDate] = useState(initialDate)
   const [startDate, setStartDate] = useState(todayIso())
   const [endDate, setEndDate] = useState(todayIso())
   const [employeeId, setEmployeeId] = useState('')
