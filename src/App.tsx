@@ -22,6 +22,8 @@ import { ChecklistTemplateBuilder } from './pages/appointmentTypes/ChecklistTemp
 import { ChecklistTemplateViewer } from './pages/appointmentTypes/ChecklistTemplateViewer'
 import { SettingsHub } from './pages/settings/SettingsHub'
 import { AvailabilitySettings } from './pages/settings/AvailabilitySettings'
+import { MotReminderSettings } from './pages/settings/MotReminderSettings'
+import { GarageDetails } from './pages/settings/GarageDetails'
 import { BookingRequestsList } from './pages/bookingRequests/BookingRequestsList'
 import { MotRemindersList } from './pages/motReminders/MotRemindersList'
 import { AppointmentStatusesList } from './pages/appointmentStatuses/AppointmentStatusesList'
@@ -94,6 +96,8 @@ export default function App() {
           />
 
           <Route path="settings" element={<SettingsHub />} />
+          <Route path="settings/garage-details" element={<GarageDetails />} />
+          <Route path="settings/mot-reminders" element={<MotReminderSettings />} />
           <Route path="settings/employees" element={<EmployeesList />} />
           <Route path="settings/roles" element={<RolesList />} />
           <Route path="settings/appointment-types" element={<AppointmentTypesList />} />

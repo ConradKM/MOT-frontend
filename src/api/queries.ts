@@ -44,12 +44,38 @@ export function useMOTReminders() {
   })
 }
 
-export function useUpdateGarage() {
+export function useMOTReminderSettings() {
+  return useQuery({
+    queryKey: ['motReminderSettings'],
+    queryFn: motRemindersApi.getMOTReminderSettings,
+  })
+}
+
+export function useUpdateMOTReminderSettings() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: Parameters<typeof garageApi.updateGarage>[0]) =>
-      garageApi.updateGarage(data),
-    onSuccess: (garage) => qc.setQueryData(['garage'], garage),
+    mutationFn: motRemindersApi.updateMOTReminderSettings,
+    onSuccess: (settings) => {
+      qc.setQueryData(['motReminderSettings'], settings)
+      qc.invalidateQueries({ queryKey: ['motReminders'] })
+    },
+  })
+}
+
+export function useSendManualReminder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      vehicleId,
+      acknowledgeBooking,
+    }: {
+      vehicleId: string
+      acknowledgeBooking?: boolean
+    }) =>
+      motRemindersApi.sendManualReminder(vehicleId, {
+        acknowledge_booking: acknowledgeBooking,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['motReminders'] }),
   })
 }
 

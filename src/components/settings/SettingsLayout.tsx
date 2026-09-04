@@ -3,11 +3,13 @@ import { Link, NavLink } from 'react-router-dom'
 import { useGarageId } from '../../hooks/useGarageId'
 
 const SECTIONS = [
+  { slug: 'garage-details', label: 'Garage Details' },
   { slug: 'employees', label: 'Employees' },
   { slug: 'roles', label: 'Roles' },
   { slug: 'appointment-types', label: 'Appointment Types' },
   { slug: 'appointment-statuses', label: 'Appointment Statuses' },
   { slug: 'availability', label: 'Availability' },
+  { slug: 'mot-reminders', label: 'MOT Reminders' },
 ]
 
 /** Wraps a settings subsection page with a mini nav for jumping between subsections. */

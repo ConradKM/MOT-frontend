@@ -5,9 +5,13 @@ export interface Garage {
   slug: string
   /** Platform-controlled layout key (see lib/layoutVariant). null = shared default. */
   layout_variant: string | null
+  /** Customer-facing business details. Read-only to garage users - the platform
+   * edits them. Source of truth for future phone/email/SMS/confirmation systems. */
   email: string | null
   phone: string | null
   address: string | null
+  postcode: string | null
+  website: string | null
   created_at: string
   updated_at: string
 }

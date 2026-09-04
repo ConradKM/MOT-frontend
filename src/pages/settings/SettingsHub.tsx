@@ -10,6 +10,11 @@ interface SettingsPage {
 
 const SETTINGS_PAGES: SettingsPage[] = [
   {
+    title: 'Garage Details',
+    description: 'Your business name, telephone, email and address (read-only).',
+    slug: 'settings/garage-details',
+  },
+  {
     title: 'Appointments',
     description: 'View and manage upcoming and past appointments.',
     slug: 'appointments',
@@ -18,6 +23,11 @@ const SETTINGS_PAGES: SettingsPage[] = [
     title: 'MOT Reminders',
     description: 'Upcoming MOT expiries and the status of each reminder.',
     slug: 'mot-reminders',
+  },
+  {
+    title: 'MOT Reminder Schedule',
+    description: 'Choose how far before MOT expiry customers are reminded.',
+    slug: 'settings/mot-reminders',
   },
   {
     title: 'Employees',
