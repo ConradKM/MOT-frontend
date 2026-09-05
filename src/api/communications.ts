@@ -152,3 +152,149 @@ export function sendWhatsAppMessage(data: {
 export function getCustomerCommunications(customerId: string): Promise<CommunicationLog[]> {
   return apiFetch(`/api/customers/${customerId}/communications`)
 }
+
+// --------------------------------------------------------------------------
+// Communications automation settings - never a Twilio credential, those stay
+// platform/CLI-only.
+// --------------------------------------------------------------------------
+
+export interface AutomationSettings {
+  booking_ack_enabled: boolean
+  booking_confirmation_enabled: boolean
+  reminder_enabled: boolean
+  reminder_hours_before: number
+  missed_call_ack_enabled: boolean
+  conversation_automation_enabled: boolean
+}
+
+export function getAutomationSettings(): Promise<AutomationSettings> {
+  return apiFetch('/api/communications/automation-settings')
+}
+
+export function updateAutomationSettings(
+  data: Partial<AutomationSettings>,
+): Promise<AutomationSettings> {
+  return apiFetch('/api/communications/automation-settings', { method: 'PUT', body: data })
+}
+
+// --------------------------------------------------------------------------
+// Message templates - safe {{variable}} text only
+// --------------------------------------------------------------------------
+
+export interface MessageTemplate {
+  key: string
+  body: string
+  default_body: string
+  is_custom: boolean
+}
+
+export function listTemplates(): Promise<{ items: MessageTemplate[] }> {
+  return apiFetch('/api/communications/templates')
+}
+
+export function updateTemplate(key: string, body: string): Promise<MessageTemplate> {
+  return apiFetch(`/api/communications/templates/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: { body },
+  })
+}
+
+export function resetTemplate(key: string): Promise<MessageTemplate> {
+  return apiFetch(`/api/communications/templates/${encodeURIComponent(key)}`, {
+    method: 'DELETE',
+  })
+}
+
+export function previewTemplate(key: string, body: string): Promise<{ preview: string }> {
+  return apiFetch(`/api/communications/templates/${encodeURIComponent(key)}/preview`, {
+    method: 'POST',
+    body: { body },
+  })
+}
+
+// --------------------------------------------------------------------------
+// Callback requests
+// --------------------------------------------------------------------------
+
+export type CallbackStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED'
+
+export interface CallbackRequest {
+  id: string
+  customer: CommunicationCustomer | null
+  phone_number: string
+  reason: string | null
+  preferred_time: string | null
+  status: CallbackStatus
+  created_at: string
+}
+
+export interface CallbackRequestListParams {
+  status?: CallbackStatus
+  limit?: number
+  offset?: number
+}
+
+export function listCallbackRequests(
+  params: CallbackRequestListParams = {},
+): Promise<Paginated<CallbackRequest>> {
+  return apiFetch(`/api/communications/callback-requests${toQuery(params)}`)
+}
+
+export function completeCallbackRequest(id: string): Promise<CallbackRequest> {
+  return apiFetch(`/api/communications/callback-requests/${id}/complete`, { method: 'POST' })
+}
+
+export function cancelCallbackRequest(id: string): Promise<CallbackRequest> {
+  return apiFetch(`/api/communications/callback-requests/${id}/cancel`, { method: 'POST' })
+}
+
+// --------------------------------------------------------------------------
+// Staff conversation takeover / resume automation - the bot and a human must
+// never reply at the same time.
+// --------------------------------------------------------------------------
+
+export type ConversationSessionStatus = 'ACTIVE' | 'EXPIRED' | 'COMPLETED' | 'HUMAN_HANDOFF'
+
+export interface ConversationAutomationStatus {
+  phone: string
+  status: ConversationSessionStatus | null
+  intent: string | null
+  handoff_reason: string | null
+}
+
+export function getConversationAutomationStatus(
+  phone: string,
+): Promise<ConversationAutomationStatus> {
+  return apiFetch(`/api/communications/conversations/${encodeURIComponent(phone)}/automation`)
+}
+
+export function takeoverConversation(phone: string): Promise<ConversationAutomationStatus> {
+  return apiFetch(`/api/communications/conversations/${encodeURIComponent(phone)}/takeover`, {
+    method: 'POST',
+  })
+}
+
+export function resumeConversationAutomation(
+  phone: string,
+): Promise<ConversationAutomationStatus> {
+  return apiFetch(
+    `/api/communications/conversations/${encodeURIComponent(phone)}/resume-automation`,
+    { method: 'POST' },
+  )
+}
+
+// --------------------------------------------------------------------------
+// Attention queue - conversations automation handed to a human
+// --------------------------------------------------------------------------
+
+export interface AttentionQueueItem {
+  phone: string
+  customer: CommunicationCustomer | null
+  intent: string | null
+  handoff_reason: string | null
+  last_activity_at: string
+}
+
+export function listAttentionQueue(): Promise<{ items: AttentionQueueItem[] }> {
+  return apiFetch('/api/communications/attention-queue')
+}

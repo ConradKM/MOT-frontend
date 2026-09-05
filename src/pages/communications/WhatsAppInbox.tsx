@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
+  useConversationAutomationStatus,
   useConversationMessages,
   useConversations,
   useCommunicationsOverview,
   useMarkConversationRead,
+  useResumeConversationAutomation,
   useSendWhatsAppMessage,
+  useTakeoverConversation,
 } from '../../api/queries'
 import { useGarageId } from '../../hooks/useGarageId'
 import { errorMessage } from '../../lib/errors'
@@ -72,6 +75,70 @@ function MessageBubble({ message }: { message: CommunicationLog }) {
           {outbound && ` · ${whatsappStatusLabel(message.status)}`}
         </p>
       </div>
+    </div>
+  )
+}
+
+/** The bot and a human must never reply to the same conversation at once -
+ * this is the one control that decides which of them currently owns it. */
+function AutomationControl({ phone }: { phone: string }) {
+  const { data: status } = useConversationAutomationStatus(phone)
+  const takeover = useTakeoverConversation()
+  const resume = useResumeConversationAutomation()
+  const { showToast } = useToast()
+
+  if (!status || !status.status || status.status === 'COMPLETED' || status.status === 'EXPIRED') {
+    return null
+  }
+
+  if (status.status === 'HUMAN_HANDOFF') {
+    const handleResume = async () => {
+      try {
+        await resume.mutateAsync(phone)
+        showToast('Automation resumed for this conversation.', 'success')
+      } catch (err) {
+        showToast(errorMessage(err))
+      }
+    }
+    return (
+      <div className="flex items-center gap-2">
+        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+          Needs a reply
+        </span>
+        <button
+          type="button"
+          onClick={handleResume}
+          disabled={resume.isPending}
+          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {resume.isPending ? 'Resuming…' : 'Resume automation'}
+        </button>
+      </div>
+    )
+  }
+
+  // ACTIVE - the automated assistant currently owns this conversation.
+  const handleTakeover = async () => {
+    try {
+      await takeover.mutateAsync(phone)
+      showToast('You now own this conversation - the assistant will stop replying.', 'success')
+    } catch (err) {
+      showToast(errorMessage(err))
+    }
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+        Assistant is replying
+      </span>
+      <button
+        type="button"
+        onClick={handleTakeover}
+        disabled={takeover.isPending}
+        className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+      >
+        {takeover.isPending ? 'Taking over…' : 'Take over conversation'}
+      </button>
     </div>
   )
 }
@@ -171,7 +238,7 @@ export function WhatsAppInbox() {
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
                 <div>
                   <p className="font-medium text-slate-900">
                     {thread?.customer
@@ -180,6 +247,7 @@ export function WhatsAppInbox() {
                   </p>
                   <p className="text-xs text-slate-500">{selectedPhone}</p>
                 </div>
+                <AutomationControl phone={selectedPhone} />
                 <div className="flex gap-3 text-sm font-medium">
                   {thread?.customer && (
                     <Link

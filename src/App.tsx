@@ -31,7 +31,11 @@ import { CommunicationsLayout } from './components/communications/Communications
 import { CommunicationsOverview } from './pages/communications/CommunicationsOverview'
 import { CallsList } from './pages/communications/CallsList'
 import { WhatsAppInbox } from './pages/communications/WhatsAppInbox'
+import { CommunicationsAttentionQueue } from './pages/communications/CommunicationsAttentionQueue'
+import { CallbackRequestsList } from './pages/communications/CallbackRequestsList'
+import { ConversationSimulator } from './pages/communications/ConversationSimulator'
 import { ContactCustomer } from './pages/communications/ContactCustomer'
+import { CommunicationsAutomationSettings } from './pages/settings/CommunicationsAutomationSettings'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
 import { BookingWizard } from './pages/customer/BookingWizard'
@@ -89,7 +93,12 @@ export default function App() {
             <Route index element={<CommunicationsOverview />} />
             <Route path="calls" element={<CallsList />} />
             <Route path="whatsapp" element={<WhatsAppInbox />} />
+            <Route path="attention" element={<CommunicationsAttentionQueue />} />
+            <Route path="callbacks" element={<CallbackRequestsList />} />
             <Route path="contact" element={<ContactCustomer />} />
+            {/* Development tool only - never registered in a production build,
+                and gated again on the backend by CONVERSATION_SIMULATOR_ENABLED. */}
+            {import.meta.env.DEV && <Route path="simulator" element={<ConversationSimulator />} />}
           </Route>
 
           <Route path="appointments" element={<AppointmentsCalendar />} />
@@ -115,6 +124,10 @@ export default function App() {
           <Route path="settings/appointment-types" element={<AppointmentTypesList />} />
           <Route path="settings/appointment-statuses" element={<AppointmentStatusesList />} />
           <Route path="settings/availability" element={<AvailabilitySettings />} />
+          <Route
+            path="settings/communications-automation"
+            element={<CommunicationsAutomationSettings />}
+          />
         </Route>
       </Route>
 

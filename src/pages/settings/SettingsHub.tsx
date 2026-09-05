@@ -54,6 +54,11 @@ const SETTINGS_PAGES: SettingsPage[] = [
     description: 'Opening hours, slot length, booking window, and one-off closures.',
     slug: 'settings/availability',
   },
+  {
+    title: 'Communications Automation',
+    description: 'Automated WhatsApp assistant, message wording, and reminder timing.',
+    slug: 'settings/communications-automation',
+  },
 ]
 
 export function SettingsHub() {

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as communicationsApi from './communications'
+import * as conversationSimulatorApi from './conversationSimulator'
 import * as garageApi from './garage'
 import * as garageCapacityApi from './garageCapacity'
 import * as garageScheduleApi from './garageSchedule'
@@ -709,5 +710,126 @@ export function useCustomerCommunications(customerId: string | undefined) {
     queryKey: ['customerCommunications', customerId],
     queryFn: () => communicationsApi.getCustomerCommunications(customerId as string),
     enabled: !!customerId,
+  })
+}
+
+// Communications automation settings
+export function useAutomationSettings() {
+  return useQuery({
+    queryKey: ['automationSettings'],
+    queryFn: communicationsApi.getAutomationSettings,
+  })
+}
+
+export function useUpdateAutomationSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<communicationsApi.AutomationSettings>) =>
+      communicationsApi.updateAutomationSettings(data),
+    onSuccess: (data) => qc.setQueryData(['automationSettings'], data),
+  })
+}
+
+// Message templates
+export function useMessageTemplates() {
+  return useQuery({
+    queryKey: ['messageTemplates'],
+    queryFn: communicationsApi.listTemplates,
+  })
+}
+
+export function useUpdateMessageTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ key, body }: { key: string; body: string }) =>
+      communicationsApi.updateTemplate(key, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messageTemplates'] }),
+  })
+}
+
+export function useResetMessageTemplate() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (key: string) => communicationsApi.resetTemplate(key),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['messageTemplates'] }),
+  })
+}
+
+export function usePreviewMessageTemplate() {
+  return useMutation({
+    mutationFn: ({ key, body }: { key: string; body: string }) =>
+      communicationsApi.previewTemplate(key, body),
+  })
+}
+
+// Callback requests
+export function useCallbackRequests(params: communicationsApi.CallbackRequestListParams = {}) {
+  return useQuery({
+    queryKey: ['callbackRequests', params],
+    queryFn: () => communicationsApi.listCallbackRequests(params),
+  })
+}
+
+export function useCompleteCallbackRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => communicationsApi.completeCallbackRequest(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['callbackRequests'] }),
+  })
+}
+
+export function useCancelCallbackRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => communicationsApi.cancelCallbackRequest(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['callbackRequests'] }),
+  })
+}
+
+// Staff conversation takeover / resume automation
+export function useConversationAutomationStatus(phone: string | undefined) {
+  return useQuery({
+    queryKey: ['conversationAutomationStatus', phone],
+    queryFn: () => communicationsApi.getConversationAutomationStatus(phone as string),
+    enabled: !!phone,
+  })
+}
+
+export function useTakeoverConversation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (phone: string) => communicationsApi.takeoverConversation(phone),
+    onSuccess: (data, phone) => {
+      qc.setQueryData(['conversationAutomationStatus', phone], data)
+      qc.invalidateQueries({ queryKey: ['attentionQueue'] })
+    },
+  })
+}
+
+export function useResumeConversationAutomation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (phone: string) => communicationsApi.resumeConversationAutomation(phone),
+    onSuccess: (data, phone) => {
+      qc.setQueryData(['conversationAutomationStatus', phone], data)
+      qc.invalidateQueries({ queryKey: ['attentionQueue'] })
+    },
+  })
+}
+
+// Attention queue
+export function useAttentionQueue() {
+  return useQuery({
+    queryKey: ['attentionQueue'],
+    queryFn: communicationsApi.listAttentionQueue,
+    refetchInterval: 20_000,
+  })
+}
+
+// Development-only conversation simulator
+export function useSimulateMessage() {
+  return useMutation({
+    mutationFn: (data: conversationSimulatorApi.SimulateMessageInput) =>
+      conversationSimulatorApi.simulateMessage(data),
   })
 }
