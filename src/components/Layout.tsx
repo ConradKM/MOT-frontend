@@ -1,8 +1,10 @@
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Footer } from './Footer'
 import { useAuth } from '../auth/AuthContext'
 import { useGarage } from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
 import { resolveLayoutVariant } from '../lib/layoutVariant'
+import { PLATFORM_NAME } from '../lib/branding'
 
 export function Layout() {
   const { logout } = useAuth()
@@ -35,7 +37,7 @@ export function Layout() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex items-center gap-8">
             <p className="shrink-0 text-sm font-semibold text-slate-900">
-              {garage?.name ?? 'MOT Garage'}
+              {garage?.name ?? PLATFORM_NAME}
             </p>
             <nav className="flex items-center gap-1">
               {navItems.map((item) => (
@@ -69,6 +71,7 @@ export function Layout() {
           <Outlet />
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

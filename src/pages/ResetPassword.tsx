@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { AuthCard } from '../components/AuthCard'
 import { checkResetToken, resetPassword } from '../api/auth'
 import { errorMessage } from '../lib/errors'
 
@@ -56,71 +57,69 @@ export function ResetPassword() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Reset password</h1>
+    <AuthCard>
+      <h1 className="text-xl font-semibold text-slate-900">Reset password</h1>
 
-        {status === 'checking' && (
-          <p className="mt-3 text-sm text-slate-500">Checking your link…</p>
-        )}
+      {status === 'checking' && (
+        <p className="mt-3 text-sm text-slate-500">Checking your link…</p>
+      )}
 
-        {status === 'invalid' && (
-          <>
-            <p className="mt-3 text-sm text-red-700">{error ?? INVALID_MSG}</p>
-            <p className="mt-6 text-center text-sm">
-              <Link
-                to="/forgot-password"
-                className="font-medium text-slate-900 hover:underline"
-              >
-                Request a new link
-              </Link>
-            </p>
-          </>
-        )}
-
-        {status === 'valid' && (
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            {error && (
-              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-slate-700" htmlFor="password">
-                New password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={PASSWORD_MIN}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              />
-              <p className="mt-1 text-xs text-slate-400">At least {PASSWORD_MIN} characters.</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700" htmlFor="confirm">
-                Confirm new password
-              </label>
-              <input
-                id="confirm"
-                type="password"
-                required
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+      {status === 'invalid' && (
+        <>
+          <p className="mt-3 text-sm text-red-700">{error ?? INVALID_MSG}</p>
+          <p className="mt-6 text-center text-sm">
+            <Link
+              to="/forgot-password"
+              className="font-medium text-slate-900 hover:underline"
             >
-              {submitting ? 'Saving…' : 'Reset password'}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+              Request a new link
+            </Link>
+          </p>
+        </>
+      )}
+
+      {status === 'valid' && (
+        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          {error && (
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-slate-700" htmlFor="password">
+              New password
+            </label>
+            <input
+              id="password"
+              type="password"
+              required
+              minLength={PASSWORD_MIN}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-slate-400">At least {PASSWORD_MIN} characters.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700" htmlFor="confirm">
+              Confirm new password
+            </label>
+            <input
+              id="confirm"
+              type="password"
+              required
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {submitting ? 'Saving…' : 'Reset password'}
+          </button>
+        </form>
+      )}
+    </AuthCard>
   )
 }
