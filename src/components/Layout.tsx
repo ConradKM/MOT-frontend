@@ -1,7 +1,7 @@
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Footer } from './Footer'
 import { useAuth } from '../auth/AuthContext'
-import { useGarage } from '../api/queries'
+import { useGarage, useUnreadWhatsAppCount } from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
 import { resolveLayoutVariant } from '../lib/layoutVariant'
 import { PLATFORM_NAME } from '../lib/branding'
@@ -9,6 +9,7 @@ import { PLATFORM_NAME } from '../lib/branding'
 export function Layout() {
   const { logout } = useAuth()
   const { data: garage } = useGarage()
+  const { data: unread } = useUnreadWhatsAppCount()
   const garageId = useGarageId()
   const location = useLocation()
 
@@ -25,6 +26,7 @@ export function Layout() {
     { to: `/${garageId}/customers`, label: 'Customers' },
     { to: `/${garageId}/appointments`, label: 'Appointments' },
     { to: `/${garageId}/booking-requests`, label: 'Requests' },
+    { to: `/${garageId}/communications`, label: 'Communications', badge: unread?.whatsapp_unread },
     { to: `/${garageId}/settings`, label: 'Settings' },
   ]
 
@@ -54,6 +56,11 @@ export function Layout() {
                   }
                 >
                   {item.label}
+                  {!!item.badge && (
+                    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-violet-600 px-1 text-xs font-semibold text-white">
+                      {item.badge}
+                    </span>
+                  )}
                 </NavLink>
               ))}
             </nav>

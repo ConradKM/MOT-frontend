@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import * as communicationsApi from './communications'
 import * as garageApi from './garage'
 import * as garageCapacityApi from './garageCapacity'
 import * as garageScheduleApi from './garageSchedule'
@@ -619,5 +620,94 @@ export function useCustomerAppointment(id: string | undefined) {
     queryFn: () => customerAccountApi.getCustomerAppointment(id as string),
     enabled: !!id && !!getCustomerAccessToken(),
     retry: false,
+  })
+}
+
+// Communications
+export function useCommunicationsOverview() {
+  return useQuery({
+    queryKey: ['communicationsOverview'],
+    queryFn: communicationsApi.getOverview,
+    staleTime: 15_000,
+  })
+}
+
+export function useUnreadWhatsAppCount() {
+  return useQuery({
+    queryKey: ['communicationsUnreadCount'],
+    queryFn: communicationsApi.getUnreadCount,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  })
+}
+
+export function useCalls(params: communicationsApi.CallListParams) {
+  return useQuery({
+    queryKey: ['calls', params],
+    queryFn: () => communicationsApi.listCalls(params),
+  })
+}
+
+export function useCall(id: string | undefined) {
+  return useQuery({
+    queryKey: ['call', id],
+    queryFn: () => communicationsApi.getCall(id as string),
+    enabled: !!id,
+  })
+}
+
+export function useInitiateCall() {
+  return useMutation({
+    mutationFn: (data: { customer_id?: string; to?: string }) =>
+      communicationsApi.initiateCall(data),
+  })
+}
+
+export function useConversations(params: communicationsApi.ConversationListParams = {}) {
+  return useQuery({
+    queryKey: ['conversations', params],
+    queryFn: () => communicationsApi.listConversations(params),
+    refetchInterval: 20_000,
+  })
+}
+
+export function useConversationMessages(phone: string | undefined) {
+  return useQuery({
+    queryKey: ['conversationMessages', phone],
+    queryFn: () => communicationsApi.getConversationMessages(phone as string),
+    enabled: !!phone,
+    refetchInterval: 10_000,
+  })
+}
+
+export function useMarkConversationRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (phone: string) => communicationsApi.markConversationRead(phone),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['conversations'] })
+      qc.invalidateQueries({ queryKey: ['communicationsUnreadCount'] })
+      qc.invalidateQueries({ queryKey: ['communicationsOverview'] })
+    },
+  })
+}
+
+export function useSendWhatsAppMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { customer_id?: string; to?: string; body: string }) =>
+      communicationsApi.sendWhatsAppMessage(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['conversations'] })
+      qc.invalidateQueries({ queryKey: ['conversationMessages'] })
+    },
+  })
+}
+
+export function useCustomerCommunications(customerId: string | undefined) {
+  return useQuery({
+    queryKey: ['customerCommunications', customerId],
+    queryFn: () => communicationsApi.getCustomerCommunications(customerId as string),
+    enabled: !!customerId,
   })
 }

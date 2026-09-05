@@ -27,6 +27,11 @@ import { GarageDetails } from './pages/settings/GarageDetails'
 import { BookingRequestsList } from './pages/bookingRequests/BookingRequestsList'
 import { MotRemindersList } from './pages/motReminders/MotRemindersList'
 import { AppointmentStatusesList } from './pages/appointmentStatuses/AppointmentStatusesList'
+import { CommunicationsLayout } from './components/communications/CommunicationsLayout'
+import { CommunicationsOverview } from './pages/communications/CommunicationsOverview'
+import { CallsList } from './pages/communications/CallsList'
+import { WhatsAppInbox } from './pages/communications/WhatsAppInbox'
+import { ContactCustomer } from './pages/communications/ContactCustomer'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
 import { BookingWizard } from './pages/customer/BookingWizard'
@@ -79,6 +84,13 @@ export default function App() {
 
           <Route path="booking-requests" element={<BookingRequestsList />} />
           <Route path="mot-reminders" element={<MotRemindersList />} />
+
+          <Route path="communications" element={<CommunicationsLayout />}>
+            <Route index element={<CommunicationsOverview />} />
+            <Route path="calls" element={<CallsList />} />
+            <Route path="whatsapp" element={<WhatsAppInbox />} />
+            <Route path="contact" element={<ContactCustomer />} />
+          </Route>
 
           <Route path="appointments" element={<AppointmentsCalendar />} />
           <Route path="appointments/new" element={<AppointmentForm />} />

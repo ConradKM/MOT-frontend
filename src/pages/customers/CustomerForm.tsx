@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useCreateCustomer, useCustomer, useUpdateCustomer } from '../../api/queries'
 import { errorMessage, fieldErrors } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
@@ -11,6 +11,7 @@ export function CustomerForm() {
   const isEdit = customerId !== undefined
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const [searchParams] = useSearchParams()
 
   const { data: existing } = useCustomer(customerId)
   const createMutation = useCreateCustomer()
@@ -19,7 +20,9 @@ export function CustomerForm() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
+  // Prefilled when arriving from an unknown caller in Communications
+  // ("Add customer") - only relevant for a brand new customer.
+  const [phone, setPhone] = useState(() => (isEdit ? '' : (searchParams.get('phone') ?? '')))
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
 

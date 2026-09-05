@@ -18,6 +18,7 @@ import { formatDateTime } from '../../lib/datetime'
 import { statusBadgeClass, statusLabel, statusOptions } from '../../lib/appointmentStatuses'
 import { employeeDisplayName } from '../../lib/employees'
 import { RichDropdown } from '../../components/rich/RichDropdown'
+import { ContactShortcuts } from '../../components/communications/ContactShortcuts'
 import type { AppointmentStatus } from '../../types'
 
 const COMPLETED_KEY = 'COMPLETED'
@@ -108,6 +109,9 @@ export function AppointmentOverview() {
           <p className="mt-0.5 text-sm text-slate-900">
             {customer ? `${customer.first_name} ${customer.last_name}` : '—'}
           </p>
+          {customer && (
+            <ContactShortcuts customerId={customer.id} phone={customer.phone} className="mt-2" />
+          )}
         </div>
         <div>
           <p className="text-xs font-medium uppercase text-slate-400">Vehicle</p>

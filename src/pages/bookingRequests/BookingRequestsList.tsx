@@ -12,6 +12,7 @@ import { errorMessage } from '../../lib/errors'
 import { employeeDisplayName } from '../../lib/employees'
 import { formatDateShort, formatDateTime, localInputValueToIso } from '../../lib/datetime'
 import { formatDurationMinutes } from '../../lib/duration'
+import { ContactShortcuts } from '../../components/communications/ContactShortcuts'
 
 const STATUS_TABS: BookingRequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED']
 
@@ -59,6 +60,13 @@ function RequestDetails({ request }: { request: BookingRequest }) {
           {request.customer_email}
           {request.customer_phone ? ` · ${request.customer_phone}` : ''}
         </dd>
+        {request.customer_phone && request.status === 'PENDING' && (
+          <ContactShortcuts
+            phone={request.customer_phone}
+            name={`${request.customer_first_name} ${request.customer_last_name}`}
+            className="mt-2"
+          />
+        )}
       </div>
       <div>
         <dt className="font-medium text-slate-700">Vehicle</dt>

@@ -1,9 +1,17 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useCustomer, useDeleteCustomer, useVehicles } from '../../api/queries'
+import { useCustomer, useCustomerCommunications, useDeleteCustomer, useVehicles } from '../../api/queries'
 import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
-import { formatDateShort } from '../../lib/datetime'
+import { formatDateShort, formatDateTime } from '../../lib/datetime'
+import { ContactShortcuts } from '../../components/communications/ContactShortcuts'
+import {
+  callStatusBadgeClass,
+  callStatusLabel,
+  directionLabel,
+  whatsappStatusBadgeClass,
+  whatsappStatusLabel,
+} from '../../lib/communications'
 
 export function CustomerDetail() {
   const garageId = useGarageId()
@@ -15,6 +23,7 @@ export function CustomerDetail() {
   // include_inactive: an archived-but-historical vehicle must stay visible
   // here even though it's hidden from the garage-wide vehicles list.
   const { data: vehicles } = useVehicles({ customer_id: customerId, include_inactive: true })
+  const { data: communications } = useCustomerCommunications(customerId)
   const deleteMutation = useDeleteCustomer()
 
   const handleDelete = async () => {
@@ -56,6 +65,7 @@ export function CustomerDetail() {
           <p className="mt-1 text-sm text-slate-500">
             {customer.email ?? 'No email'} · {customer.phone ?? 'No phone'}
           </p>
+          <ContactShortcuts customerId={customer.id} phone={customer.phone} className="mt-3" />
         </div>
         <div className="flex gap-2">
           <Link
@@ -120,6 +130,43 @@ export function CustomerDetail() {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-slate-900">Communications</h2>
+        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          {(!communications || communications.length === 0) && (
+            <p className="p-4 text-sm text-slate-500">
+              No calls or WhatsApp messages with this customer yet.
+            </p>
+          )}
+          {communications && communications.length > 0 && (
+            <div className="divide-y divide-slate-100">
+              {communications.map((c) => (
+                <div key={c.id} className="flex items-start justify-between gap-4 px-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">
+                      {c.channel === 'WHATSAPP' ? 'WhatsApp' : 'Phone'} · {directionLabel(c.direction)}
+                    </p>
+                    {c.body && <p className="mt-0.5 text-sm text-slate-600">&ldquo;{c.body}&rdquo;</p>}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-xs text-slate-400">{formatDateTime(c.created_at)}</p>
+                    <span
+                      className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        c.channel === 'WHATSAPP'
+                          ? whatsappStatusBadgeClass(c.status)
+                          : callStatusBadgeClass(c)
+                      }`}
+                    >
+                      {c.channel === 'WHATSAPP' ? whatsappStatusLabel(c.status) : callStatusLabel(c)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
