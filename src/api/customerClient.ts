@@ -1,5 +1,6 @@
 import type { ApiErrorBody } from '../types'
 import { ApiError } from './client'
+import { API_BASE_URL } from './config'
 import {
   clearCustomerTokens,
   getCustomerAccessToken,
@@ -19,7 +20,7 @@ async function refreshCustomerAccessToken(): Promise<string | null> {
   if (!refreshToken) return null
 
   try {
-    const res = await fetch('/api/customer/auth/refresh', {
+    const res = await fetch(`${API_BASE_URL}/api/customer/auth/refresh`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${refreshToken}` },
     })
@@ -63,7 +64,7 @@ export async function customerApiFetch<T>(
       const token = getCustomerAccessToken()
       if (token) finalHeaders.Authorization = `Bearer ${token}`
     }
-    return fetch(path, {
+    return fetch(`${API_BASE_URL}${path}`, {
       ...rest,
       headers: finalHeaders,
       body: body !== undefined ? JSON.stringify(body) : undefined,
