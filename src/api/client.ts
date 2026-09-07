@@ -1,4 +1,5 @@
 import type { ApiErrorBody } from '../types'
+import { API_BASE_URL } from './config'
 import { getAccessToken, getRefreshToken, setAccessToken, clearTokens } from './tokens'
 
 export class ApiError extends Error {
@@ -21,7 +22,7 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshToken) return null
 
   try {
-    const res = await fetch('/api/auth/refresh', {
+    const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${refreshToken}` },
     })
@@ -74,7 +75,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       const token = getAccessToken()
       if (token) finalHeaders.Authorization = `Bearer ${token}`
     }
-    return fetch(path, {
+    return fetch(`${API_BASE_URL}${path}`, {
       ...rest,
       headers: finalHeaders,
       body: body !== undefined ? JSON.stringify(body) : undefined,
