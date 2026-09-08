@@ -53,15 +53,11 @@ describe('public routes', () => {
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
 
-  it('offers customer sign-in from the public shell', async () => {
+  it('offers one sign-in button from the public shell', async () => {
     renderApp('/book/g1')
-    expect(await screen.findByRole('link', { name: /customer sign in/i })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Sign In' })).toHaveAttribute(
       'href',
       '/customer/login',
-    )
-    expect(screen.getByRole('link', { name: /business staff sign in/i })).toHaveAttribute(
-      'href',
-      '/login',
     )
   })
 })
@@ -110,12 +106,12 @@ describe('staff protected routes', () => {
 describe('customer portal routes', () => {
   it('redirects a signed-out visitor away from the account hub', async () => {
     renderApp('/customer/account')
-    expect(await screen.findByRole('heading', { name: 'Your account' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
 
   it('guards an individual appointment page too', async () => {
     renderApp('/customer/appointments/a1')
-    expect(await screen.findByRole('heading', { name: 'Your account' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
 
   it('lets a signed-in customer reach their account hub', async () => {
@@ -137,7 +133,7 @@ describe('customer portal routes', () => {
     // The two sessions are independent; one must never stand in for the other.
     signInAsStaff()
     renderApp('/customer/account')
-    expect(await screen.findByRole('heading', { name: 'Your account' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()
   })
 
   it('does not let a customer session unlock the staff app', async () => {

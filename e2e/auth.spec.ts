@@ -181,7 +181,7 @@ test.describe('the customer portal', () => {
   test('a signed-out visitor cannot reach the account hub', async ({ page }) => {
     await stubApi(page)
     await page.goto('/customer/account')
-    await expect(page.getByRole('heading', { name: 'Your account' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   })
 
   test('a staff session does not unlock the customer portal', async ({ page }) => {
@@ -189,7 +189,7 @@ test.describe('the customer portal', () => {
     await signInAsStaff(page)
     await stubApi(page)
     await page.goto('/customer/account')
-    await expect(page.getByRole('heading', { name: 'Your account' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   })
 
   test('a customer session does not unlock the staff app', async ({ page }) => {

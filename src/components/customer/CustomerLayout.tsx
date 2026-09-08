@@ -13,16 +13,19 @@ export function CustomerLayout() {
           <Link to="/" className="text-sm font-semibold text-slate-900">
             {PLATFORM_NAME}
           </Link>
-          <nav className="flex items-center gap-4 text-sm font-medium">
-            <Link
-              to={isAuthenticated ? '/customer/account' : '/customer/login'}
-              className="text-slate-500 hover:text-slate-800"
-            >
-              {isAuthenticated ? 'My account' : 'Customer sign in'}
-            </Link>
-            <Link to="/login" className="text-slate-500 hover:text-slate-800">
-              Business staff sign in
-            </Link>
+          <nav className="text-sm font-medium">
+            {isAuthenticated ? (
+              <Link to="/customer/account" className="text-slate-500 hover:text-slate-800">
+                My account
+              </Link>
+            ) : (
+              <Link
+                to="/customer/login"
+                className="rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-800"
+              >
+                Sign In
+              </Link>
+            )}
           </nav>
         </div>
       </header>

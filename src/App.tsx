@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
-import { Login } from './pages/Login'
+import { SignIn } from './pages/SignIn'
 import { Register } from './pages/Register'
 import { ForgotPassword } from './pages/ForgotPassword'
 import { ResetPassword } from './pages/ResetPassword'
@@ -39,7 +39,6 @@ import { CommunicationsAutomationSettings } from './pages/settings/Communication
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
 import { BookingWizard } from './pages/customer/BookingWizard'
-import { CustomerLogin } from './pages/customer/CustomerLogin'
 import { CustomerAccount } from './pages/customer/CustomerAccount'
 import { CustomerAppointmentDetail } from './pages/customer/CustomerAppointmentDetail'
 import { Dashboard, DashboardRedirect } from './pages/Dashboard'
@@ -47,7 +46,11 @@ import { Dashboard, DashboardRedirect } from './pages/Dashboard'
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
+      {/* Reachable at either URL - SignIn itself picks the default tab from
+          the path (business at /login, customer at /customer/login), so
+          existing links/redirects into either one still land correctly. */}
+      <Route path="/login" element={<SignIn />} />
+      <Route path="/customer/login" element={<SignIn />} />
       {/* Onboarding only — not linked from Login; garage users can't self-register. */}
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -59,7 +62,6 @@ export default function App() {
         <Route path="/" element={<Navigate to="/book" replace />} />
         <Route path="/book" element={<BookingWizard />} />
         <Route path="/book/:garageId" element={<BookingWizard />} />
-        <Route path="/customer/login" element={<CustomerLogin />} />
         <Route element={<CustomerProtectedRoute />}>
           <Route path="/customer/account" element={<CustomerAccount />} />
           <Route
