@@ -27,12 +27,11 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      # A plain checkout. A sparse one would fetch marginally less, but this
+      # is a required check: a checkout quirk here would block every PR, and
+      # the repository is small enough that the saving is not worth that.
       - name: Check out the repository
         uses: actions/checkout@v4
-        with:
-          # Only the check script is needed, not the app.
-          sparse-checkout: .github/scripts
-          sparse-checkout-cone-mode: false
 
       - name: Set up Node
         uses: actions/setup-node@v4
