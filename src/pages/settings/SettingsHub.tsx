@@ -11,7 +11,7 @@ interface SettingsPage {
 const SETTINGS_PAGES: SettingsPage[] = [
   {
     title: 'Business Details',
-    description: 'Your business name, telephone, email and address (read-only).',
+    description: 'Your business name, telephone, email, address — and your booking QR code.',
     slug: 'settings/garage-details',
   },
   {

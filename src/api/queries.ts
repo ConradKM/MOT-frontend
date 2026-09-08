@@ -31,6 +31,14 @@ export function useGarage() {
   return useQuery({ queryKey: ['garage'], queryFn: garageApi.getGarage })
 }
 
+export function useUpdateGarage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: garageApi.updateGarage,
+    onSuccess: (garage) => qc.setQueryData(['garage'], garage),
+  })
+}
+
 export function useCapacitySummary() {
   return useQuery({
     queryKey: ['garageCapacitySummary'],
