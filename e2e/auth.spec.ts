@@ -135,6 +135,7 @@ test.describe('the customer portal', () => {
             },
             vehicles: [],
             appointments: [],
+            pending_requests: [],
           }),
       },
     ])
@@ -164,6 +165,7 @@ test.describe('the customer portal', () => {
             },
             vehicles: [],
             appointments: [],
+            pending_requests: [],
           }),
       },
     ])

@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { CustomerAppointmentSummary, CustomerVehicle } from '../../api/customerAccount'
+import type {
+  CustomerAppointmentSummary,
+  CustomerPendingRequest,
+  CustomerVehicle,
+} from '../../api/customerAccount'
 import {
   useCustomerAccount,
   useCustomerAppointment,
@@ -9,7 +13,7 @@ import {
 import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 import { MotBadge } from '../../components/MotBadge'
 import { appointmentStatusClasses, appointmentStatusLabels } from '../../lib/appointments'
-import { formatDateShort, formatDateTime } from '../../lib/datetime'
+import { formatDateShort, formatDateTime, formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors } from '../../lib/errors'
 import { AppointmentDetailBody } from './CustomerAppointmentDetail'
 
@@ -42,7 +46,7 @@ export function CustomerAccount() {
     )
   }
 
-  const { customer, vehicles, appointments } = data
+  const { customer, vehicles, appointments, pending_requests: pendingRequests = [] } = data
   const now = Date.now()
   const upcoming = appointments.filter((a) => new Date(a.start_time).getTime() >= now)
   const past = appointments
@@ -66,6 +70,20 @@ export function CustomerAccount() {
           Sign out
         </button>
       </div>
+
+      {pendingRequests.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-slate-900">Pending requests</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Awaiting review by {customer.garage_name}.
+          </p>
+          <div className="mt-3 space-y-2">
+            {pendingRequests.map((r) => (
+              <PendingRequestRow key={r.id} request={r} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="text-lg font-semibold text-slate-900">Your details</h2>
@@ -195,6 +213,34 @@ function CreateAccountForm() {
         {setPassword.isPending ? 'Saving…' : 'Set password'}
       </button>
     </form>
+  )
+}
+
+/** A booking request still awaiting staff review - no Appointment exists yet
+ * (see app/booking_requests/routes.py::BookingRequestApprove on the backend),
+ * so there's nothing to expand here beyond what was requested. */
+function PendingRequestRow({ request }: { request: CustomerPendingRequest }) {
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-slate-900">
+            {request.appointment_type_name ?? 'Appointment request'}
+          </p>
+          <p className="truncate text-xs text-slate-500">
+            {formatLongDate(request.preferred_date)}
+            {request.preferred_time ? ` at ${request.preferred_time.slice(0, 5)}` : ''}
+            {request.vehicle_registration ? ` · ${request.vehicle_registration}` : ''}
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+          Pending review
+        </span>
+      </div>
+      {request.booking_reference && (
+        <p className="mt-2 text-xs text-slate-400">Reference: {request.booking_reference}</p>
+      )}
+    </div>
   )
 }
 

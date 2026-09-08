@@ -54,6 +54,17 @@ function serveAppointmentDetail(id: string, body: unknown) {
   server.use(http.get(`*/api/customer/appointments/${id}`, () => HttpResponse.json(body)))
 }
 
+const pendingRequest = (patch = {}) => ({
+  id: 'pr1',
+  booking_reference: 'BK7F3K9Q2',
+  preferred_date: '2026-07-10',
+  preferred_time: '09:30:00',
+  vehicle_registration: 'OB08AUD',
+  notes: null,
+  appointment_type_name: 'Full service',
+  ...patch,
+})
+
 const ACCOUNT = {
   customer: {
     first_name: 'Oliver',
@@ -65,6 +76,7 @@ const ACCOUNT = {
   },
   vehicles: [vehicle()],
   appointments: [appointment()],
+  pending_requests: [],
 }
 
 function renderAccount() {
@@ -220,6 +232,23 @@ describe('CustomerAccount — content', () => {
     // Still on the account page - this is a same-page dropdown, not a link.
     expect(screen.queryByRole('heading', { name: 'Customer sign in' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Hi Oliver' })).toBeInTheDocument()
+  })
+
+  it('shows a pending request with its reference, since it has no appointment yet', async () => {
+    serveAccount({ ...ACCOUNT, pending_requests: [pendingRequest()] })
+    renderAccount()
+
+    expect(await screen.findByText('Pending requests')).toBeInTheDocument()
+    expect(screen.getByText('Full service')).toBeInTheDocument()
+    expect(screen.getByText('Pending review')).toBeInTheDocument()
+    expect(screen.getByText('Reference: BK7F3K9Q2')).toBeInTheDocument()
+  })
+
+  it('hides the pending-requests section entirely when there are none', async () => {
+    serveAccount(ACCOUNT)
+    renderAccount()
+    await screen.findByRole('heading', { name: 'Hi Oliver' })
+    expect(screen.queryByText('Pending requests')).not.toBeInTheDocument()
   })
 
   it('says so plainly when there is nothing on file', async () => {
