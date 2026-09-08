@@ -76,6 +76,61 @@ records) or reject.
 is empty and the backend's `none` provider accepts it. The backend must be
 configured with the matching secret (`CAPTCHA_PROVIDER` / `CAPTCHA_SECRET`).
 
+## Testing
+
+The frontend test suite is self-contained: every network call is mocked, so
+nothing here needs the Flask backend or PostgreSQL running.
+
+```bash
+npm run test              # all unit + component + integration tests (Vitest)
+npm run test:watch        # the same, in watch mode
+npm run test:unit         # lib / api / hooks / auth only
+npm run test:components   # shared components only
+npm run test:integration  # pages + whole-app routing only
+npm run test:coverage     # all of the above, with a coverage report
+npm run test:e2e          # Playwright, against a real production build
+npm run test:e2e:ui       # Playwright's interactive runner
+npm run lint              # oxlint
+npm run typecheck         # tsc -b
+npm run build             # production build
+```
+
+Run exactly what CI runs, in the same order, with one command:
+
+```bash
+npm run ci
+```
+
+First-time E2E setup needs the browser downloaded once:
+
+```bash
+npx playwright install chromium
+```
+
+- **Vitest + Testing Library** cover units, components and integration. The
+  network is mocked with **MSW** (`src/test/msw/`), so integration tests
+  exercise the real `apiFetch` client — auth headers, the 401→refresh→retry
+  path and `ApiError` parsing included. Accessibility is asserted with
+  **axe-core** via `src/test/a11y.ts`.
+- **Playwright** covers the highest-value journeys in real Chromium against the
+  production bundle (`vite preview`), with every `/api/**` call intercepted by
+  `e2e/fixtures/api.ts`. This is also where responsive behaviour and colour
+  contrast are checked, since jsdom applies no CSS.
+
+`docs/TESTING.md` records the strategy, the measured coverage, what is still
+untested, and the defects this work uncovered.
+
+## CI
+
+`.github/workflows/frontend-ci.yml` runs on every pull request targeting `main`
+(and on pushes to `main`). It lints, type-checks, runs the full Vitest suite
+with coverage, builds the production frontend and runs the Playwright suite.
+The pipeline never contacts a real backend or database.
+
+The workflow ends in a single `Frontend CI` job that fails if any earlier job
+did — name that one as the required status check in the branch protection rule
+for `main`, and it keeps covering new jobs added later without reconfiguration.
+
 ## Project structure
 
 ```text
@@ -87,5 +142,9 @@ src/
 ├── lib/          small helpers (JWT decode, date/time, error formatting)
 ├── pages/        one folder per resource (customers, vehicles, appointments, garage)
 │   └── customer/ public landing page + booking wizard
+├── test/         test setup, fixtures, MSW handlers, a11y helper
 └── types/        API domain types
+
+e2e/              Playwright specs + their API stub fixtures
+docs/TESTING.md   test strategy, coverage, known gaps
 ```

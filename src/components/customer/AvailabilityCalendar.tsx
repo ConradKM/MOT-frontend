@@ -127,6 +127,70 @@ export function AvailabilityCalendar({ slug, selectedDate, onSelectDate }: Props
     setFocusDate(next)
   }
 
+  /** One day cell. Extracted so the week rows below stay readable. */
+  const renderDay = (day: number) => {
+    const iso = isoFor(monthStart, day)
+    const avail = byDate.get(iso)
+    const outOfWindow = !avail
+    const level = avail?.level ?? 'past'
+    const style = DAY_LEVELS[level]
+    const selectable = !outOfWindow && style.selectable
+    const isSelected = iso === selectedDate
+    const label = outOfWindow
+      ? `${formatLongDate(iso)} — not bookable`
+      : `${formatLongDate(iso)} — ${style.label}${selectable ? ', selectable' : ''}`
+
+    return (
+      <button
+        key={iso}
+        type="button"
+        data-date={iso}
+        role="gridcell"
+        aria-label={label}
+        aria-disabled={!selectable}
+        // aria-selected, not aria-pressed: a gridcell does not support the
+        // toggle-button attribute, and assistive tech ignores it there.
+        aria-selected={isSelected}
+        tabIndex={iso === activeRovingDate ? 0 : -1}
+        onClick={() => {
+          setFocusDate(iso)
+          if (selectable) onSelectDate(iso)
+        }}
+        className={[
+          'flex h-14 flex-col items-center justify-center rounded-md border text-sm transition',
+          outOfWindow ? 'cursor-default border-transparent text-slate-300' : style.cell,
+          selectable ? 'cursor-pointer' : 'cursor-not-allowed',
+          isSelected ? 'ring-2 ring-slate-900 ring-offset-1' : '',
+        ].join(' ')}
+      >
+        <span className="font-semibold">{day}</span>
+        {!outOfWindow && (
+          <span className="mt-0.5 text-[10px] leading-none">
+            {style.icon && <span aria-hidden="true">{style.icon} </span>}
+            {level === 'available'
+              ? 'Open'
+              : level === 'limited'
+                ? 'Few left'
+                : level === 'full'
+                  ? 'Full'
+                  : 'Closed'}
+          </span>
+        )}
+      </button>
+    )
+  }
+
+  // The month's cells chunked into calendar weeks - `null` for the leading
+  // blanks - so each week can be wrapped in the role="row" the ARIA grid
+  // pattern requires between a grid and its gridcells.
+  const cells: (number | null)[] = [
+    ...Array.from({ length: leadingBlanks }, () => null),
+    ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ]
+  const weeks = Array.from({ length: Math.ceil(cells.length / 7) }, (_, w) =>
+    cells.slice(w * 7, w * 7 + 7),
+  )
+
   return (
     <div className="rounded-lg border border-slate-200 p-4">
       <div className="flex items-center justify-between">
@@ -179,63 +243,21 @@ export function AvailabilityCalendar({ slug, selectedDate, onSelectDate }: Props
         onKeyDown={handleKeyDown}
         className="mt-1 grid grid-cols-7 gap-1.5"
       >
-        {Array.from({ length: leadingBlanks }).map((_, i) => (
-          <div key={`blank-${i}`} aria-hidden="true" />
+        {weeks.map((week, w) => (
+          // `contents` keeps the 7-column CSS grid intact while giving the
+          // grid the role="row" children the ARIA grid pattern requires -
+          // without rows, gridcell has no valid parent.
+          <div key={`week-${w}`} role="row" className="contents">
+            {week.map((day, i) =>
+              day === null ? (
+                <div key={`blank-${w}-${i}`} aria-hidden="true" />
+              ) : (
+                renderDay(day)
+              ),
+            )}
+          </div>
         ))}
 
-        {Array.from({ length: totalDays }, (_, i) => i + 1).map((day) => {
-          const iso = isoFor(monthStart, day)
-          const avail = byDate.get(iso)
-          const outOfWindow = !avail
-          const level = avail?.level ?? 'past'
-          const style = DAY_LEVELS[level]
-          const selectable = !outOfWindow && style.selectable
-          const isSelected = iso === selectedDate
-          const label = outOfWindow
-            ? `${formatLongDate(iso)} — not bookable`
-            : `${formatLongDate(iso)} — ${style.label}${
-                selectable ? ', selectable' : ''
-              }`
-
-          return (
-            <button
-              key={iso}
-              type="button"
-              data-date={iso}
-              role="gridcell"
-              aria-label={label}
-              aria-disabled={!selectable}
-              aria-pressed={isSelected}
-              tabIndex={iso === activeRovingDate ? 0 : -1}
-              onClick={() => {
-                setFocusDate(iso)
-                if (selectable) onSelectDate(iso)
-              }}
-              className={[
-                'flex h-14 flex-col items-center justify-center rounded-md border text-sm transition',
-                outOfWindow
-                  ? 'cursor-default border-transparent text-slate-300'
-                  : style.cell,
-                selectable ? 'cursor-pointer' : 'cursor-not-allowed',
-                isSelected ? 'ring-2 ring-slate-900 ring-offset-1' : '',
-              ].join(' ')}
-            >
-              <span className="font-semibold">{day}</span>
-              {!outOfWindow && (
-                <span className="mt-0.5 text-[10px] leading-none">
-                  {style.icon && <span aria-hidden="true">{style.icon} </span>}
-                  {level === 'available'
-                    ? 'Open'
-                    : level === 'limited'
-                      ? 'Few left'
-                      : level === 'full'
-                        ? 'Full'
-                        : 'Closed'}
-                </span>
-              )}
-            </button>
-          )
-        })}
       </div>
 
       <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">

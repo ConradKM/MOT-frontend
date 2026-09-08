@@ -1,0 +1,135 @@
+name: Frontend CI
+
+# Runs on every pull request that targets main, and on main itself so the
+# branch's own status stays visible.
+#
+# Nothing here needs the Flask backend or PostgreSQL: the Vitest suite mocks
+# the network with MSW and the Playwright suite intercepts every /api/** call
+# with its own fixtures (e2e/fixtures/api.ts).
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A new push to the same PR cancels the previous, still-running check.
+concurrency:
+  group: frontend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, types & unit/component/integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      # One Vitest run covers all three layers and enforces the coverage
+      # floor in vitest.config.ts. The per-layer scripts (test:unit,
+      # test:components, test:integration) exist for local use; splitting
+      # them here would just pay the startup cost three times.
+      - name: Unit, component & integration tests (with coverage)
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+      - name: Build the production frontend
+        run: npm run build
+
+      - name: Upload production build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  e2e:
+    name: End-to-end tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # --with-deps installs the system libraries headless Chromium needs on
+      # a bare ubuntu runner.
+      - name: Install Playwright's Chromium
+        run: npx playwright install --with-deps chromium
+
+      # playwright.config.ts builds the app and serves it with `vite preview`,
+      # so this exercises the real production bundle. Every API call is
+      # intercepted by the test's own fixtures.
+      - name: Run end-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload the Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+      - name: Upload failure traces and videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failures
+          path: test-results/
+          retention-days: 7
+
+  # A single job to name as the required status check in branch protection —
+  # it stays green only if every job above did, so adding a job later does not
+  # mean reconfiguring the protection rule.
+  frontend-ci:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+    needs: [quality, e2e]
+    if: always()
+    steps:
+      - name: Fail if any frontend check failed
+        run: |
+          echo "quality: ${{ needs.quality.result }}"
+          echo "e2e:     ${{ needs.e2e.result }}"
+          if [ "${{ needs.quality.result }}" != "success" ] || [ "${{ needs.e2e.result }}" != "success" ]; then
+            echo "::error::One or more frontend checks failed - see the jobs above."
+            exit 1
+          fi
+          echo "All frontend checks passed."

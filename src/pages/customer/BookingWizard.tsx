@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useId, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { WizardStepper, type WizardStep } from '../../components/customer/WizardStepper'
@@ -382,6 +382,15 @@ interface StepProps {
   update: (field: keyof WizardData, value: string) => void
 }
 
+/** Props a Field hands its control so the label, the control and any
+ * validation message are programmatically associated - without them a screen
+ * reader announces an unnamed "edit text" for every field on this form. */
+interface FieldControlProps {
+  id: string
+  'aria-describedby': string | undefined
+  'aria-invalid': boolean | undefined
+}
+
 function Field({
   label,
   required,
@@ -393,16 +402,29 @@ function Field({
   required?: boolean
   optional?: boolean
   error?: string
-  children: ReactNode
+  children: (control: FieldControlProps) => ReactNode
 }) {
+  const id = useId()
+  const errorId = `${id}-error`
+
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700">
+      <label className="block text-sm font-medium text-slate-700" htmlFor={id}>
         {label} {required && <span className="text-red-500">*</span>}
         {optional && <span className="text-xs font-normal text-slate-400">(optional)</span>}
       </label>
-      <div className="mt-1">{children}</div>
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      <div className="mt-1">
+        {children({
+          id,
+          'aria-describedby': error ? errorId : undefined,
+          'aria-invalid': error ? true : undefined,
+        })}
+      </div>
+      {error && (
+        <p id={errorId} className="mt-1 text-sm text-red-600">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
@@ -544,31 +566,48 @@ function DetailsStep({ data, errors, update }: StepProps) {
         <h2 className="text-lg font-semibold text-slate-900">Vehicle details</h2>
         <div className="mt-4 space-y-4">
           <Field label="Registration number" required error={errors.registration}>
-            <RichTextInput
-              value={data.registration}
-              onChange={(v) => update('registration', v.toUpperCase())}
-              className="uppercase"
-            />
+            {(control) => (
+              <RichTextInput
+                {...control}
+                value={data.registration}
+                onChange={(v) => update('registration', v.toUpperCase())}
+                className="uppercase"
+              />
+            )}
           </Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Make" optional error={errors.make}>
-              <RichTextInput value={data.make} onChange={(v) => update('make', v)} />
+              {(control) => (
+                <RichTextInput {...control} value={data.make} onChange={(v) => update('make', v)} />
+              )}
             </Field>
             <Field label="Model" optional error={errors.model}>
-              <RichTextInput value={data.model} onChange={(v) => update('model', v)} />
+              {(control) => (
+                <RichTextInput {...control} value={data.model} onChange={(v) => update('model', v)} />
+              )}
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Year" optional error={errors.year}>
-              <RichTextInput type="number" value={data.year} onChange={(v) => update('year', v)} />
+              {(control) => (
+                <RichTextInput
+                  {...control}
+                  type="number"
+                  value={data.year}
+                  onChange={(v) => update('year', v)}
+                />
+              )}
             </Field>
             <Field label="Current mileage" optional error={errors.mileage}>
-              <RichTextInput
-                type="number"
-                min={0}
-                value={data.mileage}
-                onChange={(v) => update('mileage', v)}
-              />
+              {(control) => (
+                <RichTextInput
+                  {...control}
+                  type="number"
+                  min={0}
+                  value={data.mileage}
+                  onChange={(v) => update('mileage', v)}
+                />
+              )}
             </Field>
           </div>
         </div>
@@ -579,22 +618,44 @@ function DetailsStep({ data, errors, update }: StepProps) {
         <div className="mt-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Field label="First name" required error={errors.firstName}>
-              <RichTextInput value={data.firstName} onChange={(v) => update('firstName', v)} />
+              {(control) => (
+                <RichTextInput
+                  {...control}
+                  value={data.firstName}
+                  onChange={(v) => update('firstName', v)}
+                />
+              )}
             </Field>
             <Field label="Last name" required error={errors.lastName}>
-              <RichTextInput value={data.lastName} onChange={(v) => update('lastName', v)} />
+              {(control) => (
+                <RichTextInput
+                  {...control}
+                  value={data.lastName}
+                  onChange={(v) => update('lastName', v)}
+                />
+              )}
             </Field>
           </div>
           <Field label="Email" required error={errors.email}>
-            <RichTextInput type="email" value={data.email} onChange={(v) => update('email', v)} />
+            {(control) => (
+              <RichTextInput
+                {...control}
+                type="email"
+                value={data.email}
+                onChange={(v) => update('email', v)}
+              />
+            )}
           </Field>
           <Field label="Mobile number" required error={errors.phone}>
-            <RichTextInput
-              type="tel"
-              value={data.phone}
-              onChange={(v) => update('phone', v)}
-              placeholder="07123 456789"
-            />
+            {(control) => (
+              <RichTextInput
+                {...control}
+                type="tel"
+                value={data.phone}
+                onChange={(v) => update('phone', v)}
+                placeholder="07123 456789"
+              />
+            )}
           </Field>
           <p className="-mt-2 text-xs text-slate-400">
             We'll text you about this booking - no need to add +44, just enter it as you normally
@@ -608,7 +669,11 @@ function DetailsStep({ data, errors, update }: StepProps) {
         <p className="mt-1 text-sm text-slate-500">
           Anything else you'd like the garage to know?
         </p>
+        <label className="sr-only" htmlFor="booking-notes">
+          Additional information
+        </label>
         <textarea
+          id="booking-notes"
           rows={3}
           value={data.notes}
           onChange={(e) => update('notes', e.target.value)}
@@ -685,7 +750,7 @@ function ReviewStep({
       {captchaEnabled && (
         <div className="mt-4">
           <Field label="Verification" required>
-            <Captcha onToken={onCaptchaToken} />
+            {() => <Captcha onToken={onCaptchaToken} />}
           </Field>
         </div>
       )}
