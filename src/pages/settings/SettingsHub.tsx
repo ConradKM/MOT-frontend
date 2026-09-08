@@ -10,7 +10,7 @@ interface SettingsPage {
 
 const SETTINGS_PAGES: SettingsPage[] = [
   {
-    title: 'Garage Details',
+    title: 'Business Details',
     description: 'Your business name, telephone, email and address (read-only).',
     slug: 'settings/garage-details',
   },
@@ -31,7 +31,7 @@ const SETTINGS_PAGES: SettingsPage[] = [
   },
   {
     title: 'Employees',
-    description: 'See who has an account at your garage and add new staff.',
+    description: 'See who has an account at your business and add new staff.',
     slug: 'settings/employees',
   },
   {
@@ -41,7 +41,7 @@ const SETTINGS_PAGES: SettingsPage[] = [
   },
   {
     title: 'Appointment Types',
-    description: 'The services your garage offers, their prices, and their checklists.',
+    description: 'The services your business offers, their prices, and their checklists.',
     slug: 'settings/appointment-types',
   },
   {

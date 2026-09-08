@@ -255,7 +255,7 @@ describe('Register — garage onboarding', () => {
     )
 
   const fill = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.type(screen.getByLabelText('Garage name'), 'Bennett Motors')
+    await user.type(screen.getByLabelText('Business name'), 'Bennett Motors')
     await user.type(screen.getByLabelText('Owner email'), 'greg@bennett.example')
     await user.type(screen.getByLabelText('Password'), 'longenough1')
   }
@@ -270,7 +270,7 @@ describe('Register — garage onboarding', () => {
     expect(screen.getByText('At least 8 characters.')).toBeInTheDocument()
   })
 
-  it('will not submit without a garage name and owner email', async () => {
+  it('will not submit without a business name and owner email', async () => {
     let posted = false
     server.use(
       http.post('*/api/auth/register', () => {
@@ -280,10 +280,10 @@ describe('Register — garage onboarding', () => {
     )
     const user = userEvent.setup()
     renderRegister()
-    await user.click(screen.getByRole('button', { name: 'Create garage' }))
+    await user.click(screen.getByRole('button', { name: 'Create business' }))
 
     expect(posted).toBe(false)
-    expect(screen.getByLabelText('Garage name')).toBeInvalid()
+    expect(screen.getByLabelText('Business name')).toBeInvalid()
   })
 
   it('treats the owner’s name as optional', async () => {
@@ -297,7 +297,7 @@ describe('Register — garage onboarding', () => {
     const user = userEvent.setup()
     renderRegister()
     await fill(user)
-    await user.click(screen.getByRole('button', { name: 'Create garage' }))
+    await user.click(screen.getByRole('button', { name: 'Create business' }))
 
     expect(await screen.findByRole('heading', { name: 'Dashboard' })).toBeInTheDocument()
     expect(body.first_name).toBeNull()
@@ -316,7 +316,7 @@ describe('Register — garage onboarding', () => {
     const user = userEvent.setup()
     renderRegister()
     await fill(user)
-    await user.click(screen.getByRole('button', { name: 'Create garage' }))
+    await user.click(screen.getByRole('button', { name: 'Create business' }))
     expect(await screen.findByText('Email already registered.')).toBeInTheDocument()
   })
 

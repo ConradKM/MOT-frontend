@@ -64,7 +64,7 @@ function AutomationTogglesForm({ settings }: { settings: AutomationSettings }) {
       showToast('Automation settings saved.', 'success')
     } catch (err) {
       if (isApiError(err) && err.code === 403) {
-        setError('Only the garage owner can change automation settings.')
+        setError('Only the business owner can change automation settings.')
         return
       }
       const fields = fieldErrors(err)
@@ -166,7 +166,7 @@ function TemplateEditor({ template }: { template: MessageTemplate }) {
       showToast('Template saved.', 'success')
     } catch (err) {
       if (isApiError(err) && err.code === 403) {
-        setError('Only the garage owner can edit message templates.')
+        setError('Only the business owner can edit message templates.')
         return
       }
       setError(errorMessage(err))
@@ -275,7 +275,7 @@ export function CommunicationsAutomationSettings() {
       <div className="max-w-2xl">
         <h1 className="text-2xl font-semibold text-slate-900">Communications automation</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Choose which automated messages your garage sends, and customise their wording. This
+          Choose which automated messages your business sends, and customise their wording. This
           never touches your phone/WhatsApp connection details, which stay with the CoMaz OS
           team.
         </p>

@@ -40,7 +40,7 @@ export function ForgotPassword() {
       ) : (
         <>
           <p className="mt-1 text-sm text-slate-500">
-            Enter your garage-login email and we'll send you a reset link.
+            Enter your login email and we'll send you a reset link.
           </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div>

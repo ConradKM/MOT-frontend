@@ -31,7 +31,7 @@ function toTimeInput(value: string): string {
 
 function ownerError(err: unknown): string {
   return isApiError(err) && err.code === 403
-    ? 'Only the garage owner can change availability settings.'
+    ? 'Only the business owner can change availability settings.'
     : errorMessage(err)
 }
 
@@ -50,7 +50,7 @@ export function AvailabilitySettings() {
     <SettingsLayout>
       <h1 className="text-2xl font-semibold text-slate-900">Availability</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Controls the public booking calendar customers see for your garage.
+        Controls the public booking calendar customers see for your business.
       </p>
 
       <div className="mt-8 space-y-10">

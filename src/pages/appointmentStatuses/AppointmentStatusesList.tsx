@@ -58,7 +58,7 @@ function EditRow({ status, onDone }: { status: GarageAppointmentStatus; onDone: 
       showToast('Status updated.', 'success')
       onDone()
     } catch (err) {
-      setError(isApiError(err) && err.code === 403 ? 'Only the garage owner can edit statuses.' : errorMessage(err))
+      setError(isApiError(err) && err.code === 403 ? 'Only the business owner can edit statuses.' : errorMessage(err))
     }
   }
 
@@ -127,7 +127,7 @@ function AddStatusForm() {
       setLabel('')
       showToast('Status added.', 'success')
     } catch (err) {
-      if (isApiError(err) && err.code === 403) setError('Only the garage owner can add statuses.')
+      if (isApiError(err) && err.code === 403) setError('Only the business owner can add statuses.')
       else if (isApiError(err) && err.code === 409) setError('A status with that name already exists.')
       else setError(errorMessage(err))
     }
@@ -181,7 +181,7 @@ export function AppointmentStatusesList() {
       if (isApiError(err) && err.code === 409)
         showToast('This status is in use by one or more appointments.')
       else if (isApiError(err) && err.code === 403)
-        showToast('Only the garage owner can delete statuses.')
+        showToast('Only the business owner can delete statuses.')
       else showToast(errorMessage(err))
     }
   }

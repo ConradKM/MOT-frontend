@@ -21,7 +21,7 @@ export function CustomerLayout() {
               {isAuthenticated ? 'My account' : 'Customer sign in'}
             </Link>
             <Link to="/login" className="text-slate-500 hover:text-slate-800">
-              Garage staff sign in
+              Business staff sign in
             </Link>
           </nav>
         </div>

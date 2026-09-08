@@ -24,7 +24,7 @@ describe('public routes', () => {
     // There is deliberately no garage picker — a booking always starts from
     // the garage's own link.
     renderApp('/book')
-    expect(await screen.findByText(/use your garage's booking link/i)).toBeInTheDocument()
+    expect(await screen.findByText(/use your business's booking link/i)).toBeInTheDocument()
   })
 
   it('opens the wizard for a garage-specific booking link', async () => {
@@ -40,7 +40,7 @@ describe('public routes', () => {
       ),
     )
     renderApp('/book/nope')
-    expect(await screen.findByRole('heading', { name: /garage not found/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /business not found/i })).toBeInTheDocument()
   })
 
   it('falls back to booking for an unknown URL rather than showing a dead end', async () => {
@@ -59,7 +59,7 @@ describe('public routes', () => {
       'href',
       '/customer/login',
     )
-    expect(screen.getByRole('link', { name: /garage staff sign in/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /business staff sign in/i })).toHaveAttribute(
       'href',
       '/login',
     )

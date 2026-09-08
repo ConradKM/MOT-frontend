@@ -75,7 +75,7 @@ export function MotReminderSettings() {
       showToast('Reminder schedule saved.', 'success')
     } catch (err) {
       if (isApiError(err) && err.code === 403) {
-        setError('Only the garage owner can change the reminder schedule.')
+        setError('Only the business owner can change the reminder schedule.')
         return
       }
       const fields = fieldErrors(err)

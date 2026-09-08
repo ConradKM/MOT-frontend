@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { useGarageId } from '../../hooks/useGarageId'
 
 const SECTIONS = [
-  { slug: 'garage-details', label: 'Garage Details' },
+  { slug: 'garage-details', label: 'Business Details' },
   { slug: 'employees', label: 'Employees' },
   { slug: 'roles', label: 'Roles' },
   { slug: 'appointment-types', label: 'Appointment Types' },
