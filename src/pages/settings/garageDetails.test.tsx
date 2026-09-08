@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import { Route, Routes } from 'react-router-dom'
 import { renderWithProviders } from '../../test/utils'
 import { GarageDetails } from './GarageDetails'
@@ -41,8 +41,8 @@ describe('GarageDetails', () => {
     // Website not set -> shown as "Not set", never as an input.
     expect(screen.getByText('Not set')).toBeInTheDocument()
 
+    // The details themselves are still read-only - no inputs.
     expect(screen.queryByRole('textbox')).toBeNull()
-    expect(screen.queryByRole('button')).toBeNull()
   })
 
   it('tells the user to contact the platform administrator', async () => {
@@ -50,5 +50,21 @@ describe('GarageDetails', () => {
     expect(
       await screen.findByText(/contact the platform administrator/i),
     ).toBeInTheDocument()
+  })
+
+  it('shows the public booking link and a QR code with PNG/SVG download', async () => {
+    render()
+
+    // The UUID-based booking URL, not the slug.
+    expect(
+      await screen.findByText('https://app.comaz.co.uk/book/g'),
+    ).toBeInTheDocument()
+
+    const qr = await screen.findByLabelText('Booking link QR code')
+    await waitFor(() => expect(qr.querySelector('svg')).not.toBeNull())
+
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Download PNG' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Download SVG' })).toBeEnabled()
   })
 })
