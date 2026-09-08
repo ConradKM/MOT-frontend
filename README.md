@@ -76,6 +76,21 @@ records) or reject.
 is empty and the backend's `none` provider accepts it. The backend must be
 configured with the matching secret (`CAPTCHA_PROVIDER` / `CAPTCHA_SECRET`).
 
+## Deployment
+
+The production site is a static Vite build (Cloudflare Pages). There is no dev
+proxy in a static build, so the bundle needs the backend's absolute origin at
+build time via `VITE_API_BASE_URL` (`src/api/config.ts`); leave it unset for
+local dev, where Vite proxies `/api` instead.
+
+```bash
+VITE_API_BASE_URL=https://mot-backend.onrender.com
+```
+
+Set it as a build/environment variable in the Cloudflare Pages project. A build
+variable is only baked in on the next build, so a change to it takes effect
+after the following push to `main`.
+
 ## Testing
 
 The frontend test suite is self-contained: every network call is mocked, so
