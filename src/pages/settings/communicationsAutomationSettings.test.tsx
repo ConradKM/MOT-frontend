@@ -83,7 +83,7 @@ describe('CommunicationsAutomationSettings', () => {
 
     await user.click(await screen.findByRole('button', { name: /save automation settings/i }))
 
-    expect(await screen.findByText(/only the garage owner/i)).toBeInTheDocument()
+    expect(await screen.findByText(/only the business owner/i)).toBeInTheDocument()
   })
 
   it('edits, previews and saves a message template', async () => {

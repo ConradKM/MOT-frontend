@@ -67,10 +67,10 @@ test.describe('staff authentication', () => {
       },
     ])
     await page.goto('/register')
-    await page.getByLabel('Garage name').fill('Bennett Motors')
+    await page.getByLabel('Business name').fill('Bennett Motors')
     await page.getByLabel('Owner email').fill('greg@bennett.example')
     await page.getByLabel('Password').fill('short')
-    await page.getByRole('button', { name: 'Create garage' }).click()
+    await page.getByRole('button', { name: 'Create business' }).click()
 
     expect(registrations).toBe(0)
     expect(

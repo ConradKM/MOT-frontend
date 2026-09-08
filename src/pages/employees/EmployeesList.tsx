@@ -161,7 +161,7 @@ function ActivationToggle({ employee }: { employee: Employee }) {
     } catch (err) {
       showToast(
         isApiError(err) && err.code === 403
-          ? 'Only the garage owner can change this.'
+          ? 'Only the business owner can change this.'
           : errorMessage(err),
       )
     }
@@ -234,12 +234,12 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
 
   return (
     <div className="max-w-md">
-      <p className="text-sm text-slate-500">Only garage owners can add employees.</p>
+      <p className="text-sm text-slate-500">Only business owners can add employees.</p>
 
       <form className="mt-4 space-y-4" onSubmit={handleSubmit}>
         {forbidden && (
           <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Only the garage owner can add employees.
+            Only the business owner can add employees.
           </p>
         )}
         {formError && (
@@ -358,7 +358,7 @@ export function EmployeesList() {
   return (
     <SettingsLayout>
       <h1 className="text-2xl font-semibold text-slate-900">Employees</h1>
-      <p className="mt-1 text-sm text-slate-500">Everyone with an account at your garage.</p>
+      <p className="mt-1 text-sm text-slate-500">Everyone with an account at your business.</p>
 
       <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
         {isLoading ? (

@@ -73,7 +73,7 @@ export function CommunicationsOverview() {
       {!capabilities.communications_enabled && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Phone &amp; WhatsApp services are not connected yet. Communication history will appear
-          here once CoMaz OS communications are activated for your garage.
+          here once CoMaz OS communications are activated for your business.
         </div>
       )}
 

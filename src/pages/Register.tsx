@@ -35,9 +35,9 @@ export function Register() {
 
   return (
     <AuthCard>
-      <h1 className="text-xl font-semibold text-slate-900">Register your garage</h1>
+      <h1 className="text-xl font-semibold text-slate-900">Register your business</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Creates your garage and your owner account in one step.
+        Creates your business and your owner account in one step.
       </p>
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
@@ -47,7 +47,7 @@ export function Register() {
 
         <div>
           <label className="block text-sm font-medium text-slate-700" htmlFor="garage_name">
-            Garage name
+            Business name
           </label>
           <input
             id="garage_name"
@@ -126,7 +126,7 @@ export function Register() {
           disabled={submitting}
           className="w-full rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
         >
-          {submitting ? 'Creating…' : 'Create garage'}
+          {submitting ? 'Creating…' : 'Create business'}
         </button>
       </form>
 

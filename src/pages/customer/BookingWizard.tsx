@@ -274,7 +274,7 @@ export function BookingWizard() {
     return (
       <GarageNotice
         title="Booking link needed"
-        body="Please use your garage's booking link to start a booking."
+        body="Please use your business's booking link to start a booking."
       />
     )
   }
@@ -284,8 +284,8 @@ export function BookingWizard() {
   if (!garage) {
     return (
       <GarageNotice
-        title="Garage not found"
-        body="We couldn't find that garage — check the booking link your garage gave you."
+        title="Business not found"
+        body="We couldn't find that business — check the booking link the business gave you."
       />
     )
   }
@@ -709,7 +709,7 @@ function ReviewStep({
 
       <div className="mt-4 space-y-4">
         <SummarySection title="Appointment" onEdit={() => onEditStep(STEP_TIME)}>
-          <SummaryRow label="Garage" value={garageName} />
+          <SummaryRow label="Business" value={garageName} />
           {appointmentType && <SummaryRow label="Service" value={appointmentType.name} />}
           {appointmentType?.base_price != null && (
             <SummaryRow label="Price" value={`£${appointmentType.base_price}`} />

@@ -74,7 +74,7 @@ export function CustomerAppointmentDetail() {
           <Row label="What's included">{appointment.appointment_type_description}</Row>
         )}
         <Row label="Vehicle">{vehicleDescription}</Row>
-        <Row label="Garage">{appointment.garage_name}</Row>
+        <Row label="Business">{appointment.garage_name}</Row>
         {appointment.notes && (
           <div>
             <p className="text-xs font-medium uppercase text-slate-400">Notes</p>

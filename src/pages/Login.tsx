@@ -35,7 +35,7 @@ export function Login() {
   return (
     <AuthCard>
       <h1 className="text-xl font-semibold text-slate-900">Sign in</h1>
-      <p className="mt-1 text-sm text-slate-500">Access your garage's dashboard.</p>
+      <p className="mt-1 text-sm text-slate-500">Access your business dashboard.</p>
 
       {justReset && (
         <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">

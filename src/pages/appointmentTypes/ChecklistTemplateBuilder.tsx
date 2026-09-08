@@ -406,7 +406,7 @@ export function ChecklistTemplateBuilder() {
         Checklist for {appointmentType?.name ?? '…'}
       </h1>
       <p className="mt-1 text-sm text-slate-500">
-        Steps staff work through during this appointment type. Only garage owners can
+        Steps staff work through during this appointment type. Only business owners can
         make changes here.
       </p>
 

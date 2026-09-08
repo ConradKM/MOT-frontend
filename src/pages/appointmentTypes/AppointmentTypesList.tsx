@@ -142,7 +142,7 @@ function AddAppointmentTypeForm() {
       showToast('Appointment type added.', 'success')
     } catch (err) {
       if (isApiError(err) && err.code === 403) {
-        setFormError('Only the garage owner can add appointment types.')
+        setFormError('Only the business owner can add appointment types.')
         return
       }
       const fields = fieldErrors(err)
@@ -194,7 +194,7 @@ function EditRow({ type, onDone }: { type: AppointmentType; onDone: () => void }
       onDone()
     } catch (err) {
       if (isApiError(err) && err.code === 403) {
-        setFormError('Only the garage owner can edit appointment types.')
+        setFormError('Only the business owner can edit appointment types.')
         return
       }
       const fields = fieldErrors(err)
@@ -260,7 +260,7 @@ function AppointmentTypeRow({
       if (isApiError(err) && err.code === 409) {
         showToast('This type has appointments booked against it — hide it instead.')
       } else if (isApiError(err) && err.code === 403) {
-        showToast('Only the garage owner can delete appointment types.')
+        showToast('Only the business owner can delete appointment types.')
       } else {
         showToast(errorMessage(err))
       }

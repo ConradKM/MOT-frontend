@@ -97,7 +97,7 @@ export function MotRemindersList() {
     <div>
       <h1 className="text-2xl font-semibold text-slate-900">MOT reminders</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Upcoming MOT expiries for {garage?.name ?? 'your garage'} and the state of each
+        Upcoming MOT expiries for {garage?.name ?? 'your business'} and the state of each
         reminder. Automatic reminders follow your{' '}
         <Link
           to={`/${garageId}/settings/mot-reminders`}

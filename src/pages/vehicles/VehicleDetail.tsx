@@ -139,10 +139,10 @@ export function VehicleDetail() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
-              MOT history at {garage?.name ?? 'this garage'}
+              MOT history at {garage?.name ?? 'this business'}
             </h2>
             <p className="mt-0.5 text-xs text-slate-400">
-              MOT tests recorded by this garage — not a full DVLA national history.
+              MOT tests recorded by this business — not a full DVLA national history.
             </p>
           </div>
           <button

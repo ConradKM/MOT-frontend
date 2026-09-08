@@ -148,7 +148,7 @@ test('a dead booking link explains itself instead of showing an empty wizard', a
     },
   ])
   await page.goto('/book/nope')
-  await expect(page.getByRole('heading', { name: 'Garage not found' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Business not found' })).toBeVisible()
 })
 
 test('a day with no remaining times says so', async ({ page }) => {

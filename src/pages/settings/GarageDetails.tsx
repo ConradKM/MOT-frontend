@@ -17,15 +17,15 @@ export function GarageDetails() {
   return (
     <SettingsLayout>
       <div className="max-w-xl">
-        <h1 className="text-2xl font-semibold text-slate-900">Garage details</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Business details</h1>
         <p className="mt-1 text-sm text-slate-500">
-          The business information held for your garage. It is used across the app and for
+          The business information we hold for you. It is used across the app and for
           customer communications.
         </p>
 
         {isLoading && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
         {isError && (
-          <p className="mt-6 text-sm text-red-600">Failed to load garage details.</p>
+          <p className="mt-6 text-sm text-red-600">Failed to load business details.</p>
         )}
 
         {garage && (
