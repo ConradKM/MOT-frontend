@@ -46,10 +46,21 @@ export interface CustomerAppointmentSummary {
   vehicle_registration: string | null
 }
 
+export interface CustomerPendingRequest {
+  id: string
+  booking_reference: string | null
+  preferred_date: string
+  preferred_time: string | null
+  vehicle_registration: string
+  notes: string | null
+  appointment_type_name: string | null
+}
+
 export interface CustomerAccount {
   customer: CustomerProfile
   vehicles: CustomerVehicle[]
   appointments: CustomerAppointmentSummary[]
+  pending_requests: CustomerPendingRequest[]
 }
 
 export interface CustomerAppointmentDetail {
