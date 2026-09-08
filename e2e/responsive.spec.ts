@@ -34,7 +34,7 @@ for (const [name, size] of Object.entries(VIEWPORTS)) {
     test('the customer sign-in page fits the viewport without sideways scrolling', async ({ page }) => {
       await stubApi(page)
       await page.goto('/customer/login')
-      await expect(page.getByRole('heading', { name: 'Your account' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
       expect(await overflowsHorizontally(page)).toBe(false)
     })
 

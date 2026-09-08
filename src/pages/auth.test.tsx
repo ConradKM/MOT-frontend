@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
-import { renderWithProviders } from '../test/utils'
-import { Login } from './Login'
+import { renderWithAppProviders, renderWithProviders } from '../test/utils'
+import { SignIn } from './SignIn'
 import { ForgotPassword } from './ForgotPassword'
 import { ResetPassword } from './ResetPassword'
 import { AuthProvider } from '../auth/AuthContext'
@@ -22,12 +22,13 @@ function render(ui: React.ReactElement, route = '/') {
   return renderWithProviders(<AuthProvider>{ui}</AuthProvider>, { route })
 }
 
-describe('garage Login page', () => {
+describe('garage sign-in (business tab)', () => {
   it('has no register/sign-up option, but has a forgot-password link', () => {
-    render(
+    renderWithAppProviders(
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/login" element={<SignIn />} />
       </Routes>,
+      { route: '/login' },
     )
     expect(screen.queryByRole('link', { name: /register|sign up/i })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /forgot password/i })).toHaveAttribute(
@@ -37,11 +38,11 @@ describe('garage Login page', () => {
   })
 
   it('shows the reset-success banner when ?reset=1', () => {
-    render(
+    renderWithAppProviders(
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={<SignIn />} />
       </Routes>,
-      '/login?reset=1',
+      { route: '/login?reset=1' },
     )
     expect(screen.getByText(/password has been reset successfully/i)).toBeInTheDocument()
   })
