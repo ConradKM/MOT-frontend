@@ -12,6 +12,8 @@ export interface CustomerProfile {
   email: string | null
   phone: string | null
   garage_name: string
+  /** Whether email + password sign-in is set up yet. */
+  has_password: boolean
 }
 
 export interface CustomerMOTRecord {

@@ -2,9 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithAppProviders } from '../../test/utils'
 import { BookingWizard } from './BookingWizard'
-import { ToastProvider } from '../../components/Toast'
 import { ApiError } from '../../api/client'
 import * as api from '../../api/publicGarage'
 
@@ -31,12 +30,10 @@ const TODAY = '2026-09-10'
 const GARAGE = { id: 'gid', name: 'Test Garage', slug: 'test-garage', appointment_types: [] }
 
 function renderWizard() {
-  return renderWithProviders(
-    <ToastProvider>
-      <Routes>
-        <Route path="/book/:garageId" element={<BookingWizard />} />
-      </Routes>
-    </ToastProvider>,
+  return renderWithAppProviders(
+    <Routes>
+      <Route path="/book/:garageId" element={<BookingWizard />} />
+    </Routes>,
     { route: '/book/test-garage' },
   )
 }
@@ -83,7 +80,11 @@ beforeEach(() => {
     level: 'available',
     slots: [{ start: '09:00', status: 'available', remaining: 5, capacity: 5 }],
   })
-  vi.mocked(api.submitBookingRequest).mockResolvedValue({ id: 'r1', status: 'PENDING' })
+  vi.mocked(api.submitBookingRequest).mockResolvedValue({
+    id: 'r1',
+    status: 'PENDING',
+    booking_reference: 'BK7F3K9Q2',
+  })
 })
 
 afterEach(() => {

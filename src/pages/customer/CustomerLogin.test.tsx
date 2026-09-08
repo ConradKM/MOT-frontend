@@ -19,23 +19,44 @@ const renderLogin = () =>
     { route: '/customer/login' },
   )
 
-const signIn = async (user: ReturnType<typeof userEvent.setup>, reg = 'ob08aud') => {
+const signInWithReference = async (
+  user: ReturnType<typeof userEvent.setup>,
+  reference = 'bk7f3k9q2',
+) => {
   await user.type(screen.getByLabelText('Email'), 'oliver@example.com')
-  await user.type(screen.getByLabelText('Vehicle registration'), reg)
+  await user.type(screen.getByLabelText('Booking reference'), reference)
+  await user.click(screen.getByRole('button', { name: 'Sign in' }))
+}
+
+const signInWithPassword = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(screen.getByRole('tab', { name: 'Password' }))
+  await user.type(screen.getByLabelText('Email'), 'oliver@example.com')
+  await user.type(screen.getByLabelText('Password'), 'a-long-password')
   await user.click(screen.getByRole('button', { name: 'Sign in' }))
 }
 
 describe('CustomerLogin', () => {
-  it('explains the passwordless email + registration sign-in', () => {
+  it('defaults to booking-reference sign-in, with no password field visible', () => {
     renderLogin()
-    expect(screen.getByText(/email and one of your vehicle registrations/i)).toBeInTheDocument()
-    expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Booking reference')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+  })
+
+  it('switches to the password tab and back', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+    await user.click(screen.getByRole('tab', { name: 'Password' }))
+    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Booking reference')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Booking reference' }))
+    expect(screen.getByLabelText('Booking reference')).toBeInTheDocument()
   })
 
   it('will not submit without both fields', async () => {
     let posted = false
     server.use(
-      http.post('*/api/customer/auth/login', () => {
+      http.post('*/api/customer/auth/login/reference', () => {
         posted = true
         return HttpResponse.json({ access_token: 'a', refresh_token: 'r' })
       }),
@@ -46,57 +67,72 @@ describe('CustomerLogin', () => {
     expect(posted).toBe(false)
   })
 
-  it('upper-cases the registration as it is typed', async () => {
-    // Registrations are stored upper-case; normalising in the field spares the
-    // customer a mismatch they cannot see.
+  it('upper-cases the booking reference as it is typed', async () => {
     const user = userEvent.setup()
     renderLogin()
-    await user.type(screen.getByLabelText('Vehicle registration'), 'ob08aud')
-    expect(screen.getByLabelText('Vehicle registration')).toHaveValue('OB08AUD')
+    await user.type(screen.getByLabelText('Booking reference'), 'bk7f3k9q2')
+    expect(screen.getByLabelText('Booking reference')).toHaveValue('BK7F3K9Q2')
   })
 
-  it('sends the normalised registration and opens the account hub', async () => {
+  it('sends the booking reference and opens the account hub', async () => {
     let body: unknown
     server.use(
-      http.post('*/api/customer/auth/login', async ({ request }) => {
+      http.post('*/api/customer/auth/login/reference', async ({ request }) => {
         body = await request.json()
         return HttpResponse.json({ access_token: makeJwt('c1'), refresh_token: 'r' })
       }),
     )
     const user = userEvent.setup()
     renderLogin()
-    await signIn(user)
+    await signInWithReference(user)
 
     expect(await screen.findByRole('heading', { name: 'Account hub' })).toBeInTheDocument()
-    expect(body).toEqual({ email: 'oliver@example.com', registration_number: 'OB08AUD' })
+    expect(body).toEqual({ email: 'oliver@example.com', booking_reference: 'BK7F3K9Q2' })
     expect(getCustomerAccessToken()).toBe(makeJwt('c1'))
   })
 
-  it('shows the rejection when the pair does not match an account', async () => {
+  it('signs in with email + password and opens the account hub', async () => {
+    let body: unknown
     server.use(
-      http.post('*/api/customer/auth/login', () =>
+      http.post('*/api/customer/auth/login/password', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ access_token: makeJwt('c1'), refresh_token: 'r' })
+      }),
+    )
+    const user = userEvent.setup()
+    renderLogin()
+    await signInWithPassword(user)
+
+    expect(await screen.findByRole('heading', { name: 'Account hub' })).toBeInTheDocument()
+    expect(body).toEqual({ email: 'oliver@example.com', password: 'a-long-password' })
+    expect(getCustomerAccessToken()).toBe(makeJwt('c1'))
+  })
+
+  it('shows the rejection when the reference does not match an account', async () => {
+    server.use(
+      http.post('*/api/customer/auth/login/reference', () =>
         HttpResponse.json(
-          { code: 401, status: 'x', message: 'No account matches those details.' },
+          { code: 401, status: 'x', message: 'Invalid email or booking reference.' },
           { status: 401 },
         ),
       ),
     )
     const user = userEvent.setup()
     renderLogin()
-    await signIn(user)
+    await signInWithReference(user)
 
-    expect(await screen.findByText('No account matches those details.')).toBeInTheDocument()
+    expect(await screen.findByText('Invalid email or booking reference.')).toBeInTheDocument()
     expect(getCustomerAccessToken()).toBeNull()
   })
 
-  it('shows a server field error against the registration field', async () => {
+  it('shows a server field error against the booking reference field', async () => {
     server.use(
-      http.post('*/api/customer/auth/login', () =>
+      http.post('*/api/customer/auth/login/reference', () =>
         HttpResponse.json(
           {
             code: 422,
             status: 'x',
-            errors: { json: { registration_number: ['Not a recognised registration.'] } },
+            errors: { json: { booking_reference: ['Length must be between 1 and 16.'] } },
           },
           { status: 422 },
         ),
@@ -104,14 +140,32 @@ describe('CustomerLogin', () => {
     )
     const user = userEvent.setup()
     renderLogin()
-    await signIn(user)
-    expect(await screen.findByText('Not a recognised registration.')).toBeInTheDocument()
+    await signInWithReference(user)
+    expect(await screen.findByText('Length must be between 1 and 16.')).toBeInTheDocument()
+  })
+
+  it('clears errors when switching sign-in method', async () => {
+    server.use(
+      http.post('*/api/customer/auth/login/reference', () =>
+        HttpResponse.json(
+          { code: 401, status: 'x', message: 'Invalid email or booking reference.' },
+          { status: 401 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderLogin()
+    await signInWithReference(user)
+    await screen.findByText('Invalid email or booking reference.')
+
+    await user.click(screen.getByRole('tab', { name: 'Password' }))
+    expect(screen.queryByText('Invalid email or booking reference.')).not.toBeInTheDocument()
   })
 
   it('disables the button while signing in, and signs in only once', async () => {
     let posts = 0
     server.use(
-      http.post('*/api/customer/auth/login', async () => {
+      http.post('*/api/customer/auth/login/reference', async () => {
         posts++
         await delay(40)
         return HttpResponse.json({ access_token: makeJwt('c1'), refresh_token: 'r' })
@@ -120,7 +174,7 @@ describe('CustomerLogin', () => {
     const user = userEvent.setup()
     renderLogin()
     await user.type(screen.getByLabelText('Email'), 'oliver@example.com')
-    await user.type(screen.getByLabelText('Vehicle registration'), 'OB08AUD')
+    await user.type(screen.getByLabelText('Booking reference'), 'BK7F3K9Q2')
     await user.tripleClick(screen.getByRole('button', { name: 'Sign in' }))
 
     await screen.findByRole('heading', { name: 'Account hub' })

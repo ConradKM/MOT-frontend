@@ -123,4 +123,23 @@ describe('BookingWizard — accessibility', () => {
     await screen.findByRole('heading', { name: 'Review' })
     await expectNoA11yViolations(container)
   })
+
+  it('has no detectable violations on the confirmation screen', async () => {
+    const user = userEvent.setup()
+    const { container } = renderWizard()
+    await reachDetailsStep(user)
+
+    await user.type(screen.getByLabelText(/^Registration number/), 'OB08AUD')
+    await user.type(screen.getByLabelText(/^First name/), 'Oliver')
+    await user.type(screen.getByLabelText(/^Last name/), 'Bennett')
+    await user.type(screen.getByLabelText(/^Email/), 'oliver@example.com')
+    await user.type(screen.getByLabelText(/^Mobile number/), '07123456789')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await screen.findByRole('heading', { name: 'Review' })
+    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+
+    await screen.findByRole('heading', { name: 'Request received' })
+    await expectNoA11yViolations(container)
+  })
 })

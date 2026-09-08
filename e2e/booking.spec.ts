@@ -37,7 +37,7 @@ test('a customer books a slot end to end and sees a confirmation', async ({ page
       path: /\/booking-requests$/,
       handler: async (route) => {
         submitted = JSON.parse(route.request().postData() ?? '{}')
-        return respond.json(route, { id: 'br1', status: 'PENDING' }, 201)
+        return respond.json(route, { id: 'br1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' }, 201)
       },
     },
   ])
@@ -53,6 +53,11 @@ test('a customer books a slot end to end and sees a confirmation', async ({ page
 
   await expect(page.getByRole('heading', { name: 'Request received' })).toBeVisible()
   await expect(page.getByText(/Thanks, Oliver/)).toBeVisible()
+  await expect(page.getByText('BK7F3K9Q2')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'View my account' })).toHaveAttribute(
+    'href',
+    '/customer/account',
+  )
   expect(submitted).toMatchObject({
     customer_first_name: 'Oliver',
     customer_email: 'oliver@example.com',

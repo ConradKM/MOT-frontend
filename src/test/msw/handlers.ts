@@ -26,12 +26,16 @@ export const handlers = [
     HttpResponse.json({ access_token: makeJwt('e1'), refresh_token: makeJwt('e1') }),
   ),
   http.post('*/api/auth/refresh', () => HttpResponse.json({ access_token: makeJwt('e1') })),
-  http.post('*/api/customer/auth/login', () =>
+  http.post('*/api/customer/auth/login/reference', () =>
+    HttpResponse.json({ access_token: makeJwt('c1'), refresh_token: makeJwt('c1') }),
+  ),
+  http.post('*/api/customer/auth/login/password', () =>
     HttpResponse.json({ access_token: makeJwt('c1'), refresh_token: makeJwt('c1') }),
   ),
   http.post('*/api/customer/auth/refresh', () =>
     HttpResponse.json({ access_token: makeJwt('c1') }),
   ),
+  http.post('*/api/customer/auth/set-password', () => new HttpResponse(null, { status: 204 })),
 
   // --- garage-scoped reads ----------------------------------------------
   http.get('*/api/garage', () => HttpResponse.json(makeGarage())),
@@ -64,6 +68,6 @@ export const handlers = [
     HttpResponse.json(makeDayAvailability(String(params.date))),
   ),
   http.post('*/api/public/:slug/booking-requests', () =>
-    HttpResponse.json({ id: 'br1', status: 'PENDING' }, { status: 201 }),
+    HttpResponse.json({ id: 'br1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' }, { status: 201 }),
   ),
 ]

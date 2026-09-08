@@ -2,9 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
-import { renderWithProviders } from '../../test/utils'
+import { renderWithAppProviders } from '../../test/utils'
 import { BookingWizard } from './BookingWizard'
-import { ToastProvider } from '../../components/Toast'
 import { ApiError } from '../../api/client'
 import * as api from '../../api/publicGarage'
 
@@ -20,12 +19,10 @@ const TODAY = '2026-09-10'
 const GARAGE = { id: 'gid', name: 'Test Garage', slug: 'test-garage', appointment_types: [] }
 
 function renderWizard() {
-  return renderWithProviders(
-    <ToastProvider>
-      <Routes>
-        <Route path="/book/:garageId" element={<BookingWizard />} />
-      </Routes>
-    </ToastProvider>,
+  return renderWithAppProviders(
+    <Routes>
+      <Route path="/book/:garageId" element={<BookingWizard />} />
+    </Routes>,
     { route: '/book/test-garage' },
   )
 }
@@ -103,7 +100,7 @@ describe('BookingWizard — 3-step flow', () => {
   })
 
   it('carries the picked date and time into the booking request', async () => {
-    vi.mocked(api.submitBookingRequest).mockResolvedValue({ id: 'r1', status: 'PENDING' })
+    vi.mocked(api.submitBookingRequest).mockResolvedValue({ id: 'r1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' })
     const user = userEvent.setup()
     renderWizard()
 
@@ -123,6 +120,11 @@ describe('BookingWizard — 3-step flow', () => {
       }),
     )
     expect(await screen.findByText('Request received')).toBeInTheDocument()
+    expect(screen.getByText('BK7F3K9Q2')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View my account' })).toHaveAttribute(
+      'href',
+      '/customer/account',
+    )
   })
 
   it('returns to the date & time step when the slot was taken (409)', async () => {
@@ -211,7 +213,7 @@ describe('BookingWizard — 3-step flow', () => {
       ],
     }
     vi.mocked(api.getPublicGarage).mockResolvedValue(garageWithTypes)
-    vi.mocked(api.submitBookingRequest).mockResolvedValue({ id: 'r1', status: 'PENDING' })
+    vi.mocked(api.submitBookingRequest).mockResolvedValue({ id: 'r1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' })
     const user = userEvent.setup()
     renderWizard()
 
@@ -305,12 +307,10 @@ describe('BookingWizard — 3-step flow', () => {
   })
 
   it('shows a notice instead of the wizard when no garage is in the URL', async () => {
-    renderWithProviders(
-      <ToastProvider>
-        <Routes>
-          <Route path="/book" element={<BookingWizard />} />
-        </Routes>
-      </ToastProvider>,
+    renderWithAppProviders(
+      <Routes>
+        <Route path="/book" element={<BookingWizard />} />
+      </Routes>,
       { route: '/book' },
     )
     expect(await screen.findByText('Booking link needed')).toBeInTheDocument()

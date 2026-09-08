@@ -16,6 +16,7 @@ import * as appointmentTypesApi from './appointmentTypes'
 import * as checklistTemplatesApi from './checklistTemplates'
 import * as appointmentChecklistsApi from './appointmentChecklists'
 import * as customerAccountApi from './customerAccount'
+import { setCustomerPassword } from './customerAuth'
 import * as bookingRequestsApi from './bookingRequests'
 import * as appointmentStatusesApi from './appointmentStatuses'
 import { getCustomerAccessToken } from './customerTokens'
@@ -629,6 +630,14 @@ export function useCustomerAppointment(id: string | undefined) {
     queryFn: () => customerAccountApi.getCustomerAppointment(id as string),
     enabled: !!id && !!getCustomerAccessToken(),
     retry: false,
+  })
+}
+
+export function useSetCustomerPassword() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: setCustomerPassword,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['customerAccount'] }),
   })
 }
 
