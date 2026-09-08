@@ -1,4 +1,4 @@
-import type { CommunicationLog } from '../api/communications'
+import type { CommDirection, CommunicationLog } from '../api/communications'
 import { formatDateShort, formatTime, localDateKey, todayIso } from './datetime'
 
 // Mirrors app/communications/queries.py::MISSED_CALL_STATUSES - an inbound
@@ -81,8 +81,17 @@ export function whatsappStatusBadgeClass(status: string): string {
   }
 }
 
-export function directionLabel(direction: 'INBOUND' | 'OUTBOUND'): string {
-  return direction === 'INBOUND' ? 'Incoming' : 'Outgoing'
+export function directionLabel(direction: CommDirection): string {
+  if (direction === 'INBOUND') return 'Incoming'
+  if (direction === 'OUTBOUND') return 'Outgoing'
+  return 'System'
+}
+
+/** Who a single call-transcript turn is from, for the call detail timeline. */
+export function transcriptRoleLabel(direction: CommDirection): string {
+  if (direction === 'INBOUND') return 'Caller'
+  if (direction === 'OUTBOUND') return 'Assistant'
+  return 'System'
 }
 
 export function formatCallDuration(seconds: number | null): string {
@@ -96,7 +105,7 @@ export function formatCallDuration(seconds: number | null): string {
  * the matched customer's name, or the raw number for an unknown caller. */
 export function counterpartLabel(log: {
   customer: { first_name: string; last_name: string } | null
-  direction: 'INBOUND' | 'OUTBOUND'
+  direction: CommDirection
   from_address: string | null
   to_address: string | null
 }): string {
