@@ -7,6 +7,9 @@ import {
 
 interface RichTextInputProps {
   id?: string
+  /** Ids of the elements describing this field (e.g. its validation message). */
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -23,6 +26,8 @@ interface RichTextInputProps {
  */
 export function RichTextInput({
   id,
+  'aria-describedby': describedBy,
+  'aria-invalid': invalid,
   value,
   onChange,
   placeholder,
@@ -37,6 +42,8 @@ export function RichTextInput({
   return (
     <input
       id={id}
+      aria-describedby={describedBy}
+      aria-invalid={invalid}
       type={type}
       min={min}
       value={value}

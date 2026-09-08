@@ -1,0 +1,46 @@
+name: PR checks
+
+# Every pull request into main must be traceable to an issue.
+#
+# `edited` matters as much as `opened`: adding the reference to the PR
+# description re-runs this check, so a contributor is never stuck waiting for
+# an unrelated push to clear it.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+concurrency:
+  group: pr-linked-issue-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # Reading the PR's linked issues (the Development sidebar) needs both.
+  pull-requests: read
+  issues: read
+
+jobs:
+  linked-issue:
+    name: Related issue
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      # A plain checkout. A sparse one would fetch marginally less, but this
+      # is a required check: a checkout quirk here would block every PR, and
+      # the repository is small enough that the saving is not worth that.
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # No dependencies to install: the script uses only Node's built-in
+      # fetch, so this job finishes in seconds.
+      - name: Require a related issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node .github/scripts/require-linked-issue.mjs
