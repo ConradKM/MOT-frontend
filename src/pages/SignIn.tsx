@@ -63,13 +63,6 @@ export function SignIn() {
       </div>
 
       {account === 'customer' ? <CustomerSignIn /> : <BusinessSignIn />}
-
-      <p className="mt-6 text-center text-sm text-slate-500">
-        Looking to book an appointment?{' '}
-        <Link to="/book" className="font-medium text-slate-900 hover:underline">
-          Start a booking
-        </Link>
-      </p>
     </AuthCard>
   )
 }

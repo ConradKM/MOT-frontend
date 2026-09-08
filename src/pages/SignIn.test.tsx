@@ -64,11 +64,6 @@ describe('SignIn — account-type tabs', () => {
     expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument()
   })
 
-  it('offers a way to book instead, regardless of account type', () => {
-    renderSignIn('/login')
-    expect(screen.getByRole('link', { name: /start a booking/i })).toHaveAttribute('href', '/book')
-  })
-
   it('has no detectable accessibility violations on either tab', async () => {
     const user = userEvent.setup()
     const { container } = renderSignIn('/login')
