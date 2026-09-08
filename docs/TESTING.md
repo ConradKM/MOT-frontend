@@ -165,6 +165,13 @@ now uses real timers and date-independent fixtures; the MOT status boundaries
 it was pinning the clock for are covered in `lib/mot.test.ts` and
 `MotBadge.test.tsx` instead.
 
+A third class of non-determinism was caught by the first CI run rather than
+locally: five assertions rendered times in the *runner's* timezone, so they
+passed on a UK laptop (BST) and failed on a UTC runner. Both suites now pin
+`Europe/London` — the same reasoning that makes `lib/datetime.ts` pin `en-GB`
+rather than trusting the host's locale. Verified by running the whole suite
+under `TZ=UTC`, `TZ=America/Los_Angeles` and `TZ=Asia/Tokyo`.
+
 Playwright is configured with one retry in CI only. That is for genuine
 infrastructure noise on a shared runner, not a licence for flaky assertions —
 a test that needs the retry locally should be fixed.

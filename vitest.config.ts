@@ -13,7 +13,12 @@ export default defineConfig({
     css: false,
     // Don't let a developer's .env.local (e.g. Turnstile dev keys) change how
     // tests behave. Suites that need the CAPTCHA on mock the component instead.
-    env: { VITE_CAPTCHA_PROVIDER: '', VITE_CAPTCHA_SITE_KEY: '' },
+    //
+    // TZ is pinned for the same reason the app pins `en-GB` in lib/datetime.ts:
+    // times are rendered in the viewer's local zone, so an assertion written on
+    // a UK laptop would otherwise fail on a UTC CI runner (and vice versa).
+    // Europe/London matches the audience this app formats for.
+    env: { VITE_CAPTCHA_PROVIDER: '', VITE_CAPTCHA_SITE_KEY: '', TZ: 'Europe/London' },
     // Playwright specs live in e2e/ and are run by `npm run test:e2e`; Vitest
     // must not try to collect them.
     exclude: ['node_modules/**', 'dist/**', 'e2e/**'],

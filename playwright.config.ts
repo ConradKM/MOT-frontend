@@ -20,6 +20,11 @@ export default defineConfig({
 
   use: {
     baseURL: 'http://127.0.0.1:4173',
+    // Pinned for the same reason as the Vitest suite: the app renders times in
+    // the viewer's local zone, so an unpinned runner would format them
+    // differently from a UK developer's machine.
+    timezoneId: 'Europe/London',
+    locale: 'en-GB',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
