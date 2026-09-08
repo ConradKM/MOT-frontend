@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
+import type { CustomerAppointmentDetail as CustomerAppointmentDetailData } from '../../api/customerAccount'
 import { useCustomerAppointment } from '../../api/queries'
 import { appointmentStatusClasses, appointmentStatusLabels } from '../../lib/appointments'
 import { formatDateTime } from '../../lib/datetime'
@@ -38,17 +39,6 @@ export function CustomerAppointmentDetail() {
     )
   }
 
-  const vehicleDescription = appointment.vehicle
-    ? [
-        appointment.vehicle.registration_number,
-        [appointment.vehicle.make, appointment.vehicle.model, appointment.vehicle.year]
-          .filter(Boolean)
-          .join(' '),
-      ]
-        .filter(Boolean)
-        .join(' — ')
-    : 'No vehicle on this booking'
-
   return (
     <div className="max-w-2xl">
       {backLink}
@@ -69,21 +59,45 @@ export function CustomerAppointmentDetail() {
         </span>
       </div>
 
-      <div className="mt-6 space-y-4 rounded-lg border border-slate-200 bg-white p-5">
-        {appointment.appointment_type_description && (
-          <Row label="What's included">{appointment.appointment_type_description}</Row>
-        )}
-        <Row label="Vehicle">{vehicleDescription}</Row>
-        <Row label="Business">{appointment.garage_name}</Row>
-        {appointment.notes && (
-          <div>
-            <p className="text-xs font-medium uppercase text-slate-400">Notes</p>
-            <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-900">
-              {appointment.notes}
-            </p>
-          </div>
-        )}
+      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+        <AppointmentDetailBody appointment={appointment} />
       </div>
+    </div>
+  )
+}
+
+/** The body of an appointment's full detail - shared by this standalone page
+ * (a deep-linkable URL) and the inline dropdown on CustomerAccount, so both
+ * surfaces show identically-shaped detail. */
+export function AppointmentDetailBody({
+  appointment,
+}: {
+  appointment: CustomerAppointmentDetailData
+}) {
+  const vehicleDescription = appointment.vehicle
+    ? [
+        appointment.vehicle.registration_number,
+        [appointment.vehicle.make, appointment.vehicle.model, appointment.vehicle.year]
+          .filter(Boolean)
+          .join(' '),
+      ]
+        .filter(Boolean)
+        .join(' — ')
+    : 'No vehicle on this booking'
+
+  return (
+    <div className="space-y-4">
+      {appointment.appointment_type_description && (
+        <Row label="What's included">{appointment.appointment_type_description}</Row>
+      )}
+      <Row label="Vehicle">{vehicleDescription}</Row>
+      <Row label="Business">{appointment.garage_name}</Row>
+      {appointment.notes && (
+        <div>
+          <p className="text-xs font-medium uppercase text-slate-400">Notes</p>
+          <p className="mt-0.5 whitespace-pre-wrap text-sm text-slate-900">{appointment.notes}</p>
+        </div>
+      )}
     </div>
   )
 }

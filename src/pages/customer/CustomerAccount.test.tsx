@@ -27,8 +27,22 @@ const appointment = (patch = {}) => ({
   id: 'a1',
   appointment_type_name: 'MOT test',
   start_time: '2026-07-01T09:00:00+01:00',
+  end_time: '2026-07-01T09:45:00+01:00',
   status: 'BOOKED',
   vehicle_registration: 'OB08AUD',
+  ...patch,
+})
+
+const appointmentDetail = (patch = {}) => ({
+  id: 'a1',
+  start_time: '2026-07-01T09:00:00+01:00',
+  end_time: '2026-07-01T09:45:00+01:00',
+  status: 'BOOKED',
+  notes: null,
+  appointment_type_name: 'MOT test',
+  appointment_type_description: 'Annual statutory test.',
+  vehicle: { registration_number: 'OB08AUD', make: 'Audi', model: 'A4', year: 2018 },
+  garage_name: 'Bennett Motors',
   ...patch,
 })
 
@@ -36,8 +50,19 @@ function serveAccount(body: unknown) {
   server.use(http.get('*/api/customer/account', () => HttpResponse.json(body)))
 }
 
+function serveAppointmentDetail(id: string, body: unknown) {
+  server.use(http.get(`*/api/customer/appointments/${id}`, () => HttpResponse.json(body)))
+}
+
 const ACCOUNT = {
-  customer: { first_name: 'Oliver', garage_name: 'Bennett Motors' },
+  customer: {
+    first_name: 'Oliver',
+    last_name: 'Bennett',
+    email: 'oliver@example.com',
+    phone: '+447700900001',
+    garage_name: 'Bennett Motors',
+    has_password: false,
+  },
   vehicles: [vehicle()],
   appointments: [appointment()],
 }
@@ -51,6 +76,10 @@ function renderAccount() {
     </Routes>,
     { route: '/customer/account' },
   )
+}
+
+async function expandVehicle(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByText('OB08AUD'))
 }
 
 beforeEach(() => {
@@ -109,15 +138,37 @@ describe('CustomerAccount — content', () => {
     expect(screen.getByText('Bennett Motors')).toBeInTheDocument()
   })
 
-  it('shows each vehicle with its MOT status and last test', async () => {
+  it('shows the account details: name, email, phone', async () => {
     serveAccount(ACCOUNT)
     renderAccount()
-    expect(await screen.findByText('OB08AUD')).toBeInTheDocument()
-    expect(screen.getByText('Audi A4 2018')).toBeInTheDocument()
+    await screen.findByRole('heading', { name: 'Hi Oliver' })
+
+    const details = screen.getByRole('heading', { name: 'Your details' }).parentElement!
+    expect(within(details).getByText('Oliver Bennett')).toBeInTheDocument()
+    expect(within(details).getByText('oliver@example.com')).toBeInTheDocument()
+    expect(within(details).getByText('+447700900001')).toBeInTheDocument()
+  })
+
+  it('shows each vehicle collapsed, with its registration and MOT status visible up front', async () => {
+    serveAccount(ACCOUNT)
+    renderAccount()
+    const summary = (await screen.findByText('OB08AUD')).closest('summary') as HTMLElement
+    expect(within(summary).getByText('Audi A4 2018')).toBeInTheDocument()
+    // Expires 2026-08-12, ~58 days after the pinned "now".
+    expect(within(summary).getByText('Valid')).toBeInTheDocument()
+    // The full MOT expiry/last-test detail lives in the collapsed dropdown
+    // body, not the always-visible summary.
+    expect(within(summary).queryByText('12 Aug 2026')).not.toBeInTheDocument()
+  })
+
+  it('expands a vehicle to show its MOT expiry and last test', async () => {
+    serveAccount(ACCOUNT)
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderAccount()
+    await expandVehicle(user)
+
     expect(screen.getByText('12 Aug 2026')).toBeInTheDocument()
     expect(screen.getByText('PASS · 12 Aug 2025')).toBeInTheDocument()
-    // Expires 2026-08-12, ~58 days after the pinned "now".
-    expect(screen.getByText('Valid')).toBeInTheDocument()
   })
 
   it('separates upcoming from past appointments by their start time', async () => {
@@ -139,13 +190,36 @@ describe('CustomerAccount — content', () => {
     expect(within(past).getByText('Last year’s MOT')).toBeInTheDocument()
   })
 
-  it('links each appointment to its own detail page', async () => {
+  it('keeps an appointment collapsed - and its detail unfetched - until expanded', async () => {
     serveAccount(ACCOUNT)
-    renderAccount()
-    expect(await screen.findByRole('link', { name: /MOT test/ })).toHaveAttribute(
-      'href',
-      '/customer/appointments/a1',
+    let requested = false
+    server.use(
+      http.get('*/api/customer/appointments/a1', () => {
+        requested = true
+        return HttpResponse.json(appointmentDetail())
+      }),
     )
+    renderAccount()
+    await screen.findByText('MOT test')
+
+    expect(requested).toBe(false)
+    expect(screen.queryByText('Annual statutory test.')).not.toBeInTheDocument()
+  })
+
+  it('expands an appointment to show its full detail inline, without navigating away', async () => {
+    serveAccount(ACCOUNT)
+    serveAppointmentDetail('a1', appointmentDetail())
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderAccount()
+    await user.click(await screen.findByText('MOT test'))
+
+    expect(await screen.findByText('Annual statutory test.')).toBeInTheDocument()
+    // "Bennett Motors" also appears in the page subtitle - the business name
+    // on this appointment's own detail confirms the dropdown body rendered.
+    expect(screen.getAllByText('Bennett Motors').length).toBeGreaterThan(1)
+    // Still on the account page - this is a same-page dropdown, not a link.
+    expect(screen.queryByRole('heading', { name: 'Customer sign in' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Hi Oliver' })).toBeInTheDocument()
   })
 
   it('says so plainly when there is nothing on file', async () => {
@@ -164,8 +238,10 @@ describe('CustomerAccount — content', () => {
         vehicle({ make: null, model: null, year: null, current_mileage: null, mot_expiry_date: null, mot_records: [] }),
       ],
     })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     renderAccount()
-    const card = (await screen.findByText('OB08AUD')).closest('div.rounded-lg') as HTMLElement
+    await expandVehicle(user)
+    const card = (await screen.findByText('OB08AUD')).closest('details') as HTMLElement
 
     // Both the badge and the expiry row degrade to "Unknown" rather than
     // rendering "null" or an empty cell.
@@ -173,6 +249,61 @@ describe('CustomerAccount — content', () => {
     // Rows with nothing to say are omitted entirely.
     expect(within(card).queryByText('Last test')).not.toBeInTheDocument()
     expect(within(card).queryByText('Mileage on file')).not.toBeInTheDocument()
+  })
+
+  it('offers to create an account when no password is set yet', async () => {
+    serveAccount(ACCOUNT)
+    renderAccount()
+    expect(await screen.findByText('Create an account')).toBeInTheDocument()
+  })
+
+  it('does not offer to create an account once a password is already set', async () => {
+    serveAccount({ ...ACCOUNT, customer: { ...ACCOUNT.customer, has_password: true } })
+    renderAccount()
+    await screen.findByRole('heading', { name: 'Hi Oliver' })
+    expect(screen.queryByText('Create an account')).not.toBeInTheDocument()
+  })
+
+  it('sets a password and confirms it worked', async () => {
+    serveAccount(ACCOUNT)
+    let body: unknown
+    server.use(
+      http.post('*/api/customer/auth/set-password', async ({ request }) => {
+        body = await request.json()
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderAccount()
+    await screen.findByText('Create an account')
+
+    await user.type(screen.getByLabelText('Password'), 'a-brand-new-password')
+    await user.type(screen.getByLabelText('Confirm'), 'a-brand-new-password')
+    await user.click(screen.getByRole('button', { name: 'Set password' }))
+
+    expect(await screen.findByText(/Password set/)).toBeInTheDocument()
+    expect(body).toEqual({ password: 'a-brand-new-password' })
+  })
+
+  it('rejects mismatched passwords without calling the API', async () => {
+    serveAccount(ACCOUNT)
+    let posted = false
+    server.use(
+      http.post('*/api/customer/auth/set-password', () => {
+        posted = true
+        return new HttpResponse(null, { status: 204 })
+      }),
+    )
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderAccount()
+    await screen.findByText('Create an account')
+
+    await user.type(screen.getByLabelText('Password'), 'a-brand-new-password')
+    await user.type(screen.getByLabelText('Confirm'), 'does-not-match')
+    await user.click(screen.getByRole('button', { name: 'Set password' }))
+
+    expect(await screen.findByText('Passwords do not match.')).toBeInTheDocument()
+    expect(posted).toBe(false)
   })
 
   it('signs the customer out and returns them to sign-in', async () => {

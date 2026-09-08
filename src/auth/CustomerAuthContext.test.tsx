@@ -9,12 +9,18 @@ import { getCustomerAccessToken, getCustomerRefreshToken } from '../api/customer
 import { getAccessToken, setTokens } from '../api/tokens'
 
 function CustomerProbe() {
-  const { isAuthenticated, customerId, login, logout } = useCustomerAuth()
+  const { isAuthenticated, customerId, loginWithReference, loginWithPassword, logout } =
+    useCustomerAuth()
   return (
     <div>
       <p>signed in: {String(isAuthenticated)}</p>
       <p>customer: {customerId ?? 'none'}</p>
-      <button onClick={() => void login('a@b.com', 'OB08AUD').catch(() => {})}>log in</button>
+      <button onClick={() => void loginWithReference('a@b.com', 'BK7F3K9Q2').catch(() => {})}>
+        log in with reference
+      </button>
+      <button onClick={() => void loginWithPassword('a@b.com', 'hunter2222').catch(() => {})}>
+        log in with password
+      </button>
       <button onClick={logout}>log out</button>
     </div>
   )
@@ -40,42 +46,73 @@ describe('CustomerAuthProvider', () => {
     expect(screen.getByText('signed in: false')).toBeInTheDocument()
   })
 
-  it('signs in with an email and registration, storing customer-scoped tokens', async () => {
+  it('signs in with a booking reference, storing customer-scoped tokens', async () => {
     let body: unknown
     server.use(
-      http.post('*/api/customer/auth/login', async ({ request }) => {
+      http.post('*/api/customer/auth/login/reference', async ({ request }) => {
         body = await request.json()
         return HttpResponse.json({ access_token: makeJwt('c7'), refresh_token: 'cr' })
       }),
     )
     const user = userEvent.setup()
     renderProbe()
-    await user.click(screen.getByRole('button', { name: 'log in' }))
+    await user.click(screen.getByRole('button', { name: 'log in with reference' }))
 
     await screen.findByText('customer: c7')
-    expect(body).toEqual({ email: 'a@b.com', registration_number: 'OB08AUD' })
+    expect(body).toEqual({ email: 'a@b.com', booking_reference: 'BK7F3K9Q2' })
     expect(getCustomerAccessToken()).toBe(makeJwt('c7'))
     expect(getCustomerRefreshToken()).toBe('cr')
+  })
+
+  it('signs in with email + password, storing customer-scoped tokens', async () => {
+    let body: unknown
+    server.use(
+      http.post('*/api/customer/auth/login/password', async ({ request }) => {
+        body = await request.json()
+        return HttpResponse.json({ access_token: makeJwt('c9'), refresh_token: 'cr2' })
+      }),
+    )
+    const user = userEvent.setup()
+    renderProbe()
+    await user.click(screen.getByRole('button', { name: 'log in with password' }))
+
+    await screen.findByText('customer: c9')
+    expect(body).toEqual({ email: 'a@b.com', password: 'hunter2222' })
+    expect(getCustomerAccessToken()).toBe(makeJwt('c9'))
+    expect(getCustomerRefreshToken()).toBe('cr2')
   })
 
   it('leaves an existing staff session untouched when a customer signs in', async () => {
     setTokens('staff-access', 'staff-refresh')
     const user = userEvent.setup()
     renderProbe()
-    await user.click(screen.getByRole('button', { name: 'log in' }))
+    await user.click(screen.getByRole('button', { name: 'log in with reference' }))
     await screen.findByText('signed in: true')
     expect(getAccessToken()).toBe('staff-access')
   })
 
-  it('stays signed out when the registration does not match the email', async () => {
+  it('stays signed out when the booking reference does not match the email', async () => {
     server.use(
-      http.post('*/api/customer/auth/login', () =>
+      http.post('*/api/customer/auth/login/reference', () =>
         HttpResponse.json({ code: 401, status: 'x', message: 'No match' }, { status: 401 }),
       ),
     )
     const user = userEvent.setup()
     renderProbe()
-    await user.click(screen.getByRole('button', { name: 'log in' }))
+    await user.click(screen.getByRole('button', { name: 'log in with reference' }))
+    await waitFor(() => expect(getCustomerAccessToken()).toBeNull())
+    expect(screen.getByText('signed in: false')).toBeInTheDocument()
+  })
+
+  it('stays signed out when the password is wrong', async () => {
+    server.use(
+      http.post('*/api/customer/auth/login/password', () =>
+        HttpResponse.json({ code: 401, status: 'x', message: 'Invalid' }, { status: 401 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderProbe()
+    await user.click(screen.getByRole('button', { name: 'log in with password' }))
     await waitFor(() => expect(getCustomerAccessToken()).toBeNull())
     expect(screen.getByText('signed in: false')).toBeInTheDocument()
   })
@@ -84,7 +121,7 @@ describe('CustomerAuthProvider', () => {
     setTokens('staff-access', 'staff-refresh')
     const user = userEvent.setup()
     renderProbe()
-    await user.click(screen.getByRole('button', { name: 'log in' }))
+    await user.click(screen.getByRole('button', { name: 'log in with reference' }))
     await screen.findByText('signed in: true')
 
     await user.click(screen.getByRole('button', { name: 'log out' }))

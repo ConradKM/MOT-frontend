@@ -9,6 +9,7 @@ import { formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { usePublicGarage } from '../../api/queries'
 import { submitBookingRequest, type PublicAppointmentType } from '../../api/publicGarage'
+import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 import { Captcha, captchaEnabled } from '../../components/Captcha'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
@@ -118,6 +119,7 @@ export function BookingWizard() {
     isLoading: garageLoading,
   } = usePublicGarage(urlGarageId)
   const queryClient = useQueryClient()
+  const { loginWithReference } = useCustomerAuth()
 
   const garageSlug = garage?.slug ?? ''
 
@@ -126,6 +128,7 @@ export function BookingWizard() {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [bookingReference, setBookingReference] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState('')
 
   const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
@@ -187,10 +190,11 @@ export function BookingWizard() {
     setSubmitting(true)
     setErrors({})
     try {
-      await submitBookingRequest(garageSlug, {
+      const email = data.email.trim()
+      const result = await submitBookingRequest(garageSlug, {
         customer_first_name: data.firstName.trim(),
         customer_last_name: data.lastName.trim(),
-        customer_email: data.email.trim(),
+        customer_email: email,
         // Required (validated above) - the server normalises it to E.164.
         customer_phone: data.phone.trim(),
         vehicle_registration: data.registration.trim(),
@@ -209,6 +213,16 @@ export function BookingWizard() {
         notes: data.notes.trim() || null,
         captcha_token: captchaToken,
       })
+      setBookingReference(result.booking_reference)
+      // The account (Customer + Vehicle) already exists at this point (see
+      // app/public_booking/routes.py), so sign the customer straight in with
+      // the reference just issued - "View my account" then works immediately
+      // without asking them to log in again. Best-effort: if it fails for any
+      // reason, the confirmation screen still shows the reference to log in
+      // with by hand.
+      if (result.booking_reference) {
+        void loginWithReference(email, result.booking_reference).catch(() => {})
+      }
       setSubmitted(true)
     } catch (err) {
       // The slot was taken between loading the calendar and submitting.
@@ -255,6 +269,7 @@ export function BookingWizard() {
     setErrors({})
     setStep(STEP_TIME)
     setSubmitted(false)
+    setBookingReference(null)
     setCaptchaToken('')
   }
 
@@ -265,6 +280,7 @@ export function BookingWizard() {
         date={data.date}
         time={data.time}
         email={data.email}
+        bookingReference={bookingReference}
         onRestart={restart}
       />
     )
@@ -807,12 +823,14 @@ function ConfirmationScreen({
   date,
   time,
   email,
+  bookingReference,
   onRestart,
 }: {
   firstName: string
   date: string
   time: string
   email: string
+  bookingReference: string | null
   onRestart: () => void
 }) {
   return (
@@ -823,21 +841,36 @@ function ConfirmationScreen({
       <h1 className="mt-4 text-2xl font-semibold text-slate-900">Request received</h1>
       <p className="mt-2 text-slate-600">
         Thanks, {firstName}. We've sent your request for {date ? formatLongDate(date) : ''} at {time}.
-        The garage will review it and be in touch at {email} to confirm.
+        The business will review it and be in touch at {email} to confirm.
       </p>
-      <div className="mt-6 flex justify-center gap-3">
+
+      {bookingReference && (
+        <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+            Booking reference
+          </p>
+          <p className="mt-0.5 font-mono text-lg font-semibold text-slate-900">
+            {bookingReference}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Keep this to sign in and check your booking later.
+          </p>
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
         <button
           type="button"
           onClick={onRestart}
           className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
-          Book another
+          Book another appointment
         </button>
         <Link
-          to="/"
+          to="/customer/account"
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
         >
-          Back to home
+          View my account
         </Link>
       </div>
     </div>

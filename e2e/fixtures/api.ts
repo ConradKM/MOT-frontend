@@ -36,7 +36,9 @@ function defaults(): Stub[] {
     { method: 'POST', match: (u) => u.pathname === '/api/auth/login', handler: (r) => json(r, { access_token: jwt(), refresh_token: jwt() }) },
     { method: 'POST', match: (u) => u.pathname === '/api/auth/register', handler: (r) => json(r, { access_token: jwt(), refresh_token: jwt() }) },
     { method: 'POST', match: (u) => u.pathname === '/api/auth/refresh', handler: (r) => json(r, { access_token: jwt() }) },
-    { method: 'POST', match: (u) => u.pathname === '/api/customer/auth/login', handler: (r) => json(r, { access_token: jwt('c1'), refresh_token: jwt('c1') }) },
+    { method: 'POST', match: (u) => u.pathname === '/api/customer/auth/login/reference', handler: (r) => json(r, { access_token: jwt('c1'), refresh_token: jwt('c1') }) },
+    { method: 'POST', match: (u) => u.pathname === '/api/customer/auth/login/password', handler: (r) => json(r, { access_token: jwt('c1'), refresh_token: jwt('c1') }) },
+    { method: 'POST', match: (u) => u.pathname === '/api/customer/auth/set-password', handler: (r) => r.fulfill({ status: 204 }) },
 
     // staff app
     { match: (u) => u.pathname === '/api/garage', handler: (r) => json(r, GARAGE) },
@@ -75,7 +77,7 @@ function defaults(): Stub[] {
     { match: (u) => /^\/api\/public\/garages\/[^/]+$/.test(u.pathname), handler: (r) => json(r, PUBLIC_GARAGE) },
     { match: (u) => u.pathname.endsWith('/availability'), handler: (r) => json(r, AVAILABILITY) },
     { match: (u) => /\/availability\/\d{4}-\d{2}-\d{2}$/.test(u.pathname), handler: (r) => json(r, DAY_AVAILABILITY) },
-    { method: 'POST', match: (u) => u.pathname.endsWith('/booking-requests'), handler: (r) => json(r, { id: 'br1', status: 'PENDING' }, 201) },
+    { method: 'POST', match: (u) => u.pathname.endsWith('/booking-requests'), handler: (r) => json(r, { id: 'br1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' }, 201) },
   ]
 }
 

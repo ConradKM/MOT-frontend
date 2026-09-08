@@ -68,14 +68,22 @@ export function getPublicGarageBySlug(slug: string): Promise<PublicGarageDetail>
   return apiFetch<PublicGarageDetail>(`/api/public/${slug}`, { skipAuth: true })
 }
 
+export interface BookingRequestCreated {
+  id: string
+  status: string
+  /** Short reference to show on the confirmation screen and log in with. */
+  booking_reference: string | null
+}
+
 export function submitBookingRequest(
   slug: string,
   data: BookingRequestInput,
-): Promise<{ id: string; status: string }> {
-  return apiFetch<{ id: string; status: string }>(
-    `/api/public/${slug}/booking-requests`,
-    { method: 'POST', body: data, skipAuth: true },
-  )
+): Promise<BookingRequestCreated> {
+  return apiFetch<BookingRequestCreated>(`/api/public/${slug}/booking-requests`, {
+    method: 'POST',
+    body: data,
+    skipAuth: true,
+  })
 }
 
 // --- Availability calendar ------------------------------------------------

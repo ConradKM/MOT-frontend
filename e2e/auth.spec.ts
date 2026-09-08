@@ -119,13 +119,20 @@ test.describe('protected areas', () => {
 })
 
 test.describe('the customer portal', () => {
-  test('signs in with an email and vehicle registration', async ({ page }) => {
+  test('signs in with a booking reference', async ({ page }) => {
     await stubApi(page, [
       {
         path: '/api/customer/account',
         handler: (route) =>
           respond.json(route, {
-            customer: { first_name: 'Oliver', garage_name: 'Bennett Motors' },
+            customer: {
+              first_name: 'Oliver',
+              last_name: 'Bennett',
+              email: 'oliver@example.com',
+              phone: null,
+              garage_name: 'Bennett Motors',
+              has_password: false,
+            },
             vehicles: [],
             appointments: [],
           }),
@@ -133,9 +140,37 @@ test.describe('the customer portal', () => {
     ])
     await page.goto('/customer/login')
     await page.getByLabel('Email').fill('oliver@example.com')
-    await page.getByLabel('Vehicle registration').fill('ob08aud')
+    await page.getByLabel('Booking reference').fill('bk7f3k9q2')
     // Normalised to upper case as it is typed.
-    await expect(page.getByLabel('Vehicle registration')).toHaveValue('OB08AUD')
+    await expect(page.getByLabel('Booking reference')).toHaveValue('BK7F3K9Q2')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+
+    await expect(page.getByRole('heading', { name: 'Hi Oliver' })).toBeVisible()
+  })
+
+  test('signs in with email + password', async ({ page }) => {
+    await stubApi(page, [
+      {
+        path: '/api/customer/account',
+        handler: (route) =>
+          respond.json(route, {
+            customer: {
+              first_name: 'Oliver',
+              last_name: 'Bennett',
+              email: 'oliver@example.com',
+              phone: null,
+              garage_name: 'Bennett Motors',
+              has_password: true,
+            },
+            vehicles: [],
+            appointments: [],
+          }),
+      },
+    ])
+    await page.goto('/customer/login')
+    await page.getByRole('tab', { name: 'Password' }).click()
+    await page.getByLabel('Email').fill('oliver@example.com')
+    await page.getByLabel('Password').fill('a-long-password')
     await page.getByRole('button', { name: 'Sign in' }).click()
 
     await expect(page.getByRole('heading', { name: 'Hi Oliver' })).toBeVisible()

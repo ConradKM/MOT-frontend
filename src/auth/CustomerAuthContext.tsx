@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import { customerLogin } from '../api/customerAuth'
+import { customerPasswordLogin, customerReferenceLogin } from '../api/customerAuth'
 import {
   clearCustomerTokens,
   getCustomerAccessToken,
@@ -10,7 +10,8 @@ import { decodeJwt } from '../lib/jwt'
 interface CustomerAuthContextValue {
   isAuthenticated: boolean
   customerId: string | null
-  login: (email: string, registrationNumber: string) => Promise<void>
+  loginWithReference: (email: string, bookingReference: string) => Promise<void>
+  loginWithPassword: (email: string, password: string) => Promise<void>
   logout: () => void
 }
 
@@ -19,8 +20,14 @@ const CustomerAuthContext = createContext<CustomerAuthContextValue | null>(null)
 export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(() => getCustomerAccessToken())
 
-  const login = async (email: string, registrationNumber: string) => {
-    const tokens = await customerLogin({ email, registration_number: registrationNumber })
+  const loginWithReference = async (email: string, bookingReference: string) => {
+    const tokens = await customerReferenceLogin({ email, booking_reference: bookingReference })
+    setCustomerTokens(tokens.access_token, tokens.refresh_token)
+    setAccessToken(tokens.access_token)
+  }
+
+  const loginWithPassword = async (email: string, password: string) => {
+    const tokens = await customerPasswordLogin({ email, password })
     setCustomerTokens(tokens.access_token, tokens.refresh_token)
     setAccessToken(tokens.access_token)
   }
@@ -35,7 +42,8 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     return {
       isAuthenticated: !!accessToken,
       customerId: typeof sub === 'string' && sub.length > 0 ? sub : null,
-      login,
+      loginWithReference,
+      loginWithPassword,
       logout,
     }
   }, [accessToken])
