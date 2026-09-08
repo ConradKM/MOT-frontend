@@ -1,4 +1,5 @@
 import { useGarage } from '../../api/queries'
+import { BookingQrCard } from '../../components/BookingQrCard'
 import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import type { Garage } from '../../types'
 
@@ -51,6 +52,8 @@ export function GarageDetails() {
               If any of these business details are incorrect or need updating, please contact
               the platform administrator.
             </p>
+
+            <BookingQrCard garageId={garage.id} />
           </>
         )}
       </div>

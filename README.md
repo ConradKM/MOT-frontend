@@ -76,6 +76,19 @@ records) or reject.
 is empty and the backend's `none` provider accepts it. The backend must be
 configured with the matching secret (`CAPTCHA_PROVIDER` / `CAPTCHA_SECRET`).
 
+### Booking link & QR code
+
+`Settings → Business Details` shows each business its **public booking link** and
+a **QR code**, with copy / download PNG / download SVG (`BookingQrCard`). The
+link is `${VITE_BOOKING_BASE_URL ?? 'https://app.comaz.co.uk'}/book/<business
+UUID>` — the same `/book/:garageId` route the wizard uses. The QR is generated
+in the browser from that string (`qrcode` package); nothing is stored.
+
+Because the link encodes the **immutable business UUID**, not the slug, QR
+codes keep working across frontend deploys and are unaffected if a developer
+ever re-points the (otherwise immutable) slug. Only hand-written `/book/<slug>`
+links would break in that case — the printed QR would not.
+
 ## Deployment
 
 The production site is a static Vite build (Cloudflare Pages). There is no dev
