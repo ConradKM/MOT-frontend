@@ -115,10 +115,9 @@ describe('CallsList', () => {
   })
 
   it('expands a row to show call details and technical SID on demand', async () => {
-    vi.mocked(communicationsApi.listCalls).mockResolvedValue({
-      total: 1,
-      items: [call({ external_id: 'CAabc123' })],
-    })
+    const row = call({ external_id: 'CAabc123' })
+    vi.mocked(communicationsApi.listCalls).mockResolvedValue({ total: 1, items: [row] })
+    vi.mocked(communicationsApi.getCall).mockResolvedValue({ ...row, transcript: [] })
     const user = userEvent.setup()
     render()
 
@@ -128,5 +127,28 @@ describe('CallsList', () => {
 
     await user.click(screen.getByText('Technical details'))
     expect(screen.getByText('CAabc123')).toBeInTheDocument()
+  })
+
+  it('shows the conversation transcript inside an expanded call', async () => {
+    const row = call({ id: 'call-t', external_id: 'CAtranscript' })
+    vi.mocked(communicationsApi.listCalls).mockResolvedValue({ total: 1, items: [row] })
+    vi.mocked(communicationsApi.getCall).mockResolvedValue({
+      ...row,
+      transcript: [
+        call({ id: 't1', direction: 'INBOUND', body: 'I need an MOT on Friday' }),
+        call({ id: 't2', direction: 'OUTBOUND', body: 'For Friday I have 09:00, 09:30 available.' }),
+        call({ id: 't3', direction: 'SYSTEM', body: 'Booking request #ab12 created' }),
+      ],
+    })
+    const user = userEvent.setup()
+    render()
+
+    await user.click(await screen.findByText('View'))
+
+    expect(await screen.findByText('Conversation')).toBeInTheDocument()
+    expect(screen.getByText('I need an MOT on Friday')).toBeInTheDocument()
+    expect(screen.getByText('Booking request #ab12 created')).toBeInTheDocument()
+    expect(screen.getByText('Caller')).toBeInTheDocument()
+    expect(screen.getByText('Assistant')).toBeInTheDocument()
   })
 })

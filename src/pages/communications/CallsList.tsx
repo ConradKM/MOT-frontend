@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useCalls } from '../../api/queries'
+import { useCall, useCalls } from '../../api/queries'
 import { useGarageId } from '../../hooks/useGarageId'
 import { Disclosure } from '../../components/Disclosure'
 import { ContactShortcuts } from '../../components/communications/ContactShortcuts'
@@ -13,8 +13,9 @@ import {
   formatCallDuration,
   isMissedCall,
   stripWhatsAppPrefix,
+  transcriptRoleLabel,
 } from '../../lib/communications'
-import { formatDateTime } from '../../lib/datetime'
+import { formatDateTime, formatTime } from '../../lib/datetime'
 
 type Filter = 'ALL' | 'INBOUND' | 'OUTBOUND' | 'MISSED'
 
@@ -26,6 +27,39 @@ const FILTERS: { key: Filter; label: string }[] = [
 ]
 
 const PAGE_SIZE = 25
+
+function CallTranscript({ callId }: { callId: string }) {
+  const { data, isLoading } = useCall(callId)
+  const turns = data?.transcript ?? []
+
+  if (isLoading) {
+    return <p className="mt-4 text-xs text-slate-400">Loading transcript…</p>
+  }
+  if (turns.length === 0) return null
+
+  return (
+    <div className="mt-4 border-t border-slate-200 pt-4">
+      <p className="mb-2 text-xs font-medium uppercase text-slate-400">Conversation</p>
+      <ol className="space-y-2">
+        {turns.map((turn) => (
+          <li key={turn.id} className="flex gap-3 text-sm">
+            <span className="w-14 shrink-0 text-xs text-slate-400">
+              {formatTime(turn.created_at)}
+            </span>
+            <span
+              className={`w-16 shrink-0 text-xs font-medium ${
+                turn.direction === 'INBOUND' ? 'text-slate-700' : 'text-slate-500'
+              }`}
+            >
+              {transcriptRoleLabel(turn.direction)}
+            </span>
+            <span className="text-slate-700">{turn.body}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
 
 function CallDetailRow({ call, garageId }: { call: CommunicationLog; garageId: string }) {
   const number = stripWhatsAppPrefix(call.direction === 'INBOUND' ? call.from_address : call.to_address)
@@ -107,6 +141,8 @@ function CallDetailRow({ call, garageId }: { call: CommunicationLog; garageId: s
             </Link>
           )}
         </div>
+
+        <CallTranscript callId={call.id} />
 
         {call.external_id && (
           <div className="mt-4">

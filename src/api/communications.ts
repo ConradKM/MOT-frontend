@@ -1,7 +1,10 @@
 import { apiFetch } from './client'
 
 export type CommChannel = 'VOICE' | 'WHATSAPP' | 'SMS' | 'EMAIL'
-export type CommDirection = 'INBOUND' | 'OUTBOUND'
+// SYSTEM is a real runtime value for conversation-engine "action" rows (e.g.
+// "Booking request created") that appear in a call transcript alongside the
+// INBOUND/OUTBOUND turns.
+export type CommDirection = 'INBOUND' | 'OUTBOUND' | 'SYSTEM'
 
 export interface CommunicationCustomer {
   id: string
@@ -27,6 +30,9 @@ export interface CommunicationLog {
   direction: CommDirection
   external_provider: string
   external_id: string | null
+  /** The Twilio CallSid this row belongs to (voice only). The one call-level
+   * row and all of its transcript turns share it. */
+  call_sid?: string | null
   from_address: string | null
   to_address: string | null
   status: string
@@ -41,6 +47,13 @@ export interface CommunicationLog {
   customer: CommunicationCustomer | null
   appointment: CommunicationAppointmentRef | null
   booking_request: CommunicationBookingRequestRef | null
+}
+
+/** A single call plus its conversation transcript - the caller/assistant
+ * turns and system events exchanged during it, oldest first. Empty for a
+ * non-automated call. */
+export interface CallDetail extends CommunicationLog {
+  transcript: CommunicationLog[]
 }
 
 export interface CommunicationsCapabilities {
@@ -100,7 +113,7 @@ export function listCalls(params: CallListParams = {}): Promise<Paginated<Commun
   return apiFetch(`/api/communications/calls${toQuery(params)}`)
 }
 
-export function getCall(id: string): Promise<CommunicationLog> {
+export function getCall(id: string): Promise<CallDetail> {
   return apiFetch(`/api/communications/calls/${id}`)
 }
 
