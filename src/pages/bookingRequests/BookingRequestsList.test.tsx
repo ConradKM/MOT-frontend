@@ -172,18 +172,55 @@ describe('BookingRequestsList — approving', () => {
     await user.click(screen.getByRole('button', { name: 'Approve' }))
   }
 
-  it('blocks approval until a mechanic is assigned', async () => {
-    // Approving creates a real appointment; it cannot be assigned to nobody.
+  it('preselects the first eligible employee when the approve panel opens', async () => {
     serveRequests({ PENDING: [makeRequest()] })
+    server.use(
+      http.get('*/api/employees/', () =>
+        HttpResponse.json([
+          makeEmployee({ id: 'e1', first_name: 'Ada' }),
+          makeEmployee({ id: 'e2', first_name: 'Bea' }),
+        ]),
+      ),
+    )
     const user = userEvent.setup()
     renderList()
     await openApprove(user)
 
-    const submit = screen.getByRole('button', { name: 'Approve & create appointment' })
-    expect(submit).toBeDisabled()
+    // Assignee defaulted, so approval only needs the (already-set) type.
+    expect(screen.getByLabelText('Assign to')).toHaveValue('e1')
+    expect(screen.getByRole('button', { name: 'Approve & create appointment' })).toBeEnabled()
+  })
 
-    await user.selectOptions(screen.getByLabelText('Assign to'), 'e1')
-    expect(submit).toBeEnabled()
+  it('lets staff change the preselected employee, and blocks approval if cleared', async () => {
+    serveRequests({ PENDING: [makeRequest()] })
+    server.use(
+      http.get('*/api/employees/', () =>
+        HttpResponse.json([
+          makeEmployee({ id: 'e1', first_name: 'Ada' }),
+          makeEmployee({ id: 'e2', first_name: 'Bea' }),
+        ]),
+      ),
+    )
+    const user = userEvent.setup()
+    renderList()
+    await openApprove(user)
+
+    await user.selectOptions(screen.getByLabelText('Assign to'), 'e2')
+    expect(screen.getByLabelText('Assign to')).toHaveValue('e2')
+
+    await user.selectOptions(screen.getByLabelText('Assign to'), '')
+    expect(screen.getByRole('button', { name: 'Approve & create appointment' })).toBeDisabled()
+  })
+
+  it('leaves the assignee blank when there are no eligible employees', async () => {
+    serveRequests({ PENDING: [makeRequest()] })
+    server.use(http.get('*/api/employees/', () => HttpResponse.json([])))
+    const user = userEvent.setup()
+    renderList()
+    await openApprove(user)
+
+    expect(screen.getByLabelText('Assign to')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Approve & create appointment' })).toBeDisabled()
   })
 
   it('carries the customer’s chosen service through as the default type', async () => {
