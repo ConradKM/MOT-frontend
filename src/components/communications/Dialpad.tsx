@@ -8,13 +8,21 @@ const KEYS = [
 interface DialpadProps {
   value: string
   onChange: (value: string) => void
+  /** When set, a key press sends a DTMF tone through this instead of editing
+   * the number (used while a call is connected). */
+  onDigit?: (digit: string) => void
+  /** Freeze the number field (e.g. while a call is in progress). */
+  disabled?: boolean
 }
 
-/** A phone-number field plus a numeric keypad for entering it - the base for
- * outbound calling. Deliberately plain/professional (a form control with a
- * keypad, not a phone-app skeuomorph). */
-export function Dialpad({ value, onChange }: DialpadProps) {
-  const press = (key: string) => onChange(value + key)
+/** A phone-number field plus a numeric keypad. Before a call the keys build
+ * the number; once `onDigit` is provided they send DTMF tones instead. */
+export function Dialpad({ value, onChange, onDigit, disabled }: DialpadProps) {
+  const dtmf = !!onDigit
+  const press = (key: string) => {
+    if (dtmf) onDigit?.(key)
+    else onChange(value + key)
+  }
   const backspace = () => onChange(value.slice(0, -1))
 
   return (
@@ -28,13 +36,14 @@ export function Dialpad({ value, onChange }: DialpadProps) {
           type="tel"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
           placeholder="07123 456789"
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-lg tracking-wide focus:border-slate-500 focus:outline-none"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-lg tracking-wide focus:border-slate-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
         />
         <button
           type="button"
           onClick={backspace}
-          disabled={!value}
+          disabled={!value || dtmf || disabled}
           aria-label="Backspace"
           className="shrink-0 rounded-md border border-slate-300 px-3 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
         >
@@ -48,6 +57,7 @@ export function Dialpad({ value, onChange }: DialpadProps) {
             key={key}
             type="button"
             onClick={() => press(key)}
+            aria-label={dtmf ? `Send ${key}` : `Dial ${key}`}
             className="rounded-md border border-slate-200 bg-slate-50 py-3 text-lg font-medium text-slate-800 hover:bg-slate-100"
           >
             {key}

@@ -47,6 +47,20 @@ export interface CommunicationLog {
   customer: CommunicationCustomer | null
   appointment: CommunicationAppointmentRef | null
   booking_request: CommunicationBookingRequestRef | null
+  initiated_by?: { id: string; first_name: string; last_name: string } | null
+}
+
+/** A short-lived Twilio Voice Access Token for the browser dialler. `token`
+ * is scoped to outgoing calls only; `caller_id` is what the customer sees. */
+export interface VoiceToken {
+  token: string
+  identity: string
+  expires_in: number
+  caller_id: string
+}
+
+export function getVoiceToken(): Promise<VoiceToken> {
+  return apiFetch('/api/communications/voice/token')
 }
 
 /** A single call plus its conversation transcript - the caller/assistant
