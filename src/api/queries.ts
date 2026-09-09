@@ -710,6 +710,39 @@ export function useMarkConversationRead() {
   })
 }
 
+function useConversationListInvalidation() {
+  const qc = useQueryClient()
+  return () => {
+    qc.invalidateQueries({ queryKey: ['conversations'] })
+    qc.invalidateQueries({ queryKey: ['communicationsUnreadCount'] })
+    qc.invalidateQueries({ queryKey: ['communicationsOverview'] })
+  }
+}
+
+export function useArchiveConversation() {
+  const invalidate = useConversationListInvalidation()
+  return useMutation({
+    mutationFn: communicationsApi.archiveConversation,
+    onSuccess: invalidate,
+  })
+}
+
+export function useRestoreConversation() {
+  const invalidate = useConversationListInvalidation()
+  return useMutation({
+    mutationFn: communicationsApi.restoreConversation,
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteConversation() {
+  const invalidate = useConversationListInvalidation()
+  return useMutation({
+    mutationFn: communicationsApi.deleteConversation,
+    onSuccess: invalidate,
+  })
+}
+
 export function useSendWhatsAppMessage() {
   const qc = useQueryClient()
   return useMutation({

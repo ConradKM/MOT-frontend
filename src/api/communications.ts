@@ -91,7 +91,10 @@ export interface Conversation {
   customer: CommunicationCustomer | null
   last_message: CommunicationLog
   unread_count: number
+  archived: boolean
 }
+
+export type ConversationFilter = 'inbox' | 'needs_attention' | 'archived'
 
 export interface Paginated<T> {
   items: T[]
@@ -136,6 +139,7 @@ export function initiateCall(data: { customer_id?: string; to?: string }): Promi
 }
 
 export interface ConversationListParams {
+  filter?: ConversationFilter
   search?: string
   limit?: number
   offset?: number
@@ -145,6 +149,28 @@ export function listConversations(
   params: ConversationListParams = {},
 ): Promise<Paginated<Conversation>> {
   return apiFetch(`/api/communications/conversations${toQuery(params)}`)
+}
+
+function conversationAction(phone: string, action: string): Promise<void> {
+  return apiFetch(
+    `/api/communications/conversations/${encodeURIComponent(phone)}/${action}`,
+    { method: 'POST' },
+  )
+}
+
+export function archiveConversation(phone: string): Promise<void> {
+  return conversationAction(phone, 'archive')
+}
+
+export function restoreConversation(phone: string): Promise<void> {
+  return conversationAction(phone, 'restore')
+}
+
+/** Owner-only soft delete. History is kept; nothing on WhatsApp is affected. */
+export function deleteConversation(phone: string): Promise<void> {
+  return apiFetch(`/api/communications/conversations/${encodeURIComponent(phone)}`, {
+    method: 'DELETE',
+  })
 }
 
 export interface ConversationMessages {
