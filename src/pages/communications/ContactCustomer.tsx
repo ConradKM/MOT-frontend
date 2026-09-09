@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   useAppointments,
@@ -12,7 +12,7 @@ import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage } from '../../lib/errors'
 import { Dialpad } from '../../components/communications/Dialpad'
-import { useTwilioDevice, type DialerStatus } from '../../hooks/useTwilioDevice'
+import { useTwilioDevice, type DialerStatus, type TwilioDialer } from '../../hooks/useTwilioDevice'
 import { formatDateTime } from '../../lib/datetime'
 import type { Customer } from '../../types'
 
@@ -28,25 +28,44 @@ const STATUS_LABEL: Record<DialerStatus, string> = {
   failed: 'Call failed',
 }
 
-function Dialler({ phone, enabled }: { phone: string; enabled: boolean }) {
-  const [number, setNumber] = useState(phone)
-  const {
-    status,
-    error,
-    isMuted,
-    startCall,
-    hangUp,
-    toggleMute,
-    sendDigit,
-  } = useTwilioDevice({ enabled })
+const IN_CALL_STATUSES: DialerStatus[] = ['calling', 'ringing', 'connected']
 
-  const inCall = status === 'calling' || status === 'ringing' || status === 'connected'
-  const dialNumber = inCall ? phone || number : number
+/** Loose equality for a dialled string vs. a stored contact number - compares
+ * the trailing digits so `07123 456789` matches `+447123456789`. */
+function sameNumber(a: string | null | undefined, b: string | null | undefined): boolean {
+  const da = (a ?? '').replace(/\D/g, '')
+  const db = (b ?? '').replace(/\D/g, '')
+  if (!da || !db) return false
+  const short = da.length < db.length ? da : db
+  const long = da.length < db.length ? db : da
+  return short.length >= 7 && long.endsWith(short)
+}
+
+/**
+ * The keypad + call controls. Purely presentational: the parent owns the
+ * `useTwilioDevice` instance so the whole page can lock its identity display
+ * while a call is live. `number` is the editable draft; the parent freezes
+ * edits during a call and shows `dialler.activeNumber` instead.
+ */
+function Dialler({
+  dialler,
+  number,
+  onNumberChange,
+  enabled,
+}: {
+  dialler: TwilioDialer
+  number: string
+  onNumberChange: (value: string) => void
+  enabled: boolean
+}) {
+  const { status, error, isMuted, activeNumber, startCall, hangUp, toggleMute, sendDigit } = dialler
+  const inCall = IN_CALL_STATUSES.includes(status)
+  const shownNumber = inCall ? (activeNumber ?? number) : number
 
   if (!enabled) {
     return (
       <div>
-        <Dialpad value={number} onChange={setNumber} />
+        <Dialpad value={number} onChange={onNumberChange} />
         <p className="mt-3 max-w-xs text-xs text-slate-500">
           Browser calling isn't switched on for your business yet.
         </p>
@@ -57,8 +76,8 @@ function Dialler({ phone, enabled }: { phone: string; enabled: boolean }) {
   return (
     <div className="max-w-xs">
       <Dialpad
-        value={dialNumber}
-        onChange={setNumber}
+        value={shownNumber}
+        onChange={onNumberChange}
         onDigit={status === 'connected' ? sendDigit : undefined}
         disabled={inCall}
       />
@@ -118,10 +137,24 @@ function Dialler({ phone, enabled }: { phone: string; enabled: boolean }) {
   )
 }
 
+/** Identity shown while a call is live - pinned to the number Twilio is
+ * actually dialling, never the page's (possibly since-changed) selection. */
+function ActiveCallCard({ number, name }: { number: string; name: string | null }) {
+  return (
+    <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-blue-700">On call</p>
+      <p className="mt-1 text-lg font-semibold text-slate-900">{name ?? number}</p>
+      {name && <p className="text-sm text-slate-600">{number}</p>}
+    </div>
+  )
+}
+
 function CustomerPicker({
   onSelect,
+  disabled,
 }: {
   onSelect: (customer: Customer) => void
+  disabled?: boolean
 }) {
   const [search, setSearch] = useState('')
   const { data: customers, isLoading } = useCustomers(search || undefined)
@@ -148,7 +181,8 @@ function CustomerPicker({
               <button
                 key={c.id}
                 onClick={() => onSelect(c)}
-                className="block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-slate-50"
+                disabled={disabled}
+                className="block w-full border-b border-slate-100 px-3 py-2 text-left text-sm last:border-0 hover:bg-slate-50 disabled:opacity-50"
               >
                 <p className="font-medium text-slate-900">
                   {c.first_name} {c.last_name}
@@ -160,6 +194,11 @@ function CustomerPicker({
             <p className="px-3 py-2 text-sm text-slate-500">No customers match.</p>
           )}
         </div>
+      )}
+      {disabled && (
+        <p className="mt-1 text-xs text-slate-400">
+          Finish the current call before switching contact.
+        </p>
       )}
     </div>
   )
@@ -225,6 +264,9 @@ export function ContactCustomer() {
   const [pickedCustomer, setPickedCustomer] = useState<Customer | null>(null)
   const [whatsappBody, setWhatsappBody] = useState('')
   const [sent, setSent] = useState(false)
+  // The editable dialler draft. Kept here (not in <Dialler>) so it survives
+  // remounts and can be synced from a picked customer / query param.
+  const [manualNumber, setManualNumber] = useState('')
 
   const customerId = searchParams.get('customerId')
   const rawPhone = searchParams.get('phone')
@@ -237,11 +279,33 @@ export function ContactCustomer() {
   const { data: linkedCustomer } = useCustomer(pickedCustomer ? undefined : (customerId ?? undefined))
   const selectedCustomer = pickedCustomer ?? linkedCustomer ?? null
 
-  const hasTarget = !!selectedCustomer || !!customerId || !!rawPhone
+  const callingEnabled = overview?.capabilities.outbound_calling_supported ?? false
+  const dialler = useTwilioDevice({ enabled: callingEnabled })
+  const inCall = IN_CALL_STATUSES.includes(dialler.status)
+
   const targetPhone = selectedCustomer?.phone ?? rawPhone ?? ''
   const targetName = selectedCustomer
     ? `${selectedCustomer.first_name} ${selectedCustomer.last_name}`
     : rawName
+
+  // Selecting a contact (or landing with ?phone=/?customerId=) populates the
+  // dialler - but never while a call is live: the connected number is frozen.
+  useEffect(() => {
+    if (inCall) return
+    if (targetPhone) setManualNumber(targetPhone)
+  }, [targetPhone, inCall])
+
+  // Name to show on the locked in-call card: only if the number Twilio is
+  // actually dialling matches a contact we know. Otherwise show the number.
+  const activeCallName = useMemo(() => {
+    const dialled = dialler.activeNumber
+    if (!dialled) return null
+    if (selectedCustomer && sameNumber(dialled, selectedCustomer.phone)) {
+      return `${selectedCustomer.first_name} ${selectedCustomer.last_name}`
+    }
+    if (rawName && sameNumber(dialled, rawPhone)) return rawName
+    return null
+  }, [dialler.activeNumber, selectedCustomer, rawName, rawPhone])
 
   const setTab = (next: Tab) => {
     const params = new URLSearchParams(searchParams)
@@ -249,13 +313,15 @@ export function ContactCustomer() {
     setSearchParams(params)
   }
 
+  const whatsappPhone = targetPhone || manualNumber
+
   const handleSendWhatsApp = async () => {
     if (!whatsappBody.trim()) return
     const effectiveCustomerId = selectedCustomer?.id ?? undefined
     try {
       await sendMessage.mutateAsync({
         customer_id: effectiveCustomerId,
-        to: effectiveCustomerId ? undefined : targetPhone,
+        to: effectiveCustomerId ? undefined : whatsappPhone,
         body: whatsappBody.trim(),
       })
       setSent(true)
@@ -267,88 +333,94 @@ export function ContactCustomer() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      {!hasTarget && <CustomerPicker onSelect={setPickedCustomer} />}
+      <CustomerPicker onSelect={setPickedCustomer} disabled={inCall} />
 
-      {selectedCustomer && <SelectedCustomerCard customer={selectedCustomer} />}
-
-      {!selectedCustomer && rawPhone && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
-          <p className="font-medium text-slate-900">{targetName ?? 'Contact'}</p>
-          {targetPhone && <p className="text-sm text-slate-500">{targetPhone}</p>}
-        </div>
+      {inCall ? (
+        <ActiveCallCard number={dialler.activeNumber ?? manualNumber} name={activeCallName} />
+      ) : selectedCustomer ? (
+        <SelectedCustomerCard customer={selectedCustomer} />
+      ) : (
+        rawPhone && (
+          <div className="rounded-lg border border-slate-200 bg-white p-4">
+            <p className="font-medium text-slate-900">{targetName ?? 'Contact'}</p>
+            {rawPhone && <p className="text-sm text-slate-500">{rawPhone}</p>}
+          </div>
+        )
       )}
 
-      {hasTarget && (
-        <div>
-          <div className="flex gap-1 border-b border-slate-200">
-            {(['call', 'whatsapp'] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`rounded-t-md px-3 py-2 text-sm font-medium ${
-                  tab === t
-                    ? 'border-b-2 border-slate-900 text-slate-900'
-                    : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                {t === 'call' ? 'Call' : 'WhatsApp'}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-4">
-            {tab === 'call' ? (
-              <Dialler
-                phone={targetPhone}
-                enabled={overview?.capabilities.outbound_calling_supported ?? false}
-              />
-            ) : (
-              <div className="max-w-lg">
-                {!targetPhone ? (
-                  <p className="text-sm text-red-600">This customer has no phone number on file.</p>
-                ) : (
-                  <>
-                    {sent && (
-                      <p className="mb-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-                        Message recorded.{' '}
-                        <Link
-                          to={`/${garageId}/communications/whatsapp?phone=${encodeURIComponent(targetPhone)}`}
-                          className="font-medium underline"
-                        >
-                          View conversation
-                        </Link>
-                      </p>
-                    )}
-                    <label className="block text-sm font-medium text-slate-700" htmlFor="whatsapp-body">
-                      Message customer…
-                    </label>
-                    <textarea
-                      id="whatsapp-body"
-                      value={whatsappBody}
-                      onChange={(e) => setWhatsappBody(e.target.value)}
-                      rows={3}
-                      className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                    />
-                    <button
-                      onClick={handleSendWhatsApp}
-                      disabled={sendMessage.isPending || !whatsappBody.trim()}
-                      className="mt-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-                    >
-                      {sendMessage.isPending ? 'Sending…' : 'Send'}
-                    </button>
-                    {!overview?.capabilities.whatsapp_configured && (
-                      <p className="mt-2 text-xs text-amber-700">
-                        WhatsApp is not connected yet - this will be logged but not actually
-                        delivered.
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+      <div>
+        <div className="flex gap-1 border-b border-slate-200">
+          {(['call', 'whatsapp'] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`rounded-t-md px-3 py-2 text-sm font-medium ${
+                tab === t
+                  ? 'border-b-2 border-slate-900 text-slate-900'
+                  : 'text-slate-500 hover:text-slate-900'
+              }`}
+            >
+              {t === 'call' ? 'Call' : 'WhatsApp'}
+            </button>
+          ))}
         </div>
-      )}
+
+        <div className="mt-4">
+          {tab === 'call' ? (
+            <Dialler
+              dialler={dialler}
+              number={manualNumber}
+              onNumberChange={setManualNumber}
+              enabled={callingEnabled}
+            />
+          ) : (
+            <div className="max-w-lg">
+              {!whatsappPhone ? (
+                <p className="text-sm text-slate-500">
+                  Pick a customer or enter a number to send a WhatsApp message.
+                </p>
+              ) : (
+                <>
+                  {sent && (
+                    <p className="mb-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                      Message recorded.{' '}
+                      <Link
+                        to={`/${garageId}/communications/whatsapp?phone=${encodeURIComponent(whatsappPhone)}`}
+                        className="font-medium underline"
+                      >
+                        View conversation
+                      </Link>
+                    </p>
+                  )}
+                  <label className="block text-sm font-medium text-slate-700" htmlFor="whatsapp-body">
+                    Message customer…
+                  </label>
+                  <textarea
+                    id="whatsapp-body"
+                    value={whatsappBody}
+                    onChange={(e) => setWhatsappBody(e.target.value)}
+                    rows={3}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleSendWhatsApp}
+                    disabled={sendMessage.isPending || !whatsappBody.trim()}
+                    className="mt-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {sendMessage.isPending ? 'Sending…' : 'Send'}
+                  </button>
+                  {!overview?.capabilities.whatsapp_configured && (
+                    <p className="mt-2 text-xs text-amber-700">
+                      WhatsApp is not connected yet - this will be logged but not actually
+                      delivered.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
