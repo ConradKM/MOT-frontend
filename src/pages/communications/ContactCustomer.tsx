@@ -12,10 +12,111 @@ import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage } from '../../lib/errors'
 import { Dialpad } from '../../components/communications/Dialpad'
+import { useTwilioDevice, type DialerStatus } from '../../hooks/useTwilioDevice'
 import { formatDateTime } from '../../lib/datetime'
 import type { Customer } from '../../types'
 
 type Tab = 'call' | 'whatsapp'
+
+const STATUS_LABEL: Record<DialerStatus, string> = {
+  initialising: 'Connecting…',
+  ready: 'Ready',
+  calling: 'Calling…',
+  ringing: 'Ringing…',
+  connected: 'Connected',
+  ended: 'Call ended',
+  failed: 'Call failed',
+}
+
+function Dialler({ phone, enabled }: { phone: string; enabled: boolean }) {
+  const [number, setNumber] = useState(phone)
+  const {
+    status,
+    error,
+    isMuted,
+    startCall,
+    hangUp,
+    toggleMute,
+    sendDigit,
+  } = useTwilioDevice({ enabled })
+
+  const inCall = status === 'calling' || status === 'ringing' || status === 'connected'
+  const dialNumber = inCall ? phone || number : number
+
+  if (!enabled) {
+    return (
+      <div>
+        <Dialpad value={number} onChange={setNumber} />
+        <p className="mt-3 max-w-xs text-xs text-slate-500">
+          Browser calling isn't switched on for your business yet.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-xs">
+      <Dialpad
+        value={dialNumber}
+        onChange={setNumber}
+        onDigit={status === 'connected' ? sendDigit : undefined}
+        disabled={inCall}
+      />
+
+      <div className="mt-3 flex items-center gap-2 text-sm">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium ${
+            status === 'connected'
+              ? 'bg-emerald-100 text-emerald-700'
+              : status === 'failed'
+                ? 'bg-red-100 text-red-700'
+                : inCall
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-slate-100 text-slate-600'
+          }`}
+        >
+          {STATUS_LABEL[status]}
+        </span>
+      </div>
+
+      {error && (
+        <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {!inCall ? (
+          <button
+            type="button"
+            aria-label="Place call"
+            onClick={() => startCall(number)}
+            disabled={status === 'initialising' || !number.trim()}
+            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            Call
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={hangUp}
+              className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            >
+              Hang up
+            </button>
+            <button
+              type="button"
+              onClick={toggleMute}
+              disabled={status !== 'connected'}
+              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {isMuted ? 'Unmute' : 'Mute'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function CustomerPicker({
   onSelect,
@@ -122,7 +223,6 @@ export function ContactCustomer() {
   const sendMessage = useSendWhatsAppMessage()
 
   const [pickedCustomer, setPickedCustomer] = useState<Customer | null>(null)
-  const [dialValue, setDialValue] = useState('')
   const [whatsappBody, setWhatsappBody] = useState('')
   const [sent, setSent] = useState(false)
 
@@ -198,19 +298,10 @@ export function ContactCustomer() {
 
           <div className="mt-4">
             {tab === 'call' ? (
-              <div>
-                <Dialpad value={dialValue || targetPhone} onChange={setDialValue} />
-                <button
-                  disabled
-                  title="Calling will become available once phone services are connected."
-                  className="mt-4 w-full max-w-xs cursor-not-allowed rounded-md bg-slate-300 px-4 py-2 text-sm font-medium text-slate-500"
-                >
-                  Call
-                </button>
-                <p className="mt-2 max-w-xs text-xs text-slate-500">
-                  Calling will become available once phone services are connected.
-                </p>
-              </div>
+              <Dialler
+                phone={targetPhone}
+                enabled={overview?.capabilities.outbound_calling_supported ?? false}
+              />
             ) : (
               <div className="max-w-lg">
                 {!targetPhone ? (
