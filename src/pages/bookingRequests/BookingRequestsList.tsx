@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { BookingRequest, BookingRequestStatus } from '../../api/bookingRequests'
 import {
   useApproveBookingRequest,
@@ -145,6 +145,9 @@ function ReviewRow({ request }: { request: BookingRequest }) {
   const { showToast } = useToast()
 
   const activeEmployees = (employees ?? []).filter((e) => e.is_active)
+  // "First sensible employee" - the same active-employee list the dropdown
+  // shows; no per-service eligibility rule exists to narrow it further.
+  const firstEligibleEmployeeId = activeEmployees[0]?.id ?? ''
 
   const defaultStart = request.preferred_time
     ? `${request.preferred_date}T${request.preferred_time.slice(0, 5)}`
@@ -157,6 +160,16 @@ function ReviewRow({ request }: { request: BookingRequest }) {
   const [staffNotes, setStaffNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [confirmDespiteConflict, setConfirmDespiteConflict] = useState(false)
+
+  // When the approve panel opens, preselect the first eligible employee so
+  // the normal case is one click. Staff can still change it; approval
+  // validation (needs an assignee + type) stays authoritative, and if there
+  // are no eligible employees it's left blank.
+  useEffect(() => {
+    if (open === 'approve') {
+      setEmployeeId((current) => current || firstEligibleEmployeeId)
+    }
+  }, [open, firstEligibleEmployeeId])
 
   const isPending = request.status === 'PENDING'
   const slotLooksFull = request.slot_check.checked && request.slot_check.available === false
