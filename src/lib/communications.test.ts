@@ -3,10 +3,26 @@ import {
   callStatusLabel,
   counterpartLabel,
   formatCallDuration,
+  formatPhoneDisplay,
   isMissedCall,
   stripWhatsAppPrefix,
   whatsappStatusLabel,
 } from './communications'
+
+describe('formatPhoneDisplay', () => {
+  it('renders every common UK mobile form the same way', () => {
+    expect(formatPhoneDisplay('07123456789')).toBe('+44 7123 456789')
+    expect(formatPhoneDisplay('+447123456789')).toBe('+44 7123 456789')
+    expect(formatPhoneDisplay('+44 7123 456789')).toBe('+44 7123 456789')
+    expect(formatPhoneDisplay('whatsapp:+447123456789')).toBe('+44 7123 456789')
+  })
+
+  it('keeps other E.164 numbers as-is and never mangles an odd value', () => {
+    expect(formatPhoneDisplay('+35315550123')).toBe('+35315550123')
+    expect(formatPhoneDisplay('ask reception')).toBe('ask reception')
+    expect(formatPhoneDisplay(null)).toBe('')
+  })
+})
 
 describe('isMissedCall', () => {
   it('is true for an inbound call that never connected', () => {
