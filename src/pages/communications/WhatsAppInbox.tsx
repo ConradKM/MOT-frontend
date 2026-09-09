@@ -1,21 +1,42 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
+  useArchiveConversation,
+  useCommunicationsOverview,
   useConversationAutomationStatus,
   useConversationMessages,
   useConversations,
-  useCommunicationsOverview,
+  useCustomers,
+  useDeleteConversation,
   useMarkConversationRead,
+  useRestoreConversation,
   useResumeConversationAutomation,
   useSendWhatsAppMessage,
   useTakeoverConversation,
 } from '../../api/queries'
 import { useGarageId } from '../../hooks/useGarageId'
-import { errorMessage } from '../../lib/errors'
+import { errorMessage, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
-import type { CommunicationLog, Conversation } from '../../api/communications'
-import { formatRecentTimestamp, whatsappStatusLabel } from '../../lib/communications'
+import type { CommunicationLog, Conversation, ConversationFilter } from '../../api/communications'
+import {
+  formatRecentTimestamp,
+  stripWhatsAppPrefix,
+  whatsappStatusLabel,
+} from '../../lib/communications'
 import { formatDateTime } from '../../lib/datetime'
+
+const FILTERS: { key: ConversationFilter; label: string }[] = [
+  { key: 'inbox', label: 'Inbox' },
+  { key: 'needs_attention', label: 'Needs attention' },
+  { key: 'archived', label: 'Archived' },
+]
+
+/** A send the provider actually rejected - never render these as "Sent".
+ * `FAILED` is what POST /whatsapp/send returns synchronously; the lowercase
+ * Twilio statuses arrive later via status-callback webhooks. */
+function isFailedSend(status: string): boolean {
+  return status === 'FAILED' || status === 'failed' || status === 'undelivered'
+}
 
 function ConversationRow({
   conversation,
@@ -62,6 +83,7 @@ function ConversationRow({
 
 function MessageBubble({ message }: { message: CommunicationLog }) {
   const outbound = message.direction === 'OUTBOUND'
+  const failed = isFailedSend(message.status)
   return (
     <div className={`flex ${outbound ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -70,7 +92,11 @@ function MessageBubble({ message }: { message: CommunicationLog }) {
         }`}
       >
         <p className="whitespace-pre-wrap">{message.body || '(no message text)'}</p>
-        <p className={`mt-1 text-right text-xs ${outbound ? 'text-slate-300' : 'text-slate-400'}`}>
+        <p
+          className={`mt-1 text-right text-xs ${
+            failed ? 'text-red-300' : outbound ? 'text-slate-300' : 'text-slate-400'
+          }`}
+        >
           {formatDateTime(message.created_at)}
           {outbound && ` · ${whatsappStatusLabel(message.status)}`}
         </p>
@@ -79,8 +105,7 @@ function MessageBubble({ message }: { message: CommunicationLog }) {
   )
 }
 
-/** The bot and a human must never reply to the same conversation at once -
- * this is the one control that decides which of them currently owns it. */
+/** The bot and a human must never reply to the same conversation at once. */
 function AutomationControl({ phone }: { phone: string }) {
   const { data: status } = useConversationAutomationStatus(phone)
   const takeover = useTakeoverConversation()
@@ -111,13 +136,12 @@ function AutomationControl({ phone }: { phone: string }) {
           disabled={resume.isPending}
           className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
-          {resume.isPending ? 'Resuming…' : 'Resume automation'}
+          {resume.isPending ? 'Resuming…' : 'Resume assistant'}
         </button>
       </div>
     )
   }
 
-  // ACTIVE - the automated assistant currently owns this conversation.
   const handleTakeover = async () => {
     try {
       await takeover.mutateAsync(phone)
@@ -137,8 +161,321 @@ function AutomationControl({ phone }: { phone: string }) {
         disabled={takeover.isPending}
         className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
       >
-        {takeover.isPending ? 'Taking over…' : 'Take over conversation'}
+        {takeover.isPending ? 'Taking over…' : 'Take over'}
       </button>
+    </div>
+  )
+}
+
+function ConversationActionsMenu({
+  conversation,
+  onOpenThread,
+}: {
+  conversation: Conversation
+  onOpenThread: (phone: string | null) => void
+}) {
+  const garageId = useGarageId()
+  const { showToast } = useToast()
+  const [open, setOpen] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const archive = useArchiveConversation()
+  const restore = useRestoreConversation()
+  const del = useDeleteConversation()
+
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setConfirmingDelete(false)
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [open])
+
+  const run = async (fn: () => Promise<void>, successMsg: string, closeThread = false) => {
+    try {
+      await fn()
+      showToast(successMsg, 'success')
+      setOpen(false)
+      setConfirmingDelete(false)
+      if (closeThread) onOpenThread(null)
+    } catch (err) {
+      showToast(
+        isApiError(err) && err.code === 403
+          ? 'Only the business owner can delete a conversation.'
+          : errorMessage(err),
+      )
+    }
+  }
+
+  const callHref =
+    `/${garageId}/communications/contact?tab=call&` +
+    (conversation.customer
+      ? `customerId=${conversation.customer.id}`
+      : `phone=${encodeURIComponent(conversation.phone)}`)
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        aria-label="Conversation actions"
+        onClick={() => setOpen((o) => !o)}
+        className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
+      >
+        ⋯
+      </button>
+      {open && (
+        <div className="absolute right-0 z-10 mt-1 w-52 overflow-hidden rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg">
+          {conversation.customer && (
+            <Link
+              to={`/${garageId}/customers/${conversation.customer.id}`}
+              className="block px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+            >
+              View customer
+            </Link>
+          )}
+          <Link to={callHref} className="block px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+            Call customer
+          </Link>
+          {conversation.archived ? (
+            <button
+              type="button"
+              onClick={() => run(() => restore.mutateAsync(conversation.phone), 'Conversation restored.')}
+              className="block w-full px-3 py-1.5 text-left text-slate-700 hover:bg-slate-50"
+            >
+              Restore
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                run(() => archive.mutateAsync(conversation.phone), 'Conversation archived.', true)
+              }
+              className="block w-full px-3 py-1.5 text-left text-slate-700 hover:bg-slate-50"
+            >
+              Archive
+            </button>
+          )}
+          {!confirmingDelete ? (
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              className="block w-full border-t border-slate-100 px-3 py-1.5 text-left text-red-600 hover:bg-red-50"
+            >
+              Delete…
+            </button>
+          ) : (
+            <div className="border-t border-slate-100 px-3 py-2">
+              <p className="text-xs text-slate-500">
+                Removes it from CoMaz. History is kept and no WhatsApp messages are unsent.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  disabled={del.isPending}
+                  onClick={() =>
+                    run(
+                      () => del.mutateAsync(conversation.phone),
+                      'Conversation deleted.',
+                      true,
+                    )
+                  }
+                  className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function NewMessageModal({
+  existingConversations,
+  onClose,
+  onOpenThread,
+}: {
+  existingConversations: Conversation[]
+  onClose: () => void
+  onOpenThread: (phone: string) => void
+}) {
+  const { showToast } = useToast()
+  const send = useSendWhatsAppMessage()
+  const [mode, setMode] = useState<'customer' | 'number'>('customer')
+  const [customerSearch, setCustomerSearch] = useState('')
+  const { data: customers } = useCustomers(customerSearch || undefined)
+  const [customerId, setCustomerId] = useState<string | null>(null)
+  const [number, setNumber] = useState('')
+  const [body, setBody] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const chosenCustomer = (customers ?? []).find((c) => c.id === customerId) ?? null
+  const targetPhone =
+    mode === 'customer' ? (chosenCustomer?.phone ?? '') : number.trim()
+
+  const submit = async () => {
+    setError(null)
+    if (!body.trim()) return
+    if (mode === 'customer' && !customerId) {
+      setError('Pick a customer.')
+      return
+    }
+    if (mode === 'number' && !number.trim()) {
+      setError('Enter a mobile number.')
+      return
+    }
+
+    // Already have a thread for this number? Just open it - don't duplicate.
+    if (targetPhone) {
+      const existing = existingConversations.find((c) => c.phone === targetPhone)
+      if (existing) {
+        onOpenThread(existing.phone)
+        return
+      }
+    }
+
+    try {
+      const result = await send.mutateAsync({
+        customer_id: mode === 'customer' ? (customerId ?? undefined) : undefined,
+        to: mode === 'number' ? number.trim() : undefined,
+        body: body.trim(),
+      })
+      const phone = stripWhatsAppPrefix(result.to_address) ?? targetPhone
+      if (isFailedSend(result.status)) {
+        setError(result.error_message || "WhatsApp rejected that message - it wasn't sent.")
+        return
+      }
+      if (result.status === 'SKIPPED_NOT_CONFIGURED') {
+        showToast('Recorded, but WhatsApp isn’t connected so it wasn’t delivered.')
+      } else {
+        showToast('Message sent.', 'success')
+      }
+      if (phone) onOpenThread(phone)
+      else onClose()
+    } catch (err) {
+      setError(errorMessage(err))
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
+      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">New message</h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="text-slate-400">
+            ✕
+          </button>
+        </div>
+
+        <div className="mt-4 flex gap-1 text-sm">
+          {(['customer', 'number'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`rounded-md px-3 py-1.5 font-medium ${
+                mode === m ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {m === 'customer' ? 'Existing customer' : 'New number'}
+            </button>
+          ))}
+        </div>
+
+        {mode === 'customer' ? (
+          <div className="mt-3">
+            <input
+              type="search"
+              value={customerSearch}
+              onChange={(e) => {
+                setCustomerSearch(e.target.value)
+                setCustomerId(null)
+              }}
+              placeholder="Search customers…"
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+            />
+            {customerSearch && (
+              <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-slate-200">
+                {(customers ?? []).slice(0, 8).map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCustomerId(c.id)}
+                    className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50 ${
+                      customerId === c.id ? 'bg-slate-100' : ''
+                    }`}
+                  >
+                    <span className="font-medium text-slate-900">
+                      {c.first_name} {c.last_name}
+                    </span>
+                    <span className="ml-2 text-xs text-slate-500">{c.phone ?? 'no number'}</span>
+                  </button>
+                ))}
+                {(customers ?? []).length === 0 && (
+                  <p className="px-3 py-1.5 text-sm text-slate-500">No customers match.</p>
+                )}
+              </div>
+            )}
+            {chosenCustomer && !chosenCustomer.phone && (
+              <p className="mt-1 text-xs text-amber-700">
+                This customer has no mobile number on file.
+              </p>
+            )}
+          </div>
+        ) : (
+          <input
+            type="tel"
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="07123 456789"
+            className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+        )}
+
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={3}
+          placeholder="Message…"
+          className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+        />
+
+        {error && (
+          <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        )}
+
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={send.isPending || !body.trim()}
+            className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {send.isPending ? 'Sending…' : 'Send'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -149,6 +486,8 @@ export function WhatsAppInbox() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [draft, setDraft] = useState('')
+  const [filter, setFilter] = useState<ConversationFilter>('inbox')
+  const [newMessageOpen, setNewMessageOpen] = useState(false)
 
   const selectedPhone = searchParams.get('phone')
   const selectPhone = (phone: string | null) => {
@@ -156,7 +495,10 @@ export function WhatsAppInbox() {
   }
 
   const { data: overview } = useCommunicationsOverview()
-  const { data: conversationsData, isLoading: conversationsLoading } = useConversations({ search })
+  const { data: conversationsData, isLoading: conversationsLoading } = useConversations({
+    filter,
+    search,
+  })
   const { data: thread, isLoading: threadLoading } = useConversationMessages(
     selectedPhone ?? undefined,
   )
@@ -164,25 +506,24 @@ export function WhatsAppInbox() {
   const sendMessage = useSendWhatsAppMessage()
 
   const conversations = conversationsData?.items ?? []
+  const activeConversation = conversations.find((c) => c.phone === selectedPhone) ?? null
 
-  // Selecting a conversation marks it read - the one place this happens, so
-  // opening it from anywhere (this list, a shortcut link, Overview) behaves
-  // the same way.
   useEffect(() => {
     if (!selectedPhone) return
     const conversation = conversations.find((c) => c.phone === selectedPhone)
     if (conversation && conversation.unread_count > 0) {
       markRead.mutate(selectedPhone)
     }
-    // Deliberately not keyed on `conversations`/`markRead` (both get a new
-    // identity on every refetch) - this only needs to re-run when the
-    // selection changes or the list first loads, not on every poll tick.
   }, [selectedPhone, conversations.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = async () => {
     if (!selectedPhone || !draft.trim()) return
     try {
-      await sendMessage.mutateAsync({ to: selectedPhone, body: draft.trim() })
+      const result = await sendMessage.mutateAsync({ to: selectedPhone, body: draft.trim() })
+      if (isFailedSend(result.status)) {
+        showToast(result.error_message || "WhatsApp rejected that message - it wasn't sent.")
+        return
+      }
       setDraft('')
     } catch (err) {
       showToast(errorMessage(err))
@@ -200,6 +541,32 @@ export function WhatsAppInbox() {
         </div>
       )}
 
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFilter(f.key)}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                filter === f.key
+                  ? 'bg-slate-900 text-white'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => setNewMessageOpen(true)}
+          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          + New message
+        </button>
+      </div>
+
       <div className="flex h-[65vh] min-h-[420px] overflow-hidden rounded-lg border border-slate-200 bg-white">
         <div className="flex w-full max-w-xs shrink-0 flex-col border-r border-slate-200">
           <div className="border-b border-slate-200 p-3">
@@ -216,7 +583,11 @@ export function WhatsAppInbox() {
               <p className="px-4 py-3 text-sm text-slate-500">Loading…</p>
             ) : conversations.length === 0 ? (
               <p className="px-4 py-6 text-sm text-slate-500">
-                No WhatsApp conversations yet. They'll appear here as customers message you.
+                {filter === 'archived'
+                  ? 'No archived conversations.'
+                  : filter === 'needs_attention'
+                    ? 'Nothing needs a reply right now.'
+                    : "No WhatsApp conversations yet. They'll appear here as customers message you."}
               </p>
             ) : (
               conversations.map((c) => (
@@ -239,8 +610,8 @@ export function WhatsAppInbox() {
           ) : (
             <>
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-                <div>
-                  <p className="font-medium text-slate-900">
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-slate-900">
                     {thread?.customer
                       ? `${thread.customer.first_name} ${thread.customer.last_name}`
                       : 'Unknown number'}
@@ -248,22 +619,20 @@ export function WhatsAppInbox() {
                   <p className="text-xs text-slate-500">{selectedPhone}</p>
                 </div>
                 <AutomationControl phone={selectedPhone} />
-                <div className="flex gap-3 text-sm font-medium">
-                  {thread?.customer && (
-                    <Link
-                      to={`/${garageId}/customers/${thread.customer.id}`}
-                      className="text-slate-600 hover:underline"
-                    >
-                      View customer
-                    </Link>
-                  )}
-                  {!thread?.customer && selectedPhone && (
+                <div className="flex shrink-0 items-center gap-2">
+                  {!thread?.customer && (
                     <Link
                       to={`/${garageId}/customers/new?phone=${encodeURIComponent(selectedPhone)}`}
-                      className="text-slate-600 hover:underline"
+                      className="text-sm font-medium text-slate-600 hover:underline"
                     >
                       Add customer
                     </Link>
+                  )}
+                  {activeConversation && (
+                    <ConversationActionsMenu
+                      conversation={activeConversation}
+                      onOpenThread={selectPhone}
+                    />
                   )}
                 </div>
               </div>
@@ -312,6 +681,18 @@ export function WhatsAppInbox() {
           )}
         </div>
       </div>
+
+      {newMessageOpen && (
+        <NewMessageModal
+          existingConversations={conversations}
+          onClose={() => setNewMessageOpen(false)}
+          onOpenThread={(phone) => {
+            setNewMessageOpen(false)
+            setFilter('inbox')
+            selectPhone(phone)
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -66,8 +66,8 @@ describe('WhatsAppInbox - conversation automation control', () => {
     // "I need an MOT" appears twice (the conversation-list preview and the
     // thread bubble) - findAllByText just waits for the thread to load.
     await screen.findAllByText('I need an MOT')
-    expect(screen.queryByText(/take over conversation/i)).not.toBeInTheDocument()
-    expect(screen.queryByText(/resume automation/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/take over/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/resume assistant/i)).not.toBeInTheDocument()
   })
 
   it('offers to take over an active automated conversation', async () => {
@@ -82,7 +82,7 @@ describe('WhatsAppInbox - conversation automation control', () => {
     render()
 
     expect(await screen.findByText(/assistant is replying/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /take over conversation/i }))
+    await user.click(screen.getByRole('button', { name: /take over/i }))
 
     await waitFor(() => expect(communicationsApi.takeoverConversation).toHaveBeenCalledWith(PHONE))
   })
@@ -99,7 +99,7 @@ describe('WhatsAppInbox - conversation automation control', () => {
     render()
 
     expect(await screen.findByText(/needs a reply/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /resume automation/i }))
+    await user.click(screen.getByRole('button', { name: /resume assistant/i }))
 
     await waitFor(() => expect(communicationsApi.resumeConversationAutomation).toHaveBeenCalledWith(PHONE))
   })
