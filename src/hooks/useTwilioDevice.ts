@@ -18,6 +18,14 @@ export interface TwilioDialer {
   isMuted: boolean
   /** True while the Device is registered and idle (or a previous call ended). */
   canCall: boolean
+  /**
+   * The exact destination handed to `Device.connect()` for the call that is
+   * currently ringing/connecting/connected, or `null` when idle. This is the
+   * single source of truth for "who are we actually on a call with" - callers
+   * must not derive the active-call identity from their own selection state,
+   * which can change under them mid-call.
+   */
+  activeNumber: string | null
   startCall: (to: string) => Promise<void>
   hangUp: () => void
   toggleMute: () => void
@@ -57,6 +65,7 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
   const [status, setStatus] = useState<DialerStatus>('initialising')
   const [error, setError] = useState<string | null>(null)
   const [isMuted, setIsMuted] = useState(false)
+  const [activeNumber, setActiveNumber] = useState<string | null>(null)
 
   const deviceRef = useRef<Device | null>(null)
   const callRef = useRef<Call | null>(null)
@@ -97,6 +106,7 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
         device.on('error', (err: unknown) => {
           setError(callError(err))
           setStatus('failed')
+          setActiveNumber(null)
         })
         deviceRef.current = device
         await device.register()
@@ -150,6 +160,10 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
     }
 
     try {
+      // Lock the active-call identity to exactly what Twilio is dialling,
+      // before the connect resolves - nothing downstream should ever show a
+      // different number while this call is live.
+      setActiveNumber(dest)
       const call = await device.connect({ params: { To: dest } })
       callRef.current = call
       call.on('ringing', () => setStatus('ringing'))
@@ -158,23 +172,28 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
       call.on('disconnect', () => {
         callRef.current = null
         setStatus('ended')
+        setActiveNumber(null)
       })
       call.on('cancel', () => {
         callRef.current = null
         setStatus('ended')
+        setActiveNumber(null)
       })
       call.on('reject', () => {
         callRef.current = null
         setStatus('ended')
+        setActiveNumber(null)
       })
       call.on('error', (err: unknown) => {
         callRef.current = null
         setError(callError(err))
         setStatus('failed')
+        setActiveNumber(null)
       })
     } catch (err) {
       setError(callError(err))
       setStatus('failed')
+      setActiveNumber(null)
     }
   }, [])
 
@@ -183,6 +202,7 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
     deviceRef.current?.disconnectAll()
     callRef.current = null
     setStatus((s) => (s === 'ready' ? s : 'ended'))
+    setActiveNumber(null)
   }, [])
 
   const toggleMute = useCallback(() => {
@@ -202,6 +222,7 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
     error,
     isMuted,
     canCall: IDLE_STATUSES.includes(status),
+    activeNumber,
     startCall,
     hangUp,
     toggleMute,
