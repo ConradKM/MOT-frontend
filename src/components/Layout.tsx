@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useGarage, useUnreadWhatsAppCount } from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
 import { resolveLayoutVariant } from '../lib/layoutVariant'
-import { PLATFORM_NAME } from '../lib/branding'
+import logo from '../assets/logo.png'
 
 export function Layout() {
   const { logout } = useAuth()
@@ -42,9 +42,7 @@ export function Layout() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex items-center gap-8">
-            <p className="shrink-0 text-sm font-semibold text-slate-900">
-              {garage?.name ?? PLATFORM_NAME}
-            </p>
+            <img src={logo} alt="CoMaz OS" className="h-8 w-auto shrink-0" />
             <nav className="flex items-center gap-1">
               {navItems.map((item) => (
                 <NavLink

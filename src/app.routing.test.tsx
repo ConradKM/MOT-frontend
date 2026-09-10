@@ -87,7 +87,7 @@ describe('staff protected routes', () => {
     server.use(http.get('*/api/garage', () => HttpResponse.json(makeGarage({ id: 'g-real' }))))
     signInAsStaff()
     renderApp('/dashboard')
-    expect(await screen.findByRole('heading', { name: /welcome/i })).toBeInTheDocument()
+    expect(await screen.findByText("Here's what's going on today.")).toBeInTheDocument()
     await waitFor(() =>
       expect(screen.getByRole('link', { name: 'Customers' })).toHaveAttribute(
         'href',
@@ -99,7 +99,7 @@ describe('staff protected routes', () => {
   it('lands a bare garage URL on that garage’s dashboard', async () => {
     signInAsStaff()
     renderApp('/g1')
-    expect(await screen.findByRole('heading', { name: /welcome/i })).toBeInTheDocument()
+    expect(await screen.findByText("Here's what's going on today.")).toBeInTheDocument()
   })
 })
 
@@ -148,7 +148,7 @@ describe('navigating between pages', () => {
     signInAsStaff()
     const user = userEvent.setup()
     renderApp('/g1/dashboard')
-    await screen.findByRole('heading', { name: /welcome/i })
+    await screen.findByText("Here's what's going on today.")
 
     await user.click(screen.getByRole('link', { name: 'Customers' }))
     expect(await screen.findByRole('heading', { name: 'Customers' })).toBeInTheDocument()
@@ -158,7 +158,7 @@ describe('navigating between pages', () => {
     signInAsStaff()
     const user = userEvent.setup()
     renderApp('/g1/dashboard')
-    await screen.findByRole('heading', { name: /welcome/i })
+    await screen.findByText("Here's what's going on today.")
 
     await user.click(screen.getByRole('button', { name: /log out/i }))
     expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument()

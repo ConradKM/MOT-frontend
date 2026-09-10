@@ -44,7 +44,7 @@ describe('Dashboard — capacity', () => {
   it('welcomes the user by their garage’s name', async () => {
     server.use(http.get('*/api/garage', () => HttpResponse.json(makeGarage({ name: 'Vale Autos' }))))
     renderDashboard()
-    expect(await screen.findByRole('heading', { name: 'Welcome, Vale Autos' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Vale Autos' })).toBeInTheDocument()
   })
 
   it('shows today’s and this week’s booked time against capacity', async () => {

@@ -122,7 +122,7 @@ test.describe('keyboard operation', () => {
     await page.keyboard.type('correct-horse')
     await page.keyboard.press('Enter')
 
-    await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
   })
 })
 

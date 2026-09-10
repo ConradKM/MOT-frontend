@@ -1,4 +1,5 @@
 import { Link, Navigate } from 'react-router-dom'
+import logo from '../assets/logo.png'
 import {
   useAppointments,
   useAppointmentStatuses,
@@ -87,9 +88,12 @@ export function Dashboard() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">
-        Welcome{garage ? `, ${garage.name}` : ''}
-      </h1>
+      <div className="flex items-center gap-3">
+        <img src={logo} alt="" className="h-10 w-auto shrink-0" />
+        <h1 className="text-2xl font-semibold text-slate-900">
+          {garage?.name ?? 'Welcome'}
+        </h1>
+      </div>
       <p className="mt-1 text-sm text-slate-500">Here's what's going on today.</p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">

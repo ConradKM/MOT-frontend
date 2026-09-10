@@ -4,7 +4,6 @@ import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { server } from '../test/msw/server'
-import { makeGarage } from '../test/fixtures'
 import { renderWithAppProviders, signInAsStaff } from '../test/utils'
 import { Layout } from './Layout'
 import { getAccessToken } from '../api/tokens'
@@ -23,18 +22,10 @@ function renderLayout(route = '/g1/customers') {
 }
 
 describe('Layout — garage chrome', () => {
-  it('renders the signed-in garage’s own name, not the platform’s', async () => {
-    // The tenant's identity is primary everywhere in the staff app.
-    server.use(http.get('*/api/garage', () => HttpResponse.json(makeGarage({ name: 'Vale Autos' }))))
+  it('renders the platform logo in the header', () => {
     signInAsStaff()
     renderLayout()
-    expect(await screen.findByText('Vale Autos')).toBeInTheDocument()
-  })
-
-  it('falls back to the platform name while the garage is still loading', () => {
-    signInAsStaff()
-    renderLayout()
-    expect(screen.getByText('CoMaz OS')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'CoMaz OS' })).toBeInTheDocument()
   })
 
   it('renders the outlet’s page beneath the chrome', async () => {
@@ -46,7 +37,7 @@ describe('Layout — garage chrome', () => {
   it('links every primary section under the current garage id', async () => {
     signInAsStaff()
     renderLayout()
-    await screen.findByText('Bennett Motors')
+    await screen.findByRole('link', { name: 'Dashboard' })
 
     for (const [label, path] of [
       ['Dashboard', '/g1/dashboard'],
@@ -86,7 +77,7 @@ describe('Layout — unread communications badge', () => {
   it('shows no badge when there is nothing unread', async () => {
     signInAsStaff()
     renderLayout()
-    await screen.findByText('Bennett Motors')
+    await screen.findByRole('link', { name: 'Dashboard' })
     expect(screen.getByRole('link', { name: 'Communications' })).toBeInTheDocument()
   })
 
@@ -126,7 +117,7 @@ describe('Layout — logout', () => {
     signInAsStaff()
     const user = userEvent.setup()
     renderLayout()
-    await screen.findByText('Bennett Motors')
+    await screen.findByRole('link', { name: 'Dashboard' })
 
     await user.click(screen.getByRole('button', { name: /log out/i }))
     await waitFor(() => expect(getAccessToken()).toBeNull())
