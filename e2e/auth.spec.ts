@@ -10,7 +10,7 @@ test.describe('staff authentication', () => {
     await page.getByLabel('Password').fill('correct-horse')
     await page.getByRole('button', { name: 'Login' }).click()
 
-    await expect(page.getByRole('heading', { name: 'Welcome, Bennett Motors' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
     // /dashboard resolves to the employee's own garage-scoped URL.
     await expect(page).toHaveURL(/\/g1\/dashboard$/)
   })
@@ -82,7 +82,7 @@ test.describe('staff authentication', () => {
     await signInAsStaff(page)
     await stubApi(page)
     await page.goto('/g1/dashboard')
-    await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Log out' }).click()
 

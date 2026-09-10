@@ -9,7 +9,7 @@ test.describe('staff navigation', () => {
 
   test('moves between the primary sections through the nav', async ({ page }) => {
     await page.goto('/g1/dashboard')
-    await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
 
     for (const [link, heading, url] of [
       ['Customers', 'Customers', '/g1/customers'],
@@ -42,7 +42,7 @@ test.describe('staff navigation', () => {
 
     await page.goBack()
     await expect(page).toHaveURL(/\/g1\/dashboard$/)
-    await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
 
     await page.goForward()
     await expect(page).toHaveURL(/\/g1\/customers$/)

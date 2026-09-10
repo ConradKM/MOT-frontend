@@ -64,7 +64,7 @@ for (const [name, size] of Object.entries(VIEWPORTS)) {
       await page.getByLabel('Email').fill('greg@bennett.example')
       await page.getByLabel('Password').fill('correct-horse')
       await page.getByRole('button', { name: 'Login' }).click()
-      await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
     })
   })
 }
@@ -85,7 +85,7 @@ test.describe('known limitation: the staff shell has no narrow-viewport layout',
     await stubApi(page)
     await page.setViewportSize(VIEWPORTS.desktop)
     await page.goto('/g1/dashboard')
-    await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
     expect(await overflowsHorizontally(page)).toBe(false)
   })
 
@@ -95,7 +95,7 @@ test.describe('known limitation: the staff shell has no narrow-viewport layout',
 
     await page.setViewportSize({ width: 900, height: 800 })
     await page.goto('/g1/dashboard')
-    await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
     expect(await overflowsHorizontally(page)).toBe(false)
 
     // Portrait tablet and below currently overflow. Change this expectation
@@ -119,7 +119,7 @@ test.describe('layout reflow between breakpoints', () => {
 
     await page.setViewportSize(VIEWPORTS.mobile)
     await page.goto('/g1/dashboard')
-    await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
     // Three distinct top offsets = three stacked rows.
     expect(await cardsPerRow()).toBe(3)
 
