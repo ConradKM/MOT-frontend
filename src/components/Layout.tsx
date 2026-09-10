@@ -1,5 +1,6 @@
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Footer } from './Footer'
+import { ImpersonationBanner } from './ImpersonationBanner'
 import { useAuth } from '../auth/AuthContext'
 import { useGarage, useUnreadWhatsAppCount } from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
@@ -35,6 +36,9 @@ export function Layout() {
   // CSS hook - no per-garage branching here or anywhere else.
   return (
     <div className="min-h-screen bg-slate-50" data-layout-variant={resolveLayoutVariant(garage)}>
+      {/* Above the header, and sticky, so a support session can never be
+          scrolled out of sight. */}
+      <ImpersonationBanner />
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex items-center gap-8">

@@ -49,3 +49,24 @@ export function resetPassword(token: string, password: string): Promise<{ messag
     skipAuth: true,
   })
 }
+
+export interface ImpersonationGrant {
+  access_token: string
+  expires_at: string
+  garage: { id: string; name: string }
+  employee: { id: string; email: string }
+  impersonated_by_email: string | null
+}
+
+/** Redeem a Platform Admin support-impersonation handoff code.
+ *
+ * Unauthenticated: the single-use code *is* the credential, and this app has
+ * no token yet at that point. What comes back is an access token only — an
+ * impersonation has no refresh token and cannot be extended. */
+export function exchangeImpersonationCode(code: string): Promise<ImpersonationGrant> {
+  return apiFetch<ImpersonationGrant>('/api/auth/impersonation/exchange', {
+    method: 'POST',
+    body: { code },
+    skipAuth: true,
+  })
+}

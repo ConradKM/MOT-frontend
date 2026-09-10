@@ -5,6 +5,7 @@ import { SignIn } from './pages/SignIn'
 import { Register } from './pages/Register'
 import { ForgotPassword } from './pages/ForgotPassword'
 import { ResetPassword } from './pages/ResetPassword'
+import { ImpersonationHandoff } from './pages/ImpersonationHandoff'
 import { CustomersList } from './pages/customers/CustomersList'
 import { CustomerForm } from './pages/customers/CustomerForm'
 import { CustomerDetail } from './pages/customers/CustomerDetail'
@@ -55,6 +56,10 @@ export default function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      {/* Landing point for a CoMaz OS Platform Admin support impersonation.
+          Unauthenticated by nature — the single-use code in the URL fragment
+          is what it exchanges for a session. */}
+      <Route path="/impersonate" element={<ImpersonationHandoff />} />
 
       <Route element={<CustomerLayout />}>
         {/* Customer booking is always entered via a garage-specific URL
