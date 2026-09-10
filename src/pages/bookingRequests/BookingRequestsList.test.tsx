@@ -64,6 +64,17 @@ function renderList() {
 }
 
 describe('BookingRequestsList — the queue', () => {
+  it('explains when customer, vehicle, and appointment records are created', async () => {
+    serveRequests({ PENDING: [] })
+    renderList()
+
+    expect(
+      await screen.findByText(
+        /The customer and vehicle are saved when the request is submitted; approving one creates the appointment\./,
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('shows a loading message before the requests arrive', async () => {
     server.use(
       http.get('*/api/booking-requests/', async () => {
