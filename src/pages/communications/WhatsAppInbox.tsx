@@ -19,11 +19,13 @@ import { errorMessage, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import type { CommunicationLog, Conversation, ConversationFilter } from '../../api/communications'
 import {
+  formatPhoneDisplay,
   formatRecentTimestamp,
   stripWhatsAppPrefix,
   whatsappStatusLabel,
 } from '../../lib/communications'
 import { formatDateTime } from '../../lib/datetime'
+import type { Customer } from '../../types'
 
 const FILTERS: { key: ConversationFilter; label: string }[] = [
   { key: 'inbox', label: 'Inbox' },
@@ -84,6 +86,10 @@ function ConversationRow({
 function MessageBubble({ message }: { message: CommunicationLog }) {
   const outbound = message.direction === 'OUTBOUND'
   const failed = isFailedSend(message.status)
+  // The backend's business-facing reason wins ("Not delivered — outside the
+  // 24-hour window…"); fall back to the old client-side label only if it's
+  // an older row with no status_detail.
+  const statusText = message.status_detail || whatsappStatusLabel(message.status)
   return (
     <div className={`flex ${outbound ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -98,8 +104,13 @@ function MessageBubble({ message }: { message: CommunicationLog }) {
           }`}
         >
           {formatDateTime(message.created_at)}
-          {outbound && ` · ${whatsappStatusLabel(message.status)}`}
+          {outbound && ` · ${statusText}`}
         </p>
+        {outbound && failed && message.template_required && (
+          <p className="mt-0.5 text-right text-xs text-red-300">
+            An approved WhatsApp template is needed to reach this customer.
+          </p>
+        )}
       </div>
     </div>
   )
@@ -318,26 +329,29 @@ function NewMessageModal({
   const [mode, setMode] = useState<'customer' | 'number'>('customer')
   const [customerSearch, setCustomerSearch] = useState('')
   const { data: customers } = useCustomers(customerSearch || undefined)
-  const [customerId, setCustomerId] = useState<string | null>(null)
+  // The whole chosen record is held here, not just an id looked up against the
+  // current (search-dependent) results list - so the selection stays visible
+  // and correct even after the search box is changed, and a stale previous
+  // pick can never be the one that actually gets messaged.
+  const [selected, setSelected] = useState<Customer | null>(null)
   const [number, setNumber] = useState('')
   const [body, setBody] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const chosenCustomer = (customers ?? []).find((c) => c.id === customerId) ?? null
-  const targetPhone =
-    mode === 'customer' ? (chosenCustomer?.phone ?? '') : number.trim()
+  const trimmedNumber = number.trim()
+  const targetPhone = mode === 'customer' ? (selected?.phone ?? '') : trimmedNumber
+  const hasValidTarget =
+    mode === 'customer' ? !!selected && !!selected.phone : trimmedNumber.length >= 7
+  const canSend = hasValidTarget && !!body.trim() && !send.isPending
+
+  const clearSelection = () => {
+    setSelected(null)
+    setError(null)
+  }
 
   const submit = async () => {
     setError(null)
-    if (!body.trim()) return
-    if (mode === 'customer' && !customerId) {
-      setError('Pick a customer.')
-      return
-    }
-    if (mode === 'number' && !number.trim()) {
-      setError('Enter a mobile number.')
-      return
-    }
+    if (!canSend) return
 
     // Already have a thread for this number? Just open it - don't duplicate.
     if (targetPhone) {
@@ -350,13 +364,17 @@ function NewMessageModal({
 
     try {
       const result = await send.mutateAsync({
-        customer_id: mode === 'customer' ? (customerId ?? undefined) : undefined,
-        to: mode === 'number' ? number.trim() : undefined,
+        customer_id: mode === 'customer' ? selected?.id : undefined,
+        to: mode === 'number' ? trimmedNumber : undefined,
         body: body.trim(),
       })
       const phone = stripWhatsAppPrefix(result.to_address) ?? targetPhone
       if (isFailedSend(result.status)) {
-        setError(result.error_message || "WhatsApp rejected that message - it wasn't sent.")
+        setError(
+          result.status_detail ||
+            result.error_message ||
+            "WhatsApp rejected that message - it wasn't sent.",
+        )
         return
       }
       if (result.status === 'SKIPPED_NOT_CONFIGURED') {
@@ -386,7 +404,10 @@ function NewMessageModal({
             <button
               key={m}
               type="button"
-              onClick={() => setMode(m)}
+              onClick={() => {
+                setMode(m)
+                setError(null)
+              }}
               className={`rounded-md px-3 py-1.5 font-medium ${
                 mode === m ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
               }`}
@@ -398,41 +419,67 @@ function NewMessageModal({
 
         {mode === 'customer' ? (
           <div className="mt-3">
-            <input
-              type="search"
-              value={customerSearch}
-              onChange={(e) => {
-                setCustomerSearch(e.target.value)
-                setCustomerId(null)
-              }}
-              placeholder="Search customers…"
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            />
-            {customerSearch && (
-              <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-slate-200">
-                {(customers ?? []).slice(0, 8).map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setCustomerId(c.id)}
-                    className={`block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50 ${
-                      customerId === c.id ? 'bg-slate-100' : ''
-                    }`}
-                  >
-                    <span className="font-medium text-slate-900">
-                      {c.first_name} {c.last_name}
-                    </span>
-                    <span className="ml-2 text-xs text-slate-500">{c.phone ?? 'no number'}</span>
-                  </button>
-                ))}
-                {(customers ?? []).length === 0 && (
-                  <p className="px-3 py-1.5 text-sm text-slate-500">No customers match.</p>
-                )}
+            {selected ? (
+              <div className="flex items-start justify-between gap-3 rounded-md border border-slate-300 bg-slate-50 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {selected.first_name} {selected.last_name}
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    {selected.phone
+                      ? formatPhoneDisplay(selected.phone)
+                      : 'No mobile number on file'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                >
+                  Change
+                </button>
               </div>
+            ) : (
+              <>
+                <input
+                  type="search"
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="Search customers by name or number…"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                />
+                {customerSearch && (
+                  <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-slate-200">
+                    {(customers ?? []).slice(0, 8).map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setSelected(c)
+                          setCustomerSearch('')
+                          setError(null)
+                        }}
+                        className="block w-full px-3 py-1.5 text-left text-sm hover:bg-slate-50"
+                      >
+                        <span className="font-medium text-slate-900">
+                          {c.first_name} {c.last_name}
+                        </span>
+                        <span className="ml-2 text-xs text-slate-500">
+                          {c.phone ? formatPhoneDisplay(c.phone) : 'no number'}
+                        </span>
+                      </button>
+                    ))}
+                    {(customers ?? []).length === 0 && (
+                      <p className="px-3 py-1.5 text-sm text-slate-500">No customers match.</p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
-            {chosenCustomer && !chosenCustomer.phone && (
+            {selected && !selected.phone && (
               <p className="mt-1 text-xs text-amber-700">
-                This customer has no mobile number on file.
+                This customer has no mobile number on file - add one on their record, or use
+                "New number".
               </p>
             )}
           </div>
@@ -446,12 +493,20 @@ function NewMessageModal({
           />
         )}
 
+        <label className="mt-3 block text-xs font-medium text-slate-500" htmlFor="new-message-body">
+          {mode === 'customer' && selected
+            ? `Message to ${selected.first_name} ${selected.last_name}`
+            : mode === 'number' && trimmedNumber
+              ? `Message to ${formatPhoneDisplay(trimmedNumber)}`
+              : 'Message'}
+        </label>
         <textarea
+          id="new-message-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={3}
           placeholder="Message…"
-          className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
         />
 
         {error && (
@@ -469,7 +524,7 @@ function NewMessageModal({
           <button
             type="button"
             onClick={submit}
-            disabled={send.isPending || !body.trim()}
+            disabled={!canSend}
             className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
             {send.isPending ? 'Sending…' : 'Send'}

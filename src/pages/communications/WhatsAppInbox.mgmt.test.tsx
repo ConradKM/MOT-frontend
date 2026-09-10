@@ -158,6 +158,77 @@ describe('WhatsAppInbox - new message', () => {
     expect(await screen.findByText(/24-hour customer service window/i)).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'New message' })).toBeInTheDocument()
   })
+
+  it('shows the selected customer in a card with their number, and lets you change it', async () => {
+    mockCommon([])
+    const priya = makeCustomer({
+      id: 'c9',
+      first_name: 'Priya',
+      last_name: 'Shah',
+      phone: '07999888777',
+    })
+    const dan = makeCustomer({
+      id: 'c8',
+      first_name: 'Dan',
+      last_name: 'Ford',
+      phone: '+447555000111',
+    })
+    vi.mocked(customersApi.listCustomers).mockResolvedValue([priya, dan])
+    vi.mocked(communicationsApi.sendWhatsAppMessage).mockResolvedValue(
+      makeLog({ id: 's1', direction: 'OUTBOUND', status: 'queued', to_address: 'whatsapp:+447555000111' }),
+    )
+    const user = userEvent.setup()
+    render()
+
+    await user.click(await screen.findByRole('button', { name: /new message/i }))
+    const dialog = screen.getByRole('heading', { name: 'New message' }).closest('div')!.parentElement!
+
+    await user.type(within(dialog).getByPlaceholderText(/search customers/i), 'a')
+    await user.click(await screen.findByText('Priya Shah'))
+
+    // The pick is shown clearly - name + a consistently formatted number - and
+    // the search box is gone.
+    expect(within(dialog).getByText('Priya Shah')).toBeInTheDocument()
+    expect(within(dialog).getByText('+44 7999 888777')).toBeInTheDocument()
+    expect(within(dialog).queryByPlaceholderText(/search customers/i)).not.toBeInTheDocument()
+
+    // Change the selection to Dan.
+    await user.click(within(dialog).getByRole('button', { name: /change/i }))
+    await user.type(within(dialog).getByPlaceholderText(/search customers/i), 'a')
+    await user.click(await screen.findByText('Dan Ford'))
+    expect(within(dialog).getByText('+44 7555 000111')).toBeInTheDocument()
+
+    await user.type(within(dialog).getByPlaceholderText('Message…'), 'hello')
+    await user.click(within(dialog).getByRole('button', { name: /^send$/i }))
+
+    // The message goes to the *currently* selected customer, never the first pick.
+    await waitFor(() =>
+      expect(communicationsApi.sendWhatsAppMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ customer_id: 'c8', body: 'hello' }),
+      ),
+    )
+  })
+
+  it('keeps Send disabled until a valid recipient and a message are both present', async () => {
+    mockCommon([])
+    const priya = makeCustomer({ id: 'c9', first_name: 'Priya', last_name: 'Shah', phone: '07999888777' })
+    vi.mocked(customersApi.listCustomers).mockResolvedValue([priya])
+    const user = userEvent.setup()
+    render()
+
+    await user.click(await screen.findByRole('button', { name: /new message/i }))
+    const dialog = screen.getByRole('heading', { name: 'New message' }).closest('div')!.parentElement!
+    const sendBtn = within(dialog).getByRole('button', { name: /^send$/i })
+
+    expect(sendBtn).toBeDisabled() // nothing chosen, no text
+
+    await user.type(within(dialog).getByPlaceholderText(/search customers/i), 'Priya')
+    await user.click(await screen.findByText('Priya Shah'))
+    expect(sendBtn).toBeDisabled() // recipient but still no message
+
+    await user.type(within(dialog).getByPlaceholderText('Message…'), 'hi')
+    expect(sendBtn).toBeEnabled()
+  })
 })
 
 describe('WhatsAppInbox - conversation actions', () => {

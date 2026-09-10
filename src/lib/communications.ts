@@ -119,6 +119,23 @@ export function stripWhatsAppPrefix(address: string | null | undefined): string 
   return address.startsWith('whatsapp:') ? address.slice('whatsapp:'.length) : address
 }
 
+/**
+ * A consistent display form for a phone number, so "07123456789",
+ * "+447123456789" and "+44 7123 456789" all render the same way wherever a
+ * customer's number is shown. Best-effort and non-destructive: an unusual
+ * value is returned trimmed rather than mangled.
+ */
+export function formatPhoneDisplay(raw: string | null | undefined): string {
+  const value = stripWhatsAppPrefix(raw)?.trim()
+  if (!value) return ''
+  const digits = value.replace(/[^\d+]/g, '')
+  // UK mobile in any of the common forms -> +44 7xxx xxxxxx
+  const uk = digits.match(/^(?:\+44|0044|0)(7\d{9})$/)
+  if (uk) return `+44 ${uk[1].slice(0, 4)} ${uk[1].slice(4)}`
+  if (/^\+\d{7,15}$/.test(digits)) return digits
+  return value
+}
+
 /** "14:32" for something that happened today, otherwise "3 Sep". Used for
  * compact activity-feed style rows (Overview, conversation list). */
 export function formatRecentTimestamp(iso: string): string {

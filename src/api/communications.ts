@@ -36,6 +36,13 @@ export interface CommunicationLog {
   from_address: string | null
   to_address: string | null
   status: string
+  /** Business-facing version of `status` (+ error_code): the specific reason a
+   * WhatsApp message didn't arrive ("Not delivered — …"), or a tidy label.
+   * Shown instead of the raw provider status. */
+  status_detail?: string
+  /** True when only an approved WhatsApp template can reach this recipient
+   * right now (24h customer-service window elapsed / template rejected). */
+  template_required?: boolean
   trigger_event: string | null
   body: string | null
   call_duration_seconds: number | null
