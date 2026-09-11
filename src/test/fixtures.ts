@@ -33,6 +33,7 @@ export function makeGarage(patch: Partial<Garage> = {}): Garage {
     address: '1 Long Lane',
     postcode: 'AB1 2CD',
     website: null,
+    logo_url: null,
     created_at: '2026-01-01T09:00:00+00:00',
     updated_at: '2026-01-01T09:00:00+00:00',
     ...patch,

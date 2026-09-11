@@ -25,4 +25,16 @@ describe('BusinessBrandMark', () => {
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     expect(screen.getByText('B')).toBeInTheDocument()
   })
+
+  it('accepts a size override for a smaller context (e.g. a nav header)', () => {
+    render(
+      <BusinessBrandMark
+        name="Bennett Motors"
+        logoUrl="https://storage.example/logo.png"
+        className="h-8 w-8"
+      />,
+    )
+
+    expect(screen.getByRole('img', { name: 'Bennett Motors logo' }).className).toContain('h-8 w-8')
+  })
 })
