@@ -21,6 +21,10 @@ export interface PublicGarage {
   id: string
   name: string
   slug: string
+  /** A fresh, short-lived download url each request, or null when the
+   * business has no logo - render the text fallback on null, never a
+   * broken-image icon. */
+  logo_url: string | null
   /** Active types only - what the wizard's date/type/time step offers. */
   appointment_types: PublicAppointmentType[]
 }

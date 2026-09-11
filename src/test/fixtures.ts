@@ -169,6 +169,7 @@ export function makePublicGarage(patch: Partial<PublicGarage> = {}): PublicGarag
     id: GARAGE_ID,
     name: 'Bennett Motors',
     slug: 'bennett-motors',
+    logo_url: null,
     appointment_types: [],
     ...patch,
   }
