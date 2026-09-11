@@ -16,7 +16,13 @@ vi.mock('../../api/publicGarage', async (orig) => ({
 }))
 
 const TODAY = '2026-09-10'
-const GARAGE = { id: 'gid', name: 'Test Garage', slug: 'test-garage', appointment_types: [] }
+const GARAGE = {
+  id: 'gid',
+  name: 'Test Garage',
+  slug: 'test-garage',
+  logo_url: null,
+  appointment_types: [],
+}
 
 function renderWizard() {
   return renderWithAppProviders(
@@ -97,6 +103,29 @@ describe('BookingWizard — 3-step flow', () => {
     expect(screen.getByText('Vehicle & your details')).toBeInTheDocument()
     expect(screen.queryByText(/Choose a garage/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeInTheDocument()
+  })
+
+  it('shows the business logo when the garage has one', async () => {
+    vi.mocked(api.getPublicGarage).mockResolvedValue({
+      ...GARAGE,
+      logo_url: 'https://storage.example/garages/gid/branding/logo.png',
+    })
+    renderWizard()
+
+    const logo = await screen.findByRole('img', { name: /test garage logo/i })
+    expect(logo).toHaveAttribute(
+      'src',
+      'https://storage.example/garages/gid/branding/logo.png',
+    )
+  })
+
+  it('falls back to an initials badge with no logo, never a broken image', async () => {
+    vi.mocked(api.getPublicGarage).mockResolvedValue(GARAGE)
+    renderWizard()
+    await screen.findByText('Test Garage')
+
+    expect(screen.queryByRole('img', { name: /logo/i })).not.toBeInTheDocument()
+    expect(screen.getByText('T')).toBeInTheDocument()
   })
 
   it('carries the picked date and time into the booking request', async () => {

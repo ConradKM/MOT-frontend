@@ -33,6 +33,8 @@ function makeRequest(patch: Partial<BookingRequest> = {}): BookingRequest {
     preferred_employee_note: null,
     notes: null,
     staff_notes: null,
+    customer_rejection_reason: null,
+    notification_result: null,
     reviewed_by_name: null,
     reviewed_at: null,
     slot_check: { checked: true, available: true },
@@ -368,33 +370,43 @@ describe('BookingRequestsList — approving', () => {
 })
 
 describe('BookingRequestsList — rejecting', () => {
-  it('sends an optional reason and confirms the rejection', async () => {
+  it('distinguishes the customer-facing reason from the internal note, and sends both', async () => {
     serveRequests({ PENDING: [makeRequest()] })
     let body: Record<string, unknown> = {}
     server.use(
       http.post('*/api/booking-requests/:id/reject', async ({ request }) => {
         body = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json({ id: 'br1' })
+        return HttpResponse.json({ id: 'br1', notification_result: 'SENT' })
       }),
     )
     const user = userEvent.setup()
     renderList()
     await screen.findByText('Oliver Bennett')
     await user.click(screen.getByRole('button', { name: 'Reject' }))
-    await user.type(screen.getByLabelText('Reason (optional)'), 'No capacity that week.')
+    await user.type(
+      screen.getByLabelText(/Reason shown to the customer/),
+      'No capacity that week.',
+    )
+    await user.type(
+      screen.getByLabelText(/Internal note \(staff only/),
+      'Blacklisted - do not rebook.',
+    )
     await user.click(screen.getByRole('button', { name: 'Reject request' }))
 
-    expect(await screen.findByText('Booking request rejected.')).toBeInTheDocument()
-    expect(body).toEqual({ staff_notes: 'No capacity that week.' })
+    expect(await screen.findByText('Booking rejected and customer notified.')).toBeInTheDocument()
+    expect(body).toEqual({
+      customer_rejection_reason: 'No capacity that week.',
+      staff_notes: 'Blacklisted - do not rebook.',
+    })
   })
 
-  it('sends null rather than an empty reason when none is given', async () => {
+  it('sends null rather than an empty reason when neither field is filled in', async () => {
     serveRequests({ PENDING: [makeRequest()] })
     let body: Record<string, unknown> = {}
     server.use(
       http.post('*/api/booking-requests/:id/reject', async ({ request }) => {
         body = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json({ id: 'br1' })
+        return HttpResponse.json({ id: 'br1', notification_result: 'SENT' })
       }),
     )
     const user = userEvent.setup()
@@ -403,7 +415,47 @@ describe('BookingRequestsList — rejecting', () => {
     await user.click(screen.getByRole('button', { name: 'Reject' }))
     await user.click(screen.getByRole('button', { name: 'Reject request' }))
 
-    await waitFor(() => expect(body).toEqual({ staff_notes: null }))
+    await waitFor(() =>
+      expect(body).toEqual({ customer_rejection_reason: null, staff_notes: null }),
+    )
+  })
+
+  it('warns when the customer notification could not be sent', async () => {
+    serveRequests({ PENDING: [makeRequest()] })
+    server.use(
+      http.post('*/api/booking-requests/:id/reject', () =>
+        HttpResponse.json({ id: 'br1', notification_result: 'FAILED' }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderList()
+    await screen.findByText('Oliver Bennett')
+    await user.click(screen.getByRole('button', { name: 'Reject' }))
+    await user.click(screen.getByRole('button', { name: 'Reject request' }))
+
+    expect(
+      await screen.findByText('Booking rejected, but the customer notification could not be sent.'),
+    ).toBeInTheDocument()
+  })
+
+  it('tells the operator when the customer has no email to notify', async () => {
+    serveRequests({ PENDING: [makeRequest()] })
+    server.use(
+      http.post('*/api/booking-requests/:id/reject', () =>
+        HttpResponse.json({ id: 'br1', notification_result: 'NO_EMAIL' }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderList()
+    await screen.findByText('Oliver Bennett')
+    await user.click(screen.getByRole('button', { name: 'Reject' }))
+    await user.click(screen.getByRole('button', { name: 'Reject request' }))
+
+    expect(
+      await screen.findByText(
+        'Booking rejected — the customer has no email on file and could not be notified.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('surfaces a failed rejection', async () => {
@@ -420,5 +472,27 @@ describe('BookingRequestsList — rejecting', () => {
     await user.click(screen.getByRole('button', { name: 'Reject request' }))
 
     expect(await screen.findByText('Only owners can reject.')).toBeInTheDocument()
+  })
+
+  it('shows the customer-facing reason on a rejected request, and keeps the internal note separate', async () => {
+    serveRequests({
+      REJECTED: [
+        makeRequest({
+          status: 'REJECTED',
+          reviewed_at: '2026-09-02T10:00:00+01:00',
+          customer_rejection_reason: 'No capacity that week.',
+          staff_notes: 'Blacklisted - do not rebook.',
+        }),
+      ],
+    })
+    const user = userEvent.setup()
+    renderList()
+    await user.click(screen.getByRole('button', { name: 'Rejected' }))
+    await user.click(await screen.findByRole('button', { name: 'View' }))
+
+    expect(screen.getByText(/Told the customer:.*No capacity that week\./)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Internal note \(never shown to the customer\):.*do not rebook\./),
+    ).toBeInTheDocument()
   })
 })

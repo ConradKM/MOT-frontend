@@ -608,8 +608,12 @@ export function useApproveBookingRequest() {
 export function useRejectBookingRequest() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, staff_notes }: { id: string; staff_notes?: string | null }) =>
-      bookingRequestsApi.rejectBookingRequest(id, { staff_notes }),
+    mutationFn: ({
+      id,
+      staff_notes,
+      customer_rejection_reason,
+    }: { id: string } & bookingRequestsApi.RejectBookingRequestInput) =>
+      bookingRequestsApi.rejectBookingRequest(id, { staff_notes, customer_rejection_reason }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bookingRequests'] }),
   })
 }

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { WizardStepper, type WizardStep } from '../../components/customer/WizardStepper'
 import { AvailabilityCalendar } from '../../components/customer/AvailabilityCalendar'
+import { BusinessBrandMark } from '../../components/customer/BusinessBrandMark'
 import { TimeSlotPicker } from '../../components/customer/TimeSlotPicker'
 import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner'
 import { formatLongDate } from '../../lib/datetime'
@@ -310,9 +311,12 @@ export function BookingWizard() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6">
-        <p className="text-sm font-medium text-slate-500">Book an appointment</p>
-        <h1 className="text-xl font-semibold text-slate-900">{garage.name}</h1>
+      <div className="mb-6 flex items-center gap-3">
+        <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
+        <div>
+          <p className="text-sm font-medium text-slate-500">Book an appointment</p>
+          <h1 className="text-xl font-semibold text-slate-900">{garage.name}</h1>
+        </div>
       </div>
 
       <WizardStepper steps={STEPS} currentStep={step} />

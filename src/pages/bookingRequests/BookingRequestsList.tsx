@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { BookingRequest, BookingRequestStatus } from '../../api/bookingRequests'
+import type {
+  BookingRequest,
+  BookingRequestStatus,
+  NotificationResult,
+} from '../../api/bookingRequests'
 import {
   useApproveBookingRequest,
   useAppointmentTypes,
@@ -44,6 +48,15 @@ function formatPrice(price: string | null | undefined): string {
 
 /** Plain-English reason a slot check failed - never expose the internal code. */
 const SLOT_UNAVAILABLE_TEXT = 'This time slot is no longer available.'
+
+/** What to tell the operator about a reject that already happened - the
+ * booking decision itself is never in question here, only whether the
+ * customer found out. */
+const NOTIFICATION_MESSAGES: Record<NotificationResult, string> = {
+  SENT: 'Booking rejected and customer notified.',
+  FAILED: 'Booking rejected, but the customer notification could not be sent.',
+  NO_EMAIL: 'Booking rejected — the customer has no email on file and could not be notified.',
+}
 
 function RequestDetails({ request }: { request: BookingRequest }) {
   return (
@@ -129,8 +142,17 @@ function RequestDetails({ request }: { request: BookingRequest }) {
             {statusLabels[request.status]}
             {request.reviewed_by_name ? ` by ${request.reviewed_by_name}` : ''}
             {request.reviewed_at ? ` · ${formatDateTime(request.reviewed_at)}` : ''}
-            {request.staff_notes ? ` — "${request.staff_notes}"` : ''}
           </dd>
+          {request.customer_rejection_reason && (
+            <dd className="mt-1 text-slate-600">
+              Told the customer: “{request.customer_rejection_reason}”
+            </dd>
+          )}
+          {request.staff_notes && (
+            <dd className="mt-1 text-slate-500">
+              Internal note (never shown to the customer): “{request.staff_notes}”
+            </dd>
+          )}
         </div>
       )}
     </dl>
@@ -158,6 +180,7 @@ function ReviewRow({ request }: { request: BookingRequest }) {
   const [startLocal, setStartLocal] = useState(defaultStart)
   const [typeId, setTypeId] = useState(request.appointment_type_id ?? '')
   const [staffNotes, setStaffNotes] = useState('')
+  const [customerReason, setCustomerReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [confirmDespiteConflict, setConfirmDespiteConflict] = useState(false)
 
@@ -196,8 +219,18 @@ function ReviewRow({ request }: { request: BookingRequest }) {
   const submitReject = async () => {
     setError(null)
     try {
-      await reject.mutateAsync({ id: request.id, staff_notes: staffNotes || null })
-      showToast('Booking request rejected.', 'success')
+      const rejected = await reject.mutateAsync({
+        id: request.id,
+        staff_notes: staffNotes || null,
+        customer_rejection_reason: customerReason || null,
+      })
+      const result = rejected.notification_result
+      // notification_result is only ever meaningful on this response; a
+      // missing value would mean the server hasn't shipped it yet, not that
+      // nothing happened - fall back to the plain confirmation rather than
+      // claiming a status we don't actually have.
+      const message = result ? NOTIFICATION_MESSAGES[result] : 'Booking request rejected.'
+      showToast(message, result && result !== 'SENT' ? 'error' : 'success')
       setOpen(null)
     } catch (err) {
       setError(errorMessage(err))
@@ -360,7 +393,26 @@ function ReviewRow({ request }: { request: BookingRequest }) {
             {open === 'reject' && (
               <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
                 <label className="block text-sm">
-                  <span className="block font-medium text-slate-700">Reason (optional)</span>
+                  <span className="block font-medium text-slate-700">
+                    Reason shown to the customer (optional)
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    Included in the rejection email, word for word.
+                  </span>
+                  <textarea
+                    rows={2}
+                    value={customerReason}
+                    onChange={(e) => setCustomerReason(e.target.value)}
+                    className="mt-1 w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="block font-medium text-slate-700">
+                    Internal note (staff only, optional)
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    Never sent to the customer - visible only here.
+                  </span>
                   <textarea
                     rows={2}
                     value={staffNotes}
