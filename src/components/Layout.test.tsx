@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { server } from '../test/msw/server'
 import { renderWithAppProviders, signInAsStaff } from '../test/utils'
+import { makeGarage } from '../test/fixtures'
 import { Layout } from './Layout'
 import { getAccessToken } from '../api/tokens'
 
@@ -22,10 +23,28 @@ function renderLayout(route = '/g1/customers') {
 }
 
 describe('Layout — garage chrome', () => {
-  it('renders the platform logo in the header', () => {
+  it('shows the business’s own identity in the header, not the CoMaz logo', async () => {
     signInAsStaff()
     renderLayout()
-    expect(screen.getByRole('img', { name: 'CoMaz OS' })).toBeInTheDocument()
+    // Bennett Motors (the default garage fixture) has no logo, so this is
+    // the initials fallback next to the business name - not a broken image,
+    // and not the platform's own mark, which belongs only on the sign-in
+    // screen and the Footer's subtle "Powered by CoMaz OS™".
+    expect(await screen.findByText('Bennett Motors')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'CoMaz OS' })).not.toBeInTheDocument()
+  })
+
+  it('shows the persisted business logo in the header when one exists', async () => {
+    server.use(
+      http.get('*/api/garage', () =>
+        HttpResponse.json(makeGarage({ logo_url: 'https://storage.example/logo.png' })),
+      ),
+    )
+    signInAsStaff()
+    renderLayout()
+
+    const img = await screen.findByRole('img', { name: 'Bennett Motors logo' })
+    expect(img).toHaveAttribute('src', 'https://storage.example/logo.png')
   })
 
   it('renders the outlet’s page beneath the chrome', async () => {

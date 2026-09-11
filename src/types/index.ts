@@ -12,6 +12,10 @@ export interface Garage {
   address: string | null
   postcode: string | null
   website: string | null
+  /** A fresh, short-lived download url each request, or null with no logo -
+   * set from Platform Admin, read-only here. Render the initials fallback on
+   * null, never a broken-image icon. */
+  logo_url: string | null
   created_at: string
   updated_at: string
 }
