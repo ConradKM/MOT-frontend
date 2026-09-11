@@ -71,12 +71,14 @@ for (const [name, size] of Object.entries(VIEWPORTS)) {
 
 test.describe('known limitation: the staff shell has no narrow-viewport layout', () => {
   /**
-   * The staff header renders the logo, its six nav items and Log out in one
-   * non-wrapping row, so the whole page scrolls sideways below roughly
-   * 785px. There is no hamburger/drawer anywhere in the codebase. The two
-   * widths below are picked with a wide safety margin either side of that
-   * boundary so a few px of font-rendering difference between platforms
-   * doesn't flip the result.
+   * The staff header renders the business's own brand mark and name, its six
+   * nav items and Log out in one non-wrapping row, so the whole page scrolls
+   * sideways below roughly 897px (was ~785px before the header started
+   * showing the business's own name alongside its logo). There is no
+   * hamburger/drawer anywhere in the codebase. The two widths below are
+   * picked with a wide safety margin either side of that boundary so a few
+   * px of font-rendering difference between platforms doesn't flip the
+   * result.
    *
    * This is documented rather than silently fixed: giving the staff app a
    * mobile navigation is a product/design change, not a test change. The
@@ -92,11 +94,11 @@ test.describe('known limitation: the staff shell has no narrow-viewport layout',
     expect(await overflowsHorizontally(page)).toBe(false)
   })
 
-  test('the staff app still needs roughly 785px, and no more', async ({ page }) => {
+  test('the staff app still needs roughly 897px, and no more', async ({ page }) => {
     await signInAsStaff(page)
     await stubApi(page)
 
-    await page.setViewportSize({ width: 850, height: 800 })
+    await page.setViewportSize({ width: 960, height: 800 })
     await page.goto('/g1/dashboard')
     await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
     expect(await overflowsHorizontally(page)).toBe(false)
