@@ -496,3 +496,47 @@ describe('BookingRequestsList — rejecting', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('BookingRequestsList — deposit/payment status', () => {
+  it('shows a paid deposit and the remaining balance on a request detail', async () => {
+    serveRequests({
+      PENDING: [
+        makeRequest({
+          appointment_type: { id: 'at1', name: 'MOT test', base_price: '100.00' },
+          payment: {
+            id: 'pay1',
+            status: 'SUCCEEDED',
+            currency: 'GBP',
+            amount: '20.00',
+            provider: 'stripe',
+            provider_payment_id: 'pi_123',
+            refunded_amount_minor: null,
+            refunded_at: null,
+            paid_at: '2026-09-01T10:00:00+01:00',
+            failure_reason: null,
+          },
+        }),
+      ],
+    })
+    const user = userEvent.setup()
+    renderList()
+    await screen.findByText('Oliver Bennett')
+    await user.click(await screen.findByRole('button', { name: 'View' }))
+
+    expect(screen.getByText('Deposit')).toBeInTheDocument()
+    expect(screen.getByText('Paid')).toBeInTheDocument()
+    expect(screen.getByText(/£20\.00/)).toBeInTheDocument()
+    expect(screen.getByText(/Remaining balance/)).toBeInTheDocument()
+    expect(screen.getByText(/£80\.00/)).toBeInTheDocument()
+  })
+
+  it('shows no deposit row for a request whose type never required one', async () => {
+    serveRequests({ PENDING: [makeRequest({ payment: null })] })
+    const user = userEvent.setup()
+    renderList()
+    await screen.findByText('Oliver Bennett')
+    await user.click(await screen.findByRole('button', { name: 'View' }))
+
+    expect(screen.queryByText('Deposit')).not.toBeInTheDocument()
+  })
+})

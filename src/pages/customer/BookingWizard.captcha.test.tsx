@@ -38,7 +38,7 @@ function renderWizard() {
   )
 }
 
-async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
+async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByText('Test Garage')
   await user.click(
     await screen.findByRole('gridcell', {
@@ -52,6 +52,11 @@ async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
   await user.type(inputs[4], 'Turner')
   await user.type(inputs[5], 'alex@example.com')
   await user.type(inputs[6], '07123456789')
+}
+
+async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
+  await fillDetails(user)
+  await user.click(screen.getByRole('button', { name: 'Verify I am human' }))
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   await screen.findByRole('heading', { name: 'Review' })
 }
@@ -92,20 +97,26 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('BookingWizard — CAPTCHA on Step 3', () => {
-  it('blocks submission until the challenge is completed, then allows it', async () => {
+describe('BookingWizard — CAPTCHA on the Details step', () => {
+  it('blocks leaving Details until the challenge is completed, then allows it', async () => {
     const user = userEvent.setup()
     renderWizard()
-    await walkToReview(user)
+    await fillDetails(user)
 
-    // The widget is on the Review step, before submit.
+    // The widget lives on Details - before Review, and before any server
+    // call (a plain submit, or a deposit intent) rather than gating just
+    // the final submit button, so the deposit flow's first call is
+    // protected too (it never reaches Review at all before that call).
     expect(screen.getByRole('button', { name: 'Verify I am human' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
     expect(screen.getByText('Please confirm that you are not a robot.')).toBeInTheDocument()
-    expect(api.submitBookingRequest).not.toHaveBeenCalled()
+    expect(screen.queryByRole('heading', { name: 'Review' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Verify I am human' }))
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await screen.findByRole('heading', { name: 'Review' })
+
     await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
 
     await waitFor(() => expect(api.submitBookingRequest).toHaveBeenCalled())
@@ -123,21 +134,19 @@ describe('BookingWizard — CAPTCHA on Step 3', () => {
     renderWizard()
     await walkToReview(user)
 
-    await user.click(screen.getByRole('button', { name: 'Verify I am human' }))
     await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
 
     expect(await screen.findByText(/Verification failed or expired/)).toBeInTheDocument()
 
-    // Still on Review; details intact.
+    // Still able to get back to Details; details intact.
     await user.click(screen.getByRole('button', { name: 'Back' }))
     const inputs = await screen.findAllByRole('textbox')
     expect(inputs[0]).toHaveValue('PB11REQ')
     expect(inputs[5]).toHaveValue('alex@example.com')
 
-    // The stale token was cleared: submitting again asks for the challenge.
+    // The stale token was cleared: continuing again asks for the challenge.
+    expect(screen.getByRole('button', { name: 'Verify I am human' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Continue' }))
-    await screen.findByRole('heading', { name: 'Review' })
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
     expect(screen.getByText('Please confirm that you are not a robot.')).toBeInTheDocument()
   })
 })

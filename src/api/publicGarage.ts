@@ -1,4 +1,5 @@
 import { apiFetch } from './client'
+import type { DepositType } from '../types'
 
 export interface PublicIncludedItem {
   label: string
@@ -15,6 +16,14 @@ export interface PublicAppointmentType {
   /** Customer-visible checklist steps only - see
    * ChecklistTemplateItem.visible_to_customer on the backend. */
   included_items: PublicIncludedItem[]
+  /** Whether this service needs a deposit before a booking request is
+   * submitted for review - drives whether the wizard shows the Deposit
+   * step. The authoritative amount is still always recalculated
+   * server-side when the deposit intent is created. */
+  deposit_required: boolean
+  deposit_type: DepositType | null
+  deposit_value: string | null
+  deposit_currency: string
 }
 
 export interface PublicGarage {
@@ -88,6 +97,63 @@ export function submitBookingRequest(
     body: data,
     skipAuth: true,
   })
+}
+
+// --- Deposits --------------------------------------------------------------
+
+/** BookingRequest status while/after a deposit is being paid. */
+export type DepositBookingStatus = 'AWAITING_PAYMENT' | 'PENDING' | 'EXPIRED'
+/** BookingPayment status - see app/models/payments/payment.py. */
+export type DepositPaymentStatus =
+  | 'REQUIRES_PAYMENT'
+  | 'PENDING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED'
+
+export interface DepositIntentCreated {
+  booking_request_id: string
+  booking_reference: string | null
+  status: DepositBookingStatus
+  payment_status: DepositPaymentStatus | null
+  currency: string | null
+  /** Decimal strings - the service total may be null if the type has no
+   * listed price (only possible for a FIXED deposit). */
+  service_total: string | null
+  deposit_amount: string | null
+  remaining_balance: string | null
+  /** The Stripe PaymentIntent client secret - handed to the Payment Element
+   * directly; never sent anywhere else. Only present on creation. */
+  client_secret: string | null
+  publishable_key: string | null
+  provider: string | null
+  hold_expires_at: string | null
+}
+
+export type DepositStatusPoll = Omit<
+  DepositIntentCreated,
+  'client_secret' | 'publishable_key' | 'provider'
+>
+
+export function createDepositIntent(
+  slug: string,
+  data: BookingRequestInput,
+): Promise<DepositIntentCreated> {
+  return apiFetch<DepositIntentCreated>(`/api/public/${slug}/booking-requests/deposit-intent`, {
+    method: 'POST',
+    body: data,
+    skipAuth: true,
+  })
+}
+
+export function getDepositStatus(
+  slug: string,
+  bookingReference: string,
+): Promise<DepositStatusPoll> {
+  return apiFetch<DepositStatusPoll>(
+    `/api/public/${slug}/booking-requests/${bookingReference}/payment-status`,
+    { skipAuth: true },
+  )
 }
 
 // --- Availability calendar ------------------------------------------------

@@ -9,11 +9,17 @@ import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner
 import { formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { usePublicGarage } from '../../api/queries'
-import { submitBookingRequest, type PublicAppointmentType } from '../../api/publicGarage'
+import {
+  submitBookingRequest,
+  type BookingRequestInput,
+  type DepositIntentCreated,
+  type PublicAppointmentType,
+} from '../../api/publicGarage'
 import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 import { Captcha, captchaEnabled } from '../../components/Captcha'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
+import { DepositStep } from '../../components/customer/DepositStep'
 
 interface WizardData {
   firstName: string
@@ -58,15 +64,19 @@ function addMinutesToTime(time: string, minutes: number): string {
 
 type FieldErrors = Partial<Record<keyof WizardData, string>> & { form?: string }
 
-const STEP_TIME = 1
-const STEP_DETAILS = 2
-const STEP_REVIEW = 3
+// A plain sequence of keys, not fixed numeric ids: whether 'deposit' is
+// present depends on the selected service (see `steps` below), so the
+// step *number* shown in the stepper has to come from each step's position
+// in that list, not a hard-coded constant - otherwise turning a deposit on
+// mid-flow would leave "Step 3 of 3" stuck showing the wrong total.
+type StepKey = 'time' | 'details' | 'deposit' | 'review'
 
-const STEPS: WizardStep[] = [
-  { id: STEP_TIME, label: 'Date & time' },
-  { id: STEP_DETAILS, label: 'Vehicle & your details' },
-  { id: STEP_REVIEW, label: 'Review' },
-]
+const STEP_LABELS: Record<StepKey, string> = {
+  time: 'Date & time',
+  details: 'Vehicle & your details',
+  deposit: 'Deposit',
+  review: 'Review',
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -107,9 +117,9 @@ function validateDetails(d: WizardData): FieldErrors {
   return errors
 }
 
-function validateForStep(step: number, d: WizardData, requiresType: boolean): FieldErrors {
-  if (step === STEP_TIME) return validateTime(d, requiresType)
-  if (step === STEP_DETAILS) return validateDetails(d)
+function validateForStep(step: StepKey, d: WizardData, requiresType: boolean): FieldErrors {
+  if (step === 'time') return validateTime(d, requiresType)
+  if (step === 'details') return validateDetails(d)
   return {}
 }
 
@@ -124,13 +134,18 @@ export function BookingWizard() {
 
   const garageSlug = garage?.slug ?? ''
 
-  const [step, setStep] = useState(STEP_TIME)
+  const [step, setStep] = useState<StepKey>('time')
   const [data, setData] = useState<WizardData>(initialData)
   const [errors, setErrors] = useState<FieldErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [bookingReference, setBookingReference] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState('')
+  // Set once the Deposit step's payment has succeeded (server-confirmed via
+  // webhook, not just "Stripe didn't error") - the booking request already
+  // exists at that point (see app/payments/service.py), so Review just
+  // shows a summary and finishes rather than submitting anything again.
+  const [depositResult, setDepositResult] = useState<DepositIntentCreated | null>(null)
 
   const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
 
@@ -156,10 +171,23 @@ export function BookingWizard() {
   const selectSlot = (time: string) => {
     setData((d) => ({ ...d, time }))
     setErrors((e) => ({ ...e, form: undefined }))
-    setStep(STEP_DETAILS)
+    setStep('details')
   }
 
   const requiresType = (garage?.appointment_types.length ?? 0) > 0
+  const selectedAppointmentType = garage?.appointment_types.find(
+    (t) => t.id === data.appointmentTypeId,
+  )
+  const requiresDeposit = selectedAppointmentType?.deposit_required ?? false
+
+  // The Deposit step only exists in the sequence when the selected service
+  // requires one (Part 2 of the deposit spec) - everything else (numbering,
+  // Back/Continue, the stepper) derives from this one list.
+  const steps: StepKey[] = requiresDeposit
+    ? ['time', 'details', 'deposit', 'review']
+    : ['time', 'details', 'review']
+  const wizardSteps: WizardStep[] = steps.map((key, i) => ({ id: i + 1, label: STEP_LABELS[key] }))
+  const currentStepNumber = steps.indexOf(step) + 1
 
   const goNext = () => {
     const stepErrors = validateForStep(step, data, requiresType)
@@ -167,15 +195,46 @@ export function BookingWizard() {
       setErrors(stepErrors)
       return
     }
+    // Verified once, here, right before the first server call either path
+    // makes (submitting directly, or creating a deposit intent) - not on
+    // Review, which the deposit path never reaches until after that first
+    // call already succeeded.
+    if (step === 'details' && captchaEnabled && !captchaToken) {
+      setErrors({ form: 'Please confirm that you are not a robot.' })
+      return
+    }
     setErrors({})
-    setStep((s) => Math.min(s + 1, STEP_REVIEW))
+    const idx = steps.indexOf(step)
+    setStep(steps[Math.min(idx + 1, steps.length - 1)])
   }
 
-  const goBack = () => setStep((s) => Math.max(s - 1, STEP_TIME))
+  const goBack = () => {
+    const idx = steps.indexOf(step)
+    setStep(steps[Math.max(idx - 1, 0)])
+  }
 
-  const goToStep = (target: number) => {
+  const goToStep = (target: StepKey) => {
     setErrors({})
     setStep(target)
+  }
+
+  const handleDepositPaid = (result: DepositIntentCreated) => {
+    setDepositResult(result)
+    setBookingReference(result.booking_reference)
+    setStep('review')
+  }
+
+  // The payment hold expired (or the slot was otherwise lost) while paying -
+  // the booking never went through, so there is nothing to keep: send the
+  // customer back to pick a fresh slot rather than showing a dead-end error.
+  const handleDepositSlotLost = () => {
+    setDepositResult(null)
+    setData((d) => ({ ...d, time: '' }))
+    refreshAvailability()
+    setErrors({
+      form: 'Your payment window expired before it completed, so this slot was released. Please choose another time.',
+    })
+    setStep('time')
   }
 
   const refreshAvailability = () => {
@@ -184,6 +243,14 @@ export function BookingWizard() {
   }
 
   const handleSubmit = async () => {
+    // The deposit flow already created (and paid) the booking request server-
+    // side - see handleDepositPaid. Review just finishes; there is nothing
+    // left to submit, and definitely nothing to submit a second time.
+    if (depositResult) {
+      setSubmitted(true)
+      return
+    }
+
     if (captchaEnabled && !captchaToken) {
       setErrors({ form: 'Please confirm that you are not a robot.' })
       return
@@ -192,28 +259,7 @@ export function BookingWizard() {
     setErrors({})
     try {
       const email = data.email.trim()
-      const result = await submitBookingRequest(garageSlug, {
-        customer_first_name: data.firstName.trim(),
-        customer_last_name: data.lastName.trim(),
-        customer_email: email,
-        // Required (validated above) - the server normalises it to E.164.
-        customer_phone: data.phone.trim(),
-        vehicle_registration: data.registration.trim(),
-        vehicle_make: data.make.trim() || null,
-        vehicle_model: data.model.trim() || null,
-        vehicle_year: data.year ? Number(data.year) : null,
-        vehicle_mileage: data.mileage ? Number(data.mileage) : null,
-        // The customer's chosen service - its duration is what determined
-        // which times were even offered (item 2/12). Null only for a garage
-        // with no appointment types configured; staff assign a mechanic
-        // either way when they review the request.
-        appointment_type_id: data.appointmentTypeId || null,
-        preferred_date: data.date,
-        preferred_time: data.time || null,
-        preferred_employee_note: null,
-        notes: data.notes.trim() || null,
-        captcha_token: captchaToken,
-      })
+      const result = await submitBookingRequest(garageSlug, buildBookingPayload(data, captchaToken))
       setBookingReference(result.booking_reference)
       // The account (Customer + Vehicle) already exists at this point (see
       // app/public_booking/routes.py), so sign the customer straight in with
@@ -233,7 +279,7 @@ export function BookingWizard() {
         setErrors({
           form: `${errorMessage(err)} We've refreshed the calendar — please pick another time.`,
         })
-        setStep(STEP_TIME)
+        setStep('time')
         return
       }
 
@@ -258,8 +304,8 @@ export function BookingWizard() {
           ? 'Please fix the highlighted details.'
           : errorMessage(err)
       setErrors(mapped)
-      if (timeIssue) setStep(STEP_TIME)
-      else if (mapped.email || mapped.registration) setStep(STEP_DETAILS)
+      if (timeIssue) setStep('time')
+      else if (mapped.email || mapped.registration) setStep('details')
     } finally {
       setSubmitting(false)
     }
@@ -268,9 +314,10 @@ export function BookingWizard() {
   const restart = () => {
     setData(initialData)
     setErrors({})
-    setStep(STEP_TIME)
+    setStep('time')
     setSubmitted(false)
     setBookingReference(null)
+    setDepositResult(null)
     setCaptchaToken('')
   }
 
@@ -307,7 +354,7 @@ export function BookingWizard() {
     )
   }
 
-  const showSlotBanner = Boolean(data.date && data.time && step >= STEP_DETAILS)
+  const showSlotBanner = Boolean(data.date && data.time && step !== 'time')
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -319,18 +366,18 @@ export function BookingWizard() {
         </div>
       </div>
 
-      <WizardStepper steps={STEPS} currentStep={step} />
+      <WizardStepper steps={wizardSteps} currentStep={currentStepNumber} />
 
       <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
         {showSlotBanner && (
           <SelectedSlotBanner
             date={data.date}
             time={data.time}
-            onChange={() => goToStep(STEP_TIME)}
+            onChange={() => goToStep('time')}
           />
         )}
 
-        {step === STEP_TIME && (
+        {step === 'time' && (
           <DateTimeStep
             slug={garageSlug}
             date={data.date}
@@ -342,16 +389,31 @@ export function BookingWizard() {
             onSelectSlot={selectSlot}
           />
         )}
-        {step === STEP_DETAILS && (
-          <DetailsStep data={data} errors={errors} update={update} />
+        {step === 'details' && (
+          <DetailsStep
+            data={data}
+            errors={errors}
+            update={update}
+            onCaptchaToken={handleCaptchaToken}
+          />
         )}
-        {step === STEP_REVIEW && (
+        {step === 'deposit' && (
+          <DepositStep
+            slug={garageSlug}
+            garageName={garage.name}
+            payload={buildBookingPayload(data, captchaToken)}
+            appointmentType={selectedAppointmentType}
+            onPaid={handleDepositPaid}
+            onSlotLost={handleDepositSlotLost}
+          />
+        )}
+        {step === 'review' && (
           <ReviewStep
             data={data}
             garageName={garage.name}
-            appointmentType={garage.appointment_types.find((t) => t.id === data.appointmentTypeId)}
+            appointmentType={selectedAppointmentType}
+            depositResult={depositResult}
             onEditStep={goToStep}
-            onCaptchaToken={handleCaptchaToken}
           />
         )}
 
@@ -360,7 +422,7 @@ export function BookingWizard() {
         )}
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6">
-          {step > STEP_TIME ? (
+          {step !== 'time' && step !== 'deposit' && !(step === 'review' && depositResult) ? (
             <button
               type="button"
               onClick={goBack}
@@ -371,20 +433,26 @@ export function BookingWizard() {
           ) : (
             <span />
           )}
-          {step === STEP_REVIEW ? (
+          {step === 'deposit' ? (
+            <span />
+          ) : step === 'review' ? (
             <button
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
             >
-              {submitting ? 'Sending…' : 'Submit booking request'}
+              {submitting
+                ? 'Sending…'
+                : depositResult
+                  ? 'Finish'
+                  : 'Submit booking request'}
             </button>
           ) : (
             <button
               type="button"
               onClick={goNext}
-              disabled={step === STEP_TIME && (!data.date || !data.time)}
+              disabled={step === 'time' && (!data.date || !data.time)}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
             >
               Continue
@@ -394,6 +462,30 @@ export function BookingWizard() {
       </div>
     </div>
   )
+}
+
+/** Shared between the plain submit path and the deposit-intent creation
+ * call - same customer/vehicle/slot payload either way (see
+ * app/public_booking/routes.py::_build_booking_request). */
+function buildBookingPayload(data: WizardData, captchaToken: string): BookingRequestInput {
+  return {
+    customer_first_name: data.firstName.trim(),
+    customer_last_name: data.lastName.trim(),
+    customer_email: data.email.trim(),
+    // Required (validated above) - the server normalises it to E.164.
+    customer_phone: data.phone.trim(),
+    vehicle_registration: data.registration.trim(),
+    vehicle_make: data.make.trim() || null,
+    vehicle_model: data.model.trim() || null,
+    vehicle_year: data.year ? Number(data.year) : null,
+    vehicle_mileage: data.mileage ? Number(data.mileage) : null,
+    appointment_type_id: data.appointmentTypeId || null,
+    preferred_date: data.date,
+    preferred_time: data.time || null,
+    preferred_employee_note: null,
+    notes: data.notes.trim() || null,
+    captcha_token: captchaToken,
+  }
 }
 
 interface StepProps {
@@ -579,7 +671,12 @@ function AppointmentTypeStep({
   )
 }
 
-function DetailsStep({ data, errors, update }: StepProps) {
+function DetailsStep({
+  data,
+  errors,
+  update,
+  onCaptchaToken,
+}: StepProps & { onCaptchaToken: (token: string) => void }) {
   return (
     <div className="space-y-8">
       <section>
@@ -700,6 +797,14 @@ function DetailsStep({ data, errors, update }: StepProps) {
           className={`mt-2 ${richFieldBoxClass} ${richFieldFocusClass}`}
         />
       </section>
+
+      {captchaEnabled && (
+        <section>
+          <Field label="Verification" required>
+            {() => <Captcha onToken={onCaptchaToken} />}
+          </Field>
+        </section>
+      )}
     </div>
   )
 }
@@ -708,14 +813,14 @@ function ReviewStep({
   data,
   garageName,
   appointmentType,
+  depositResult,
   onEditStep,
-  onCaptchaToken,
 }: {
   data: WizardData
   garageName: string
   appointmentType: PublicAppointmentType | undefined
-  onEditStep: (step: number) => void
-  onCaptchaToken: (token: string) => void
+  depositResult: DepositIntentCreated | null
+  onEditStep: (step: StepKey) => void
 }) {
   const finishTime =
     data.time && appointmentType?.default_duration_minutes != null
@@ -725,10 +830,14 @@ function ReviewStep({
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">Review</h2>
-      <p className="mt-1 text-sm text-slate-500">Please check everything below before you submit.</p>
+      <p className="mt-1 text-sm text-slate-500">
+        {depositResult
+          ? 'Your deposit is paid. Here is a summary of your booking.'
+          : 'Please check everything below before you submit.'}
+      </p>
 
       <div className="mt-4 space-y-4">
-        <SummarySection title="Appointment" onEdit={() => onEditStep(STEP_TIME)}>
+        <SummarySection title="Appointment" onEdit={() => onEditStep('time')}>
           <SummaryRow label="Business" value={garageName} />
           {appointmentType && <SummaryRow label="Service" value={appointmentType.name} />}
           {appointmentType?.base_price != null && (
@@ -741,7 +850,24 @@ function ReviewStep({
           />
         </SummarySection>
 
-        <SummarySection title="Vehicle" onEdit={() => onEditStep(STEP_DETAILS)}>
+        {depositResult && (
+          <SummarySection title="Payment">
+            <SummaryRow
+              label="Service total"
+              value={depositResult.service_total ? `£${depositResult.service_total}` : '—'}
+            />
+            <SummaryRow
+              label="Deposit paid"
+              value={depositResult.deposit_amount ? `£${depositResult.deposit_amount}` : '—'}
+            />
+            <SummaryRow
+              label="Remaining balance"
+              value={depositResult.remaining_balance ? `£${depositResult.remaining_balance}` : '—'}
+            />
+          </SummarySection>
+        )}
+
+        <SummarySection title="Vehicle" onEdit={depositResult ? undefined : () => onEditStep('details')}>
           <SummaryRow label="Registration" value={data.registration} />
           <SummaryRow
             label="Make / model"
@@ -751,29 +877,25 @@ function ReviewStep({
           <SummaryRow label="Current mileage" value={data.mileage || '—'} />
         </SummarySection>
 
-        <SummarySection title="Your details" onEdit={() => onEditStep(STEP_DETAILS)}>
+        <SummarySection title="Your details" onEdit={depositResult ? undefined : () => onEditStep('details')}>
           <SummaryRow label="Name" value={`${data.firstName} ${data.lastName}`.trim()} />
           <SummaryRow label="Email" value={data.email} />
           <SummaryRow label="Mobile number" value={data.phone || '—'} />
         </SummarySection>
 
-        <SummarySection title="Additional information" onEdit={() => onEditStep(STEP_DETAILS)}>
+        <SummarySection
+          title="Additional information"
+          onEdit={depositResult ? undefined : () => onEditStep('details')}
+        >
           <SummaryRow label="Customer notes" value={data.notes.trim() || 'None provided'} />
         </SummarySection>
       </div>
 
       <p className="mt-6 text-sm text-slate-600">
-        Submitting sends a request to {garageName}. They'll review it and be in touch at{' '}
-        {data.email || 'the email you gave'} to confirm.
+        {depositResult
+          ? `Your booking has been sent to ${garageName} for review. They'll be in touch at ${data.email || 'the email you gave'} to confirm.`
+          : `Submitting sends a request to ${garageName}. They'll review it and be in touch at ${data.email || 'the email you gave'} to confirm.`}
       </p>
-
-      {captchaEnabled && (
-        <div className="mt-4">
-          <Field label="Verification" required>
-            {() => <Captcha onToken={onCaptchaToken} />}
-          </Field>
-        </div>
-      )}
     </div>
   )
 }
@@ -784,20 +906,22 @@ function SummarySection({
   children,
 }: {
   title: string
-  onEdit: () => void
+  onEdit?: () => void
   children: ReactNode
 }) {
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-900">{title}</p>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="text-xs font-medium text-slate-500 hover:text-slate-800"
-        >
-          Edit
-        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-xs font-medium text-slate-500 hover:text-slate-800"
+          >
+            Edit
+          </button>
+        )}
       </div>
       <dl className="mt-2 space-y-1">{children}</dl>
     </div>
