@@ -116,6 +116,8 @@ export interface GarageAppointmentStatus {
 
 export type AppointmentTypeStatus = 'ACTIVE' | 'HIDDEN' | 'DEPRECATED'
 
+export type DepositType = 'FIXED' | 'PERCENTAGE'
+
 /** A garage's own configurable appointment type (replaces the old global enum). */
 export interface AppointmentType {
   id: string
@@ -126,6 +128,11 @@ export interface AppointmentType {
   base_price: string | null
   default_duration_minutes: number | null
   status: AppointmentTypeStatus
+  deposit_required: boolean
+  deposit_type: DepositType | null
+  /** Decimal string - a GBP amount for FIXED, a 0-100 number for PERCENTAGE. */
+  deposit_value: string | null
+  deposit_currency: string
   created_at: string
   updated_at: string
 }

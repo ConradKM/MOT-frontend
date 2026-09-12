@@ -578,6 +578,25 @@ export function useGarageDayAvailability(
   })
 }
 
+// Deposit status poll - the Deposit step's "has the webhook confirmed
+// payment yet" check while waiting. Never itself a source of truth the
+// frontend can use to declare success (see app/payments/service.py).
+export function useDepositStatus(
+  slug: string | undefined,
+  bookingReference: string | undefined,
+  options: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: ['depositStatus', slug, bookingReference],
+    queryFn: () => publicGarageApi.getDepositStatus(slug as string, bookingReference as string),
+    enabled: !!slug && !!bookingReference && options.enabled !== false,
+    retry: false,
+    // Poll every 2s while waiting for the webhook - short-lived (the wizard
+    // stops enabling this once the status leaves AWAITING_PAYMENT).
+    refetchInterval: 2_000,
+  })
+}
+
 // Booking requests (staff review of public submissions)
 export function useBookingRequests(status?: BookingRequestStatus) {
   return useQuery({
@@ -614,6 +633,15 @@ export function useRejectBookingRequest() {
       customer_rejection_reason,
     }: { id: string } & bookingRequestsApi.RejectBookingRequestInput) =>
       bookingRequestsApi.rejectBookingRequest(id, { staff_notes, customer_rejection_reason }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['bookingRequests'] }),
+  })
+}
+
+export function useRefundBookingRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason?: string | null }) =>
+      bookingRequestsApi.refundBookingRequest(id, { reason }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['bookingRequests'] }),
   })
 }

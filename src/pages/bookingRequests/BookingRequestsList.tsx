@@ -21,17 +21,45 @@ import { ContactShortcuts } from '../../components/communications/ContactShortcu
 const STATUS_TABS: BookingRequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED']
 
 const statusClasses: Record<BookingRequestStatus, string> = {
+  AWAITING_PAYMENT: 'bg-amber-100 text-amber-700',
   PENDING: 'bg-violet-100 text-violet-700',
   APPROVED: 'bg-emerald-100 text-emerald-700',
   REJECTED: 'bg-slate-100 text-slate-500',
   EXPIRED: 'bg-amber-100 text-amber-700',
+  CANCELLED: 'bg-slate-100 text-slate-500',
 }
 
 const statusLabels: Record<BookingRequestStatus, string> = {
+  AWAITING_PAYMENT: 'Awaiting payment',
   PENDING: 'Pending',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   EXPIRED: 'Expired',
+  CANCELLED: 'Cancelled',
+}
+
+const paymentStatusLabels: Record<string, string> = {
+  REQUIRES_PAYMENT: 'Awaiting payment',
+  PENDING: 'Processing',
+  SUCCEEDED: 'Paid',
+  FAILED: 'Failed',
+  CANCELLED: 'Cancelled',
+  REFUND_PENDING: 'Refund processing',
+  REFUNDED: 'Refunded',
+  PARTIALLY_REFUNDED: 'Partially refunded',
+  REFUND_FAILED: 'Refund failed',
+}
+
+const paymentStatusClasses: Record<string, string> = {
+  REQUIRES_PAYMENT: 'bg-amber-100 text-amber-700',
+  PENDING: 'bg-amber-100 text-amber-700',
+  SUCCEEDED: 'bg-emerald-100 text-emerald-700',
+  FAILED: 'bg-red-100 text-red-700',
+  CANCELLED: 'bg-slate-100 text-slate-500',
+  REFUND_PENDING: 'bg-amber-100 text-amber-700',
+  REFUNDED: 'bg-slate-100 text-slate-600',
+  PARTIALLY_REFUNDED: 'bg-slate-100 text-slate-600',
+  REFUND_FAILED: 'bg-red-100 text-red-700',
 }
 
 const priceFormatter = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
@@ -109,6 +137,30 @@ function RequestDetails({ request }: { request: BookingRequest }) {
           {formatPrice(request.appointment_type?.base_price ?? request.requested_price)}
         </dd>
       </div>
+      {request.payment && (
+        <div>
+          <dt className="font-medium text-slate-700">Deposit</dt>
+          <dd className="text-slate-600">
+            {priceFormatter.format(Number(request.payment.amount))}
+            {' — '}
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${paymentStatusClasses[request.payment.status] ?? ''}`}
+            >
+              {paymentStatusLabels[request.payment.status] ?? request.payment.status}
+            </span>
+            {request.appointment_type?.base_price && (
+              <span className="ml-2 text-slate-500">
+                · Remaining balance:{' '}
+                {formatPrice(
+                  (
+                    Number(request.appointment_type.base_price) - Number(request.payment.amount)
+                  ).toFixed(2),
+                )}
+              </span>
+            )}
+          </dd>
+        </div>
+      )}
       <div>
         <dt className="font-medium text-slate-700">Preferred date/time</dt>
         <dd className="text-slate-600">{formatPreferred(request)}</dd>
@@ -256,6 +308,13 @@ function ReviewRow({ request }: { request: BookingRequest }) {
             {formatDurationMinutes(request.duration_minutes)} ·{' '}
             {formatPrice(request.appointment_type?.base_price)}
           </p>
+          {request.payment && (
+            <span
+              className={`mt-1 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${paymentStatusClasses[request.payment.status] ?? ''}`}
+            >
+              Deposit {paymentStatusLabels[request.payment.status] ?? request.payment.status}
+            </span>
+          )}
         </td>
         <td className="px-4 py-2 text-slate-600">{formatPreferred(request)}</td>
         <td className="px-4 py-2">
