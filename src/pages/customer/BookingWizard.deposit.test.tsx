@@ -158,9 +158,9 @@ describe('BookingWizard — deposit step', () => {
       service_total: '100.00',
       deposit_amount: '20.00',
       remaining_balance: '80.00',
-      client_secret: 'pi_1_secret_abc',
-      publishable_key: 'pk_test_123',
-      provider: 'fake',
+      provider: 'stripe',
+      checkout_mode: 'EMBEDDED',
+      provider_data: { client_secret: 'pi_1_secret_abc', publishable_key: 'pk_test_123' },
       hold_expires_at: '2026-09-10T09:15:00Z',
     })
     const user = userEvent.setup()
@@ -184,9 +184,9 @@ describe('BookingWizard — deposit step', () => {
       service_total: '100.00',
       deposit_amount: '20.00',
       remaining_balance: '80.00',
-      client_secret: 'pi_1_secret_abc',
-      publishable_key: 'pk_test_123',
-      provider: 'fake',
+      provider: 'stripe',
+      checkout_mode: 'EMBEDDED',
+      provider_data: { client_secret: 'pi_1_secret_abc', publishable_key: 'pk_test_123' },
       hold_expires_at: '2026-09-10T09:15:00Z',
     })
     confirmPaymentMock.mockResolvedValue({})
@@ -227,9 +227,9 @@ describe('BookingWizard — deposit step', () => {
       service_total: '100.00',
       deposit_amount: '20.00',
       remaining_balance: '80.00',
-      client_secret: 'pi_1_secret_abc',
-      publishable_key: 'pk_test_123',
-      provider: 'fake',
+      provider: 'stripe',
+      checkout_mode: 'EMBEDDED',
+      provider_data: { client_secret: 'pi_1_secret_abc', publishable_key: 'pk_test_123' },
       hold_expires_at: '2026-09-10T09:15:00Z',
     })
     confirmPaymentMock.mockResolvedValue({ error: { message: 'Your card was declined.' } })
@@ -255,9 +255,9 @@ describe('BookingWizard — deposit step', () => {
       service_total: '100.00',
       deposit_amount: '20.00',
       remaining_balance: '80.00',
-      client_secret: 'pi_1_secret_abc',
-      publishable_key: 'pk_test_123',
-      provider: 'fake',
+      provider: 'stripe',
+      checkout_mode: 'EMBEDDED',
+      provider_data: { client_secret: 'pi_1_secret_abc', publishable_key: 'pk_test_123' },
       hold_expires_at: '2026-09-10T09:15:00Z',
     })
     confirmPaymentMock.mockResolvedValue({})
@@ -281,5 +281,31 @@ describe('BookingWizard — deposit step', () => {
 
     await screen.findByText(/window expired/)
     expect(screen.getByText('Pick a date & time')).toBeInTheDocument()
+  })
+
+  it('shows a clear fallback for a provider/checkout mode the frontend has no component for', async () => {
+    vi.mocked(api.createDepositIntent).mockResolvedValue({
+      booking_request_id: 'br1',
+      booking_reference: 'BK1',
+      status: 'AWAITING_PAYMENT',
+      payment_status: 'REQUIRES_PAYMENT',
+      currency: 'GBP',
+      service_total: '100.00',
+      deposit_amount: '20.00',
+      remaining_balance: '80.00',
+      provider: 'paypal',
+      checkout_mode: 'REDIRECT',
+      provider_data: { approval_url: 'https://paypal.example/approve' },
+      hold_expires_at: '2026-09-10T09:15:00Z',
+    })
+
+    const user = userEvent.setup()
+    renderWizard()
+    await fillDetailsAndReachDeposit(user)
+
+    expect(
+      screen.getByText(/payment method isn't available online right now/),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Pay deposit/ })).not.toBeInTheDocument()
   })
 })

@@ -1,14 +1,12 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
-import { loadStripe, type Stripe } from '@stripe/stripe-js'
+import { useEffect, useState } from 'react'
 import {
   createDepositIntent,
   type BookingRequestInput,
   type DepositIntentCreated,
   type PublicAppointmentType,
 } from '../../api/publicGarage'
-import { useDepositStatus } from '../../api/queries'
 import { errorMessage, isApiError } from '../../lib/errors'
+import { PaymentCheckout } from './payments/PaymentCheckout'
 
 interface Props {
   slug: string
@@ -19,15 +17,19 @@ interface Props {
   onSlotLost: () => void
 }
 
-/** The Deposit step: creates a short-lived payment hold + provider intent
- * the moment this step is entered, then renders Stripe's Payment Element
- * against it. Only ever mounted when the selected service requires a
- * deposit (see BookingWizard.tsx) - a plain booking never touches this. */
+/** The Deposit step: creates a short-lived payment hold + provider session
+ * the moment this step is entered, then renders whichever checkout
+ * component matches the session's provider/checkout mode (see
+ * src/components/customer/payments/PaymentCheckout.tsx). Only ever mounted
+ * when the selected service requires a deposit (see BookingWizard.tsx) - a
+ * plain booking never touches this, and everything here - summary,
+ * branding, error/retry chrome - is completely provider-independent; only
+ * PaymentCheckout's child component ever talks to a specific provider.
+ */
 export function DepositStep({ slug, garageName, payload, appointmentType, onPaid, onSlotLost }: Props) {
   const [intent, setIntent] = useState<DepositIntentCreated | null>(null)
   const [creating, setCreating] = useState(true)
   const [createError, setCreateError] = useState<string | null>(null)
-  const stripePromiseRef = useRef<Promise<Stripe | null> | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +68,7 @@ export function DepositStep({ slug, garageName, payload, appointmentType, onPaid
     return <div className="py-12 text-center text-sm text-slate-500">Setting up your payment…</div>
   }
 
-  if (createError || !intent?.client_secret || !intent.publishable_key) {
+  if (createError || !intent?.provider_data) {
     return (
       <div>
         <h2 className="text-lg font-semibold text-slate-900">Deposit</h2>
@@ -75,10 +77,6 @@ export function DepositStep({ slug, garageName, payload, appointmentType, onPaid
         </p>
       </div>
     )
-  }
-
-  if (!stripePromiseRef.current) {
-    stripePromiseRef.current = loadStripe(intent.publishable_key)
   }
 
   return (
@@ -91,9 +89,7 @@ export function DepositStep({ slug, garageName, payload, appointmentType, onPaid
       <DepositSummary intent={intent} appointmentType={appointmentType} garageName={garageName} />
 
       <div className="mt-4">
-        <Elements stripe={stripePromiseRef.current} options={{ clientSecret: intent.client_secret }}>
-          <DepositPaymentForm slug={slug} intent={intent} onPaid={onPaid} onSlotLost={onSlotLost} />
-        </Elements>
+        <PaymentCheckout slug={slug} intent={intent} onPaid={onPaid} onSlotLost={onSlotLost} />
       </div>
     </div>
   )
@@ -134,96 +130,5 @@ function DepositSummary({
         review.
       </p>
     </div>
-  )
-}
-
-type PaymentPhase = 'ready' | 'submitting' | 'confirming' | 'error'
-
-function DepositPaymentForm({
-  slug,
-  intent,
-  onPaid,
-  onSlotLost,
-}: {
-  slug: string
-  intent: DepositIntentCreated
-  onPaid: (result: DepositIntentCreated) => void
-  onSlotLost: () => void
-}) {
-  const stripe = useStripe()
-  const elements = useElements()
-  const [phase, setPhase] = useState<PaymentPhase>('ready')
-  const [error, setError] = useState<string | null>(null)
-
-  // Poll the server's own record of what happened - never the browser's own
-  // say-so - once Stripe has accepted the confirmation attempt. The webhook
-  // (app/payments/service.py) is the sole authority that flips the booking
-  // request from AWAITING_PAYMENT to PENDING.
-  const poll = useDepositStatus(slug, intent.booking_reference ?? undefined, {
-    enabled: phase === 'confirming',
-  })
-
-  useEffect(() => {
-    if (phase !== 'confirming' || !poll.data) return
-    if (poll.data.status === 'PENDING') {
-      onPaid({
-        ...intent,
-        ...poll.data,
-        client_secret: null,
-        publishable_key: null,
-        provider: null,
-      })
-    } else if (poll.data.status === 'EXPIRED') {
-      onSlotLost()
-    } else if (poll.data.payment_status === 'FAILED') {
-      setPhase('error')
-      setError('The payment failed. Please try again, or use a different card.')
-    }
-  }, [phase, poll.data, intent, onPaid, onSlotLost])
-
-  const handlePay = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!stripe || !elements) return
-    setPhase('submitting')
-    setError(null)
-
-    const { error: confirmError } = await stripe.confirmPayment({
-      elements,
-      redirect: 'if_required',
-    })
-
-    if (confirmError) {
-      setPhase('error')
-      setError(confirmError.message ?? 'Payment failed. Please try again.')
-      return
-    }
-    // Confirmed on Stripe's side - wait for our own webhook to confirm it
-    // authoritatively before treating the booking as submitted.
-    setPhase('confirming')
-  }
-
-  return (
-    <form onSubmit={handlePay} className="space-y-4">
-      <PaymentElement />
-
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {phase === 'confirming' && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Confirming your payment…
-        </p>
-      )}
-
-      <button
-        type="submit"
-        disabled={!stripe || !elements || phase === 'submitting' || phase === 'confirming'}
-        className="w-full rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-      >
-        {phase === 'submitting'
-          ? 'Processing…'
-          : phase === 'confirming'
-            ? 'Confirming…'
-            : `Pay deposit — £${intent.deposit_amount}`}
-      </button>
-    </form>
   )
 }
