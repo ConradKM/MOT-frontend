@@ -54,7 +54,7 @@ export function ConversationSimulator() {
     <div>
       <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
         Development tool. Messages here run through the real conversation engine and can create
-        real bookings, cancellations and callback requests for the phone number below - no Twilio
+        real bookings, cancellations and callback requests for the phone number below - no live communications provider
         or WhatsApp account is involved. This page is never available in a production
         deployment.
       </div>
