@@ -190,3 +190,24 @@ describe('ContactCustomer — browser dialler', () => {
     expect(communicationsApi.getVoiceToken).not.toHaveBeenCalled()
   })
 })
+
+
+it('does not initialise the Twilio SDK with another provider token', async () => {
+  vi.mocked(communicationsApi.getVoiceToken).mockResolvedValue({
+    provider: 'future-provider', token: 'other-token', identity: 'other',
+    expires_in: 3600, caller_id: '+441611234567',
+  })
+  render()
+  expect(await screen.findByText("Couldn't get a calling token. Please try again.")).toBeInTheDocument()
+  expect(currentDevice.register).not.toHaveBeenCalled()
+})
+
+it('accepts an explicitly identified Twilio token', async () => {
+  vi.mocked(communicationsApi.getVoiceToken).mockResolvedValue({
+    provider: 'twilio', token: 'jwt.token.here', identity: 'cbz-abc-def',
+    expires_in: 3600, caller_id: '+441611234567',
+  })
+  render()
+  expect(await screen.findByText('Ready')).toBeInTheDocument()
+  expect(currentDevice.register).toHaveBeenCalled()
+})
