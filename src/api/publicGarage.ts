@@ -111,6 +111,18 @@ export type DepositPaymentStatus =
   | 'FAILED'
   | 'CANCELLED'
 
+/** Which payment provider is handling this deposit - see
+ * app/payments/providers/__init__.py::get_provider. New adapters can be
+ * added on the backend without a frontend release breaking - an unknown
+ * value here just means PaymentCheckout (see
+ * src/components/customer/payments/PaymentCheckout.tsx) can't render a
+ * checkout component for it yet and shows a clear fallback message. */
+export type PaymentProviderName = 'stripe' | 'paypal' | 'square' | 'fake' | (string & {})
+
+/** How the frontend should present the payment step for this session - see
+ * app/payments/providers/base.py's CHECKOUT_MODE_* constants. */
+export type CheckoutMode = 'EMBEDDED' | 'REDIRECT' | 'HOSTED'
+
 export interface DepositIntentCreated {
   booking_request_id: string
   booking_reference: string | null
@@ -122,17 +134,20 @@ export interface DepositIntentCreated {
   service_total: string | null
   deposit_amount: string | null
   remaining_balance: string | null
-  /** The Stripe PaymentIntent client secret - handed to the Payment Element
-   * directly; never sent anywhere else. Only present on creation. */
-  client_secret: string | null
-  publishable_key: string | null
-  provider: string | null
+  provider: PaymentProviderName | null
+  checkout_mode: CheckoutMode | null
+  /** Provider-specific, client-safe fields only (e.g. Stripe's
+   * client_secret + publishable_key) - shape depends on `provider`/
+   * `checkout_mode`. Only present on creation, never on the status-poll
+   * response - a fresh session token is only ever handed out once. Never
+   * contains anything that isn't already safe to show a customer. */
+  provider_data: Record<string, string | null> | null
   hold_expires_at: string | null
 }
 
 export type DepositStatusPoll = Omit<
   DepositIntentCreated,
-  'client_secret' | 'publishable_key' | 'provider'
+  'provider' | 'checkout_mode' | 'provider_data'
 >
 
 export function createDepositIntent(
