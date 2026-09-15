@@ -114,6 +114,29 @@ describe('BookingWizard — a business with no services configured', () => {
     expect(screen.queryByText('What would you like to book?')).not.toBeInTheDocument()
   })
 
+  it('shows the business logo when the garage has one', async () => {
+    vi.mocked(api.getPublicGarage).mockResolvedValue({
+      ...GARAGE,
+      logo_url: 'https://storage.example/garages/gid/branding/logo.png',
+    })
+    renderWizard()
+
+    const logo = await screen.findByRole('img', { name: /test garage logo/i })
+    expect(logo).toHaveAttribute(
+      'src',
+      'https://storage.example/garages/gid/branding/logo.png',
+    )
+  })
+
+  it('falls back to an initials badge with no logo, never a broken image', async () => {
+    vi.mocked(api.getPublicGarage).mockResolvedValue(GARAGE)
+    renderWizard()
+    await screen.findByText('Test Garage')
+
+    expect(screen.queryByRole('img', { name: /logo/i })).not.toBeInTheDocument()
+    expect(screen.getByText('T')).toBeInTheDocument()
+  })
+
   it('carries the picked date and time into the booking request', async () => {
     vi.mocked(api.submitBookingRequest).mockResolvedValue({
       id: 'r1',

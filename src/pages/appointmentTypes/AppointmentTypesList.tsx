@@ -13,7 +13,7 @@ import { Disclosure } from '../../components/Disclosure'
 import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
-import type { AppointmentType, AppointmentTypeStatus } from '../../types'
+import type { AppointmentType, AppointmentTypeStatus, DepositType } from '../../types'
 
 const STATUSES: AppointmentTypeStatus[] = ['ACTIVE', 'HIDDEN', 'DEPRECATED']
 
@@ -29,6 +29,9 @@ interface FormValues {
   base_price: string
   default_duration_minutes: string
   status: AppointmentTypeStatus
+  deposit_required: boolean
+  deposit_type: DepositType
+  deposit_value: string
 }
 
 const emptyForm: FormValues = {
@@ -37,6 +40,9 @@ const emptyForm: FormValues = {
   base_price: '',
   default_duration_minutes: '',
   status: 'ACTIVE',
+  deposit_required: false,
+  deposit_type: 'FIXED',
+  deposit_value: '',
 }
 
 function toInput(v: FormValues): AppointmentTypeInput {
@@ -48,7 +54,27 @@ function toInput(v: FormValues): AppointmentTypeInput {
       ? Number(v.default_duration_minutes)
       : null,
     status: v.status,
+    deposit_required: v.deposit_required,
+    deposit_type: v.deposit_required ? v.deposit_type : null,
+    deposit_value: v.deposit_required ? v.deposit_value.trim() || null : null,
   }
+}
+
+/** Client-side preview only - the authoritative amount is always
+ * recalculated server-side (app/payments/money.py). Returns null when there
+ * isn't enough to compute one yet. */
+function previewDeposit(v: FormValues): { deposit: number; remaining: number | null } | null {
+  if (!v.deposit_required || !v.deposit_value.trim()) return null
+  const value = Number(v.deposit_value)
+  if (!Number.isFinite(value) || value <= 0) return null
+  const price = v.base_price.trim() ? Number(v.base_price) : null
+
+  if (v.deposit_type === 'PERCENTAGE') {
+    if (price == null || !Number.isFinite(price)) return null
+    const deposit = Math.round(price * (value / 100) * 100) / 100
+    return { deposit, remaining: Math.round((price - deposit) * 100) / 100 }
+  }
+  return { deposit: value, remaining: price != null ? Math.round((price - value) * 100) / 100 : null }
 }
 
 function TypeFields({
@@ -121,6 +147,72 @@ function TypeFields({
           ))}
         </select>
       </label>
+
+      <div className="sm:col-span-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+          <input
+            type="checkbox"
+            checked={values.deposit_required}
+            onChange={(e) => onChange({ deposit_required: e.target.checked })}
+            className="h-4 w-4 rounded border-slate-300"
+          />
+          Require a deposit to book this service
+        </label>
+
+        {values.deposit_required && (
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">
+              <span className="block font-medium text-slate-700">Deposit type</span>
+              <select
+                value={values.deposit_type}
+                onChange={(e) => onChange({ deposit_type: e.target.value as DepositType })}
+                className={input}
+              >
+                <option value="FIXED">Fixed amount (£)</option>
+                <option value="PERCENTAGE">Percentage (%)</option>
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="block font-medium text-slate-700">
+                {values.deposit_type === 'PERCENTAGE' ? 'Deposit (%)' : 'Deposit (£)'}
+              </span>
+              <input
+                inputMode="decimal"
+                placeholder={values.deposit_type === 'PERCENTAGE' ? 'e.g. 25' : 'e.g. 20.00'}
+                value={values.deposit_value}
+                onChange={(e) => onChange({ deposit_value: e.target.value })}
+                className={input}
+              />
+              {errors.deposit_value && (
+                <span className="mt-1 block text-red-600">{errors.deposit_value}</span>
+              )}
+            </label>
+            <DepositPreview values={values} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DepositPreview({ values }: { values: FormValues }) {
+  const preview = previewDeposit(values)
+  const price = values.base_price.trim() ? Number(values.base_price) : null
+
+  if (values.deposit_type === 'PERCENTAGE' && (price == null || !Number.isFinite(price))) {
+    return (
+      <p className="sm:col-span-2 text-xs text-amber-700">
+        Set a service price above to calculate a percentage deposit.
+      </p>
+    )
+  }
+  if (!preview) return null
+
+  return (
+    <div className="sm:col-span-2 rounded-md bg-white px-3 py-2 text-xs text-slate-600">
+      {price != null && <p>Service price: £{price.toFixed(2)}</p>}
+      <p>Deposit: £{preview.deposit.toFixed(2)}</p>
+      {preview.remaining != null && <p>Remaining balance: £{preview.remaining.toFixed(2)}</p>}
     </div>
   )
 }
@@ -181,6 +273,9 @@ function EditRow({ type, onDone }: { type: AppointmentType; onDone: () => void }
     base_price: type.base_price ?? '',
     default_duration_minutes: type.default_duration_minutes?.toString() ?? '',
     status: type.status,
+    deposit_required: type.deposit_required,
+    deposit_type: type.deposit_type ?? 'FIXED',
+    deposit_value: type.deposit_value ?? '',
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -276,6 +371,11 @@ function AppointmentTypeRow({
       <td className="px-4 py-2 text-slate-600">
         {type.base_price != null ? `£${type.base_price}` : '—'}
         {type.default_duration_minutes != null ? ` · ${type.default_duration_minutes}m` : ''}
+        {type.deposit_required && (
+          <span className="ml-2 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
+            Deposit: {type.deposit_type === 'PERCENTAGE' ? `${type.deposit_value}%` : `£${type.deposit_value}`}
+          </span>
+        )}
       </td>
       <td className="px-4 py-2">
         <span

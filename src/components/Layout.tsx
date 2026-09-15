@@ -1,11 +1,11 @@
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { BusinessBrandMark } from './BusinessBrandMark'
 import { Footer } from './Footer'
 import { ImpersonationBanner } from './ImpersonationBanner'
 import { useAuth } from '../auth/AuthContext'
 import { useGarage, useUnreadWhatsAppCount } from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
 import { resolveLayoutVariant } from '../lib/layoutVariant'
-import logo from '../assets/logo.png'
 
 export function Layout() {
   const { logout } = useAuth()
@@ -42,7 +42,19 @@ export function Layout() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-3">
           <div className="flex items-center gap-8">
-            <img src={logo} alt="CoMaz OS" className="h-8 w-auto shrink-0" />
+            {/* The business's own identity, not CoMaz's - this is the app a
+                garage's own staff sign into every day. CoMaz stays present,
+                just subordinate: the Footer's "Powered by CoMaz OS™" below. */}
+            {garage ? (
+              <div className="flex min-w-0 items-center gap-2">
+                <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} className="h-8 w-8" />
+                <span className="truncate text-sm font-semibold text-slate-900">{garage.name}</span>
+              </div>
+            ) : (
+              // Same footprint as the mark above, so nothing shifts once the
+              // garage query resolves - this is only visible for a beat.
+              <div className="h-8 w-8 shrink-0 animate-pulse rounded-md bg-slate-100" />
+            )}
             <nav className="flex items-center gap-1">
               {navItems.map((item) => (
                 <NavLink

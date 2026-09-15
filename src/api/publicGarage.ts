@@ -1,4 +1,5 @@
 import { apiFetch } from './client'
+import type { DepositType } from '../types'
 
 export interface PublicIncludedItem {
   label: string
@@ -28,6 +29,14 @@ export interface PublicAppointmentType {
   /** Customer-visible checklist steps only - see
    * ChecklistTemplateItem.visible_to_customer on the backend. */
   included_items: PublicIncludedItem[]
+  /** Whether this service needs a deposit before a booking request is
+   * submitted for review - drives whether the wizard shows the Deposit
+   * step. The authoritative amount is still always recalculated
+   * server-side when the deposit intent is created. */
+  deposit_required: boolean
+  deposit_type: DepositType | null
+  deposit_value: string | null
+  deposit_currency: string
 }
 
 export interface PublicAppointmentTypeGroup {
@@ -45,7 +54,10 @@ export interface PublicGarage {
   id: string
   name: string
   slug: string
-  logo_url?: string | null
+  /** A fresh, short-lived download url each request, or null when the
+   * business has no logo - render the text fallback on null, never a
+   * broken-image icon. */
+  logo_url: string | null
   /** The business-wide default; a group may override it. */
   booking_display_mode: DisplayMode
   /** Only groups with something active in them. */
@@ -173,6 +185,78 @@ export function submitBookingRequest(
     body: data,
     skipAuth: true,
   })
+}
+
+// --- Deposits --------------------------------------------------------------
+
+/** BookingRequest status while/after a deposit is being paid. */
+export type DepositBookingStatus = 'AWAITING_PAYMENT' | 'PENDING' | 'EXPIRED'
+/** BookingPayment status - see app/models/payments/payment.py. */
+export type DepositPaymentStatus =
+  | 'REQUIRES_PAYMENT'
+  | 'PENDING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED'
+
+/** Which payment provider is handling this deposit - see
+ * app/payments/providers/__init__.py::get_provider. New adapters can be
+ * added on the backend without a frontend release breaking - an unknown
+ * value here just means PaymentCheckout (see
+ * src/components/customer/payments/PaymentCheckout.tsx) can't render a
+ * checkout component for it yet and shows a clear fallback message. */
+export type PaymentProviderName = 'stripe' | 'paypal' | 'square' | 'fake' | (string & {})
+
+/** How the frontend should present the payment step for this session - see
+ * app/payments/providers/base.py's CHECKOUT_MODE_* constants. */
+export type CheckoutMode = 'EMBEDDED' | 'REDIRECT' | 'HOSTED'
+
+export interface DepositIntentCreated {
+  booking_request_id: string
+  booking_reference: string | null
+  status: DepositBookingStatus
+  payment_status: DepositPaymentStatus | null
+  currency: string | null
+  /** Decimal strings - the service total may be null if the type has no
+   * listed price (only possible for a FIXED deposit). */
+  service_total: string | null
+  deposit_amount: string | null
+  remaining_balance: string | null
+  provider: PaymentProviderName | null
+  checkout_mode: CheckoutMode | null
+  /** Provider-specific, client-safe fields only (e.g. Stripe's
+   * client_secret + publishable_key) - shape depends on `provider`/
+   * `checkout_mode`. Only present on creation, never on the status-poll
+   * response - a fresh session token is only ever handed out once. Never
+   * contains anything that isn't already safe to show a customer. */
+  provider_data: Record<string, string | null> | null
+  hold_expires_at: string | null
+}
+
+export type DepositStatusPoll = Omit<
+  DepositIntentCreated,
+  'provider' | 'checkout_mode' | 'provider_data'
+>
+
+export function createDepositIntent(
+  slug: string,
+  data: BookingRequestInput,
+): Promise<DepositIntentCreated> {
+  return apiFetch<DepositIntentCreated>(`/api/public/${slug}/booking-requests/deposit-intent`, {
+    method: 'POST',
+    body: data,
+    skipAuth: true,
+  })
+}
+
+export function getDepositStatus(
+  slug: string,
+  bookingReference: string,
+): Promise<DepositStatusPoll> {
+  return apiFetch<DepositStatusPoll>(
+    `/api/public/${slug}/booking-requests/${bookingReference}/payment-status`,
+    { skipAuth: true },
+  )
 }
 
 // --- Availability calendar ------------------------------------------------

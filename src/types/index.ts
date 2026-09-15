@@ -12,6 +12,10 @@ export interface Garage {
   address: string | null
   postcode: string | null
   website: string | null
+  /** A fresh, short-lived download url each request, or null with no logo -
+   * set from Platform Admin, read-only here. Render the initials fallback on
+   * null, never a broken-image icon. */
+  logo_url: string | null
   created_at: string
   updated_at: string
 }
@@ -112,6 +116,8 @@ export interface GarageAppointmentStatus {
 
 export type AppointmentTypeStatus = 'ACTIVE' | 'HIDDEN' | 'DEPRECATED'
 
+export type DepositType = 'FIXED' | 'PERCENTAGE'
+
 /** A garage's own configurable appointment type (replaces the old global enum). */
 export interface AppointmentType {
   id: string
@@ -122,6 +128,11 @@ export interface AppointmentType {
   base_price: string | null
   default_duration_minutes: number | null
   status: AppointmentTypeStatus
+  deposit_required: boolean
+  deposit_type: DepositType | null
+  /** Decimal string - a GBP amount for FIXED, a 0-100 number for PERCENTAGE. */
+  deposit_value: string | null
+  deposit_currency: string
   created_at: string
   updated_at: string
 }
