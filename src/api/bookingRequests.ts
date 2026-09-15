@@ -19,6 +19,20 @@ export interface SlotCheck {
   reason: string | null
 }
 
+export interface BookingRequestAnswer {
+  id: string
+  order: number
+  section_title: string
+  label: string
+  field_type: string
+  value: string | null
+  value_list: string[]
+  /** Non-null when this answer also populated a real record column. Those
+   * are already shown by the dedicated Vehicle / Mileage rows, so the
+   * review screen skips them rather than printing every field twice. */
+  binds_to: string | null
+}
+
 export interface BookingRequest {
   id: string
   garage_id: string
@@ -28,7 +42,9 @@ export interface BookingRequest {
   customer_full_name: string
   customer_email: string
   customer_phone: string | null
-  vehicle_registration: string
+  /** Null for a business that tracks no item - what is collected about
+   * the thing being booked in is configured per business now. */
+  vehicle_registration: string | null
   vehicle_make: string | null
   vehicle_model: string | null
   vehicle_year: number | null
@@ -44,6 +60,14 @@ export interface BookingRequest {
   preferred_time: string | null
   preferred_employee_note: string | null
   notes: string | null
+  /** What the customer answered to this business's own configured
+   * questions, snapshotted at submission - a field renamed or deleted
+   * since still renders as it was asked. */
+  answers: BookingRequestAnswer[]
+  /** False for a booking taken over WhatsApp or the phone: that channel
+   * cannot ask configured questions, so an empty `answers` means "not
+   * collected" rather than "nothing to ask". */
+  answers_collected: boolean
   is_expired: boolean
   slot_check: SlotCheck
   reviewed_by_employee_id: string | null
