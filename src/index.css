@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+/* Step transitions for the booking wizard.
+ *
+ * Deliberately minimal: a short fade with a 4px rise, on step changes only.
+ * Nothing here moves layout, loops, or competes for attention - a customer
+ * part-way through booking is trying to finish a task, and motion that draws
+ * the eye makes that slower, not nicer.
+ *
+ * `motion-reduce` is not decoration: a viewer who has asked their system for
+ * reduced motion gets no animation at all, only the final state. */
+@keyframes comaz-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility animate-step-in {
+  animation: comaz-fade-rise 150ms ease-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

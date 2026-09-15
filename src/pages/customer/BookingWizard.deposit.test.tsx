@@ -6,10 +6,18 @@ import { Route, Routes } from 'react-router-dom'
 import { renderWithAppProviders } from '../../test/utils'
 import { BookingWizard } from './BookingWizard'
 import * as api from '../../api/publicGarage'
+import {
+  makeBookingFlow,
+  makeBookingFlowField,
+  makeBookingFlowSection,
+  makePublicAppointmentType,
+  makePublicGarage,
+} from '../../test/fixtures'
 
 vi.mock('../../api/publicGarage', async (orig) => ({
   ...(await orig<typeof import('../../api/publicGarage')>()),
   getPublicGarage: vi.fn(),
+  getBookingFlow: vi.fn(),
   getGarageAvailability: vi.fn(),
   getGarageDayAvailability: vi.fn(),
   submitBookingRequest: vi.fn(),
@@ -31,26 +39,22 @@ vi.mock('@stripe/stripe-js', () => ({
 }))
 
 const TODAY = '2026-09-10'
-const GARAGE = {
+const GARAGE = makePublicGarage({
   id: 'gid',
   name: 'Test Garage',
   slug: 'test-garage',
-  logo_url: null,
   appointment_types: [
-    {
+    makePublicAppointmentType({
       id: 'type-deposit',
       name: 'Full Service',
       description: null,
       base_price: '100.00',
-      default_duration_minutes: 60,
-      included_items: [],
       deposit_required: true,
       deposit_type: 'FIXED',
       deposit_value: '20.00',
-      deposit_currency: 'GBP',
-    },
+    }),
   ],
-}
+})
 
 function renderWizard() {
   return renderWithAppProviders(
@@ -63,20 +67,20 @@ function renderWizard() {
 
 async function fillDetailsAndReachDeposit(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByText('Test Garage')
+  // Service first - which is also what decides whether a Deposit step exists
+  // at all, so it has to be chosen before the rest of the walk.
+  await user.click(await screen.findByRole('button', { name: /Full Service/ }))
   await user.click(
     await screen.findByRole('gridcell', {
       name: /10 September 2026 — Good availability, selectable/,
     }),
   )
-  await user.click(await screen.findByRole('button', { name: /Full Service/ }))
   await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
 
-  const inputs = await screen.findAllByRole('textbox')
-  await user.type(inputs[0], 'PB11REQ')
-  await user.type(inputs[3], 'Alex')
-  await user.type(inputs[4], 'Turner')
-  await user.type(inputs[5], 'alex@example.com')
-  await user.type(inputs[6], '07123456789')
+  await user.type(await screen.findByLabelText(/First name/), 'Alex')
+  await user.type(screen.getByLabelText(/Last name/), 'Turner')
+  await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
+  await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
 
   await screen.findByRole('heading', { name: 'Deposit' })
@@ -87,6 +91,7 @@ beforeEach(() => {
   vi.setSystemTime(new Date(2026, 8, 10, 9, 0, 0))
   confirmPaymentMock = vi.fn()
   vi.mocked(api.getPublicGarage).mockResolvedValue(GARAGE)
+  vi.mocked(api.getBookingFlow).mockResolvedValue(makeBookingFlow())
   vi.mocked(api.getGarageAvailability).mockResolvedValue({
     garage: { slug: 'test-garage', name: 'Test Garage' },
     rules: {
@@ -129,19 +134,17 @@ describe('BookingWizard — deposit step', () => {
     renderWizard()
 
     await screen.findByText('Test Garage')
+    await user.click(await screen.findByRole('button', { name: /Full Service/ }))
     await user.click(
       await screen.findByRole('gridcell', {
         name: /10 September 2026 — Good availability, selectable/,
       }),
     )
-    await user.click(await screen.findByRole('button', { name: /Full Service/ }))
     await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
-    const inputs = await screen.findAllByRole('textbox')
-    await user.type(inputs[0], 'PB11REQ')
-    await user.type(inputs[3], 'Alex')
-    await user.type(inputs[4], 'Turner')
-    await user.type(inputs[5], 'alex@example.com')
-    await user.type(inputs[6], '07123456789')
+    await user.type(await screen.findByLabelText(/First name/), 'Alex')
+    await user.type(screen.getByLabelText(/Last name/), 'Turner')
+    await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
+    await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
     await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await screen.findByRole('heading', { name: 'Review' })
@@ -307,5 +310,50 @@ describe('BookingWizard — deposit step', () => {
       screen.getByText(/payment method isn't available online right now/),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Pay deposit/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('BookingWizard — a deposit booking still asks the business its questions', () => {
+  it('sends the configured answers with the deposit intent', async () => {
+    // The deposit path builds its own payload and hands it to DepositStep, so
+    // it is the one place a configured question could silently be skipped -
+    // and skipping it would take a *paid* booking without asking.
+    vi.mocked(api.getBookingFlow).mockResolvedValue(
+      makeBookingFlow({
+        sections: [
+          makeBookingFlowSection({
+            id: 's1',
+            title: 'About your visit',
+            fields: [makeBookingFlowField({ id: 'f-notes', label: 'Anything we should know?' })],
+          }),
+        ],
+      }),
+    )
+    const user = userEvent.setup()
+    renderWizard()
+
+    await screen.findByText('Test Garage')
+    await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+    await user.click(
+      await screen.findByRole('gridcell', {
+        name: /10 September 2026 — Good availability, selectable/,
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+    await user.type(await screen.findByLabelText(/First name/), 'Alex')
+    await user.type(screen.getByLabelText(/Last name/), 'Turner')
+    await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
+    await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
+    await user.type(screen.getByLabelText(/Anything we should know\?/), 'Please call first')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await screen.findByRole('heading', { name: 'Deposit' })
+    await waitFor(() => expect(api.createDepositIntent).toHaveBeenCalled())
+    expect(api.createDepositIntent).toHaveBeenCalledWith(
+      'test-garage',
+      expect.objectContaining({
+        answers: [{ field_id: 'f-notes', value: 'Please call first' }],
+      }),
+    )
   })
 })

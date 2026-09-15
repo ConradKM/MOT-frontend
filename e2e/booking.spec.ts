@@ -12,18 +12,20 @@ async function fillWizard(page: import('@playwright/test').Page) {
   await page.goto('/book/g1')
   await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
 
-  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
+  // Service first: what is being booked decides which days and times are
+  // even offered, so it cannot sensibly come after the calendar.
   await page.getByRole('button', { name: /^MOT test/ }).click()
+  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
   await page.getByRole('button', { name: '09:00 — Available' }).click()
 
   // The wizard advances to the details step as soon as a slot is picked.
-  await expect(page.getByRole('heading', { name: 'Vehicle details' })).toBeVisible()
-  await page.getByLabel('Registration number').fill('OB08AUD')
-  await page.getByLabel('Make').fill('Audi')
+  await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
   await page.getByLabel('First name').fill('Oliver')
   await page.getByLabel('Last name').fill('Bennett')
   await page.getByLabel('Email').fill('oliver@example.com')
   await page.getByLabel('Mobile number').fill('07123 456789')
+  // Part of this business's own configured workflow, not a built-in field.
+  await page.getByLabel('Registration number').fill('OB08AUD')
   await page.getByRole('button', { name: 'Continue' }).click()
 
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
@@ -61,18 +63,19 @@ test('a customer books a slot end to end and sees a confirmation', async ({ page
   expect(submitted).toMatchObject({
     customer_first_name: 'Oliver',
     customer_email: 'oliver@example.com',
-    vehicle_registration: 'OB08AUD',
     appointment_type_id: 'at1',
     preferred_date: BOOKING_DATE,
     preferred_time: '09:00',
+    // The configured field travels as an answer, keyed by field id.
+    answers: [{ field_id: 'fld-reg', value: 'OB08AUD' }],
   })
 })
 
 test('a booked slot cannot be chosen', async ({ page }) => {
   await stubApi(page)
   await page.goto('/book/g1')
-  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
   await page.getByRole('button', { name: /^MOT test/ }).click()
+  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
 
   const booked = page.getByRole('button', { name: '10:00 — Booked' })
   await expect(booked).toHaveAttribute('aria-disabled', 'true')
@@ -86,8 +89,8 @@ test('a booked slot cannot be chosen', async ({ page }) => {
 test('the wizard blocks bad contact details before anything is sent', async ({ page }) => {
   await stubApi(page)
   await page.goto('/book/g1')
-  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
   await page.getByRole('button', { name: /^MOT test/ }).click()
+  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
   await page.getByRole('button', { name: '09:00 — Available' }).click()
 
   await page.getByLabel('Registration number').fill('OB08AUD')
@@ -124,25 +127,27 @@ test('the customer can go back and correct their details without losing them', a
 
   await page.getByRole('button', { name: 'Back' }).click()
   await expect(page.getByLabel('Registration number')).toHaveValue('OB08AUD')
-  await page.getByLabel('Make').fill('BMW')
+  await page.getByLabel('Registration number').fill('BM70WXY')
   await page.getByRole('button', { name: 'Continue' }).click()
-  await expect(page.getByText('BMW')).toBeVisible()
+  await expect(page.getByText('BM70WXY')).toBeVisible()
 })
 
 test('changing the service clears the chosen time, since the duration changed', async ({ page }) => {
   await stubApi(page)
   await page.goto('/book/g1')
-  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
   await page.getByRole('button', { name: /^MOT test/ }).click()
+  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
   await page.getByRole('button', { name: '09:00 — Available' }).click()
-  await expect(page.getByRole('heading', { name: 'Vehicle details' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Back' }).click()
+  await page.getByRole('button', { name: 'Change' }).click()
   await page.getByRole('button', { name: /^Full service/ }).click()
-  await expect(page.getByRole('button', { name: '09:00 — Available' })).toHaveAttribute(
-    'aria-pressed',
-    'false',
-  )
+
+  // Back on the calendar with nothing picked: a different duration means
+  // different days and times are available, so the old choice cannot stand.
+  await expect(page.getByRole('heading', { name: 'Pick a date & time' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '09:00 — Available' })).toBeHidden()
 })
 
 test('a dead booking link explains itself instead of showing an empty wizard', async ({ page }) => {
@@ -164,8 +169,8 @@ test('a day with no remaining times says so', async ({ page }) => {
     },
   ])
   await page.goto('/book/g1')
-  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
   await page.getByRole('button', { name: /^MOT test/ }).click()
+  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
 
   await expect(page.getByText(/No times are still available on this day/)).toBeVisible()
 })
@@ -182,6 +187,7 @@ test('a failed availability lookup offers a retry rather than an empty calendar'
     },
   ])
   await page.goto('/book/g1')
+  await page.getByRole('button', { name: /^MOT test/ }).click()
   await expect(page.getByRole('button', { name: /try again/i })).toBeVisible()
   expect(attempts).toBeGreaterThan(0)
 })

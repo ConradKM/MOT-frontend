@@ -542,16 +542,38 @@ export function usePublicGarageBySlug(slug: string | undefined) {
   })
 }
 
+/** The questions this business asks for the chosen service. Keyed on the
+ * service so switching it refetches, exactly like day availability below. */
+export function useBookingFlow(slug: string | undefined, appointmentTypeId?: string) {
+  return useQuery({
+    queryKey: ['bookingFlow', slug, appointmentTypeId ?? null],
+    queryFn: () => publicGarageApi.getBookingFlow(slug as string, appointmentTypeId),
+    enabled: !!slug,
+    retry: false,
+  })
+}
+
 // Public availability calendar
 export function useGarageAvailability(
   slug: string | undefined,
   from?: string,
   to?: string,
+  appointmentTypeId?: string,
 ) {
   return useQuery({
-    queryKey: ['garageAvailability', slug, from ?? null, to ?? null],
+    // appointmentTypeId is part of the key for the same reason as below: the
+    // day levels are computed at the selected service's duration, so changing
+    // the service has to refetch rather than show a calendar built for a
+    // different length of appointment.
+    queryKey: [
+      'garageAvailability',
+      slug,
+      from ?? null,
+      to ?? null,
+      appointmentTypeId ?? null,
+    ],
     queryFn: () =>
-      publicGarageApi.getGarageAvailability(slug as string, from, to),
+      publicGarageApi.getGarageAvailability(slug as string, from, to, appointmentTypeId),
     enabled: !!slug,
     retry: false,
     staleTime: 15_000,

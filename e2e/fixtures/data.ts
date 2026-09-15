@@ -90,10 +90,24 @@ export const CAPACITY = {
 const YEAR = 2099
 export const BOOKING_DATE = `${YEAR}-09-14`
 
+/** One grouped service and one ungrouped, so the booking page exercises both
+ * the grouped and the "other services" paths in a single walkthrough. */
 export const PUBLIC_GARAGE = {
   id: 'g1',
   name: 'Bennett Motors',
   slug: 'bennett-motors',
+  logo_url: null,
+  booking_display_mode: 'LIST',
+  appointment_type_groups: [
+    {
+      id: 'grp-testing',
+      name: 'Testing & servicing',
+      description: null,
+      order: 0,
+      display_mode: 'LIST',
+      image_url: null,
+    },
+  ],
   appointment_types: [
     {
       id: 'at1',
@@ -101,6 +115,9 @@ export const PUBLIC_GARAGE = {
       description: 'Annual MOT',
       base_price: '54.85',
       default_duration_minutes: 60,
+      group_id: 'grp-testing',
+      order: 0,
+      image_url: null,
       included_items: [{ label: 'Brake check', description: null }],
     },
     {
@@ -109,7 +126,37 @@ export const PUBLIC_GARAGE = {
       description: null,
       base_price: '180.00',
       default_duration_minutes: 180,
+      group_id: null,
+      order: 1,
+      image_url: null,
       included_items: [],
+    },
+  ],
+}
+
+/** The questions this business asks. One required field, so the e2e walk
+ * covers a configured field actually blocking submission. */
+export const BOOKING_FLOW = {
+  appointment_type_id: null,
+  sections: [
+    {
+      id: 'sec-vehicle',
+      title: 'Vehicle details',
+      description: 'So we know what we are working on.',
+      fields: [
+        {
+          id: 'fld-reg',
+          label: 'Registration number',
+          help_text: null,
+          placeholder: 'AB12 CDE',
+          field_type: 'TEXT',
+          is_required: true,
+          options: [],
+          min_value: null,
+          max_value: null,
+          max_length: 20,
+        },
+      ],
     },
   ],
 }

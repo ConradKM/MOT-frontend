@@ -48,10 +48,22 @@ test.describe('public pages', () => {
   test('the booking wizard’s details step has no detectable violations', async ({ page }) => {
     await stubApi(page)
     await page.goto('/book/g1')
-    await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
+    // Service first, then the calendar - the step order the customer sees.
     await page.getByRole('button', { name: /^MOT test/ }).click()
+    await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
     await page.getByRole('button', { name: '09:00 — Available' }).click()
-    await expect(page.getByRole('heading', { name: 'Vehicle details' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
+
+    const results = await scan(page)
+    expect(describeViolations(results).join('\n\n')).toBe('')
+  })
+
+  test('the booking wizard’s service step has no detectable violations', async ({ page }) => {
+    // The new first step, and the only one rendered two completely different
+    // ways (grid vs list) depending on the business.
+    await stubApi(page)
+    await page.goto('/book/g1')
+    await expect(page.getByRole('heading', { name: 'What would you like to book?' })).toBeVisible()
 
     const results = await scan(page)
     expect(describeViolations(results).join('\n\n')).toBe('')
@@ -84,6 +96,8 @@ test.describe('keyboard operation', () => {
   test('the booking wizard’s calendar is navigable with the arrow keys', async ({ page }) => {
     await stubApi(page)
     await page.goto('/book/g1')
+    // The calendar is the second step now, so choose a service to reach it.
+    await page.getByRole('button', { name: /^MOT test/ }).click()
 
     // Roving tabindex: exactly one cell — the 1st of the month, before any
     // selection — is in the tab order, and the arrows move from there.
@@ -96,17 +110,16 @@ test.describe('keyboard operation', () => {
     await page.keyboard.press('ArrowDown')
     await expect(page.getByRole('gridcell', { name: /^Wednesday, 9 September 2099/ })).toBeFocused()
 
-    // Enter selects the focused day; with services configured, the service
-    // picker is the next step before times are offered.
+    // Enter selects the focused day; the service is already chosen, so the
+    // times for it appear immediately.
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('heading', { name: 'What would you like to book?' })).toBeVisible()
-    await page.getByRole('button', { name: /^MOT test/ }).click()
     await expect(page.getByRole('heading', { name: /Times for/ })).toBeVisible()
   })
 
   test('the chosen day is announced as selected', async ({ page }) => {
     await stubApi(page)
     await page.goto('/book/g1')
+    await page.getByRole('button', { name: /^MOT test/ }).click()
     const day = page.getByRole('gridcell', { name: /14 September 2099/ })
     await expect(day).toHaveAttribute('aria-selected', 'false')
     await day.click()

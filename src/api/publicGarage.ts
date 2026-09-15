@@ -6,6 +6,12 @@ export interface PublicIncludedItem {
   description: string | null
 }
 
+/** How a set of services is presented. GRID is image-led, for a business
+ * where the customer is choosing a look and cannot judge the options from a
+ * name; LIST is information-led, for one where the decision is made on price,
+ * duration and description. */
+export type DisplayMode = 'GRID' | 'LIST'
+
 export interface PublicAppointmentType {
   id: string
   name: string
@@ -13,6 +19,13 @@ export interface PublicAppointmentType {
   /** Decimal string from the backend (e.g. "54.85"), or null. */
   base_price: string | null
   default_duration_minutes: number | null
+  /** Null for an ungrouped service. Membership is expressed here and only
+   * here - groups carry no id lists, so the two can never disagree. */
+  group_id: string | null
+  order: number
+  /** Short-lived presigned URL, or null - render a fallback, never a broken
+   * image. Only shown in GRID mode. */
+  image_url: string | null
   /** Customer-visible checklist steps only - see
    * ChecklistTemplateItem.visible_to_customer on the backend. */
   included_items: PublicIncludedItem[]
@@ -26,6 +39,17 @@ export interface PublicAppointmentType {
   deposit_currency: string
 }
 
+export interface PublicAppointmentTypeGroup {
+  id: string
+  name: string
+  description: string | null
+  order: number
+  /** Already resolved against the business default by the server, so nothing
+   * here has to implement the "null inherits" rule. */
+  display_mode: DisplayMode
+  image_url: string | null
+}
+
 export interface PublicGarage {
   id: string
   name: string
@@ -34,7 +58,12 @@ export interface PublicGarage {
    * business has no logo - render the text fallback on null, never a
    * broken-image icon. */
   logo_url: string | null
-  /** Active types only - what the wizard's date/type/time step offers. */
+  /** The business-wide default; a group may override it. */
+  booking_display_mode: DisplayMode
+  /** Only groups with something active in them. */
+  appointment_type_groups: PublicAppointmentTypeGroup[]
+  /** Every active service, grouped or not, in display order. Partition on
+   * `group_id` to render the groups. */
   appointment_types: PublicAppointmentType[]
 }
 
@@ -49,11 +78,10 @@ export interface BookingRequestInput {
   /** Required - see app/phone.py. Accepts normal UK input; the server
    * normalises it to E.164 for storage. */
   customer_phone: string
-  vehicle_registration: string
-  vehicle_make?: string | null
-  vehicle_model?: string | null
-  vehicle_year?: number | null
-  vehicle_mileage?: number | null
+  /** What the customer answered to this business's own configured questions
+   * (see getBookingFlow). The server validates these against the workflow
+   * that actually applies - what is sent here is never the authority. */
+  answers?: BookingAnswerInput[]
   /** The service the customer chose - drives which times are offered (see
    * app/public_booking/availability.py). Null only for a garage with no
    * appointment types configured. */
@@ -70,6 +98,66 @@ export function getPublicGarages(): Promise<PublicGarage[]> {
   // so the slash-less path 308-redirects to an absolute backend-origin URL that the
   // browser then follows straight past the dev proxy and gets CORS-blocked. See #9.
   return apiFetch<PublicGarage[]>('/api/public/garages/', { skipAuth: true })
+}
+
+// --- Booking workflow -----------------------------------------------------
+
+/** What control to render, and how to validate the answer. DATE is a calendar
+ * for a question of the business's own - distinct from the appointment date,
+ * which the wizard always asks separately. */
+export type BookingFieldType =
+  | 'TEXT'
+  | 'TEXTAREA'
+  | 'NUMBER'
+  | 'SELECT'
+  | 'MULTI_SELECT'
+  | 'CHECKBOX'
+  | 'DATE'
+  | 'TIME'
+  | 'EMAIL'
+  | 'PHONE'
+  | 'PHOTO'
+
+export interface BookingFlowField {
+  id: string
+  label: string
+  help_text: string | null
+  placeholder: string | null
+  field_type: BookingFieldType
+  is_required: boolean
+  options: string[]
+  min_value: number | null
+  max_value: number | null
+  max_length: number | null
+}
+
+export interface BookingFlowSection {
+  id: string
+  title: string
+  description: string | null
+  fields: BookingFlowField[]
+}
+
+export interface BookingFlow {
+  appointment_type_id: string | null
+  /** The *configured* part of the form only. "Your details" is built into the
+   * wizard because the platform needs it to create the account and issue a
+   * booking reference, so it is never in here. */
+  sections: BookingFlowSection[]
+}
+
+export interface BookingAnswerInput {
+  field_id: string
+  value?: string | null
+  values?: string[]
+}
+
+/** The questions this business asks for the chosen service. Resolved
+ * server-side (business default, or the service's own override) so the form
+ * and the submission validator can never disagree. */
+export function getBookingFlow(slug: string, appointmentTypeId?: string): Promise<BookingFlow> {
+  const qs = appointmentTypeId ? `?appointment_type_id=${appointmentTypeId}` : ''
+  return apiFetch<BookingFlow>(`/api/public/${slug}/booking-flow${qs}`, { skipAuth: true })
 }
 
 export function getPublicGarage(id: string): Promise<PublicGarage> {
@@ -231,10 +319,16 @@ export function getGarageAvailability(
   slug: string,
   from?: string,
   to?: string,
+  appointmentTypeId?: string,
 ): Promise<AvailabilityRange> {
   const qs = new URLSearchParams()
   if (from) qs.set('from', from)
   if (to) qs.set('to', to)
+  // Without this each day's level is computed at the business's generic slot
+  // length, so a long service can show a day as available and then offer no
+  // times at all. The wizard picks the service first precisely so this can be
+  // sent. See app/public_booking/availability.py::day_summary.
+  if (appointmentTypeId) qs.set('appointment_type_id', appointmentTypeId)
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return apiFetch<AvailabilityRange>(
     `/api/public/${slug}/availability${suffix}`,

@@ -2,6 +2,7 @@ import type { Page, Route } from '@playwright/test'
 import {
   APPOINTMENT_TYPES,
   AVAILABILITY,
+  BOOKING_FLOW,
   CAPACITY,
   CUSTOMERS,
   DAY_AVAILABILITY,
@@ -75,6 +76,7 @@ function defaults(): Stub[] {
 
     // public booking
     { match: (u) => /^\/api\/public\/garages\/[^/]+$/.test(u.pathname), handler: (r) => json(r, PUBLIC_GARAGE) },
+    { match: (u) => u.pathname.endsWith('/booking-flow'), handler: (r) => json(r, BOOKING_FLOW) },
     { match: (u) => u.pathname.endsWith('/availability'), handler: (r) => json(r, AVAILABILITY) },
     { match: (u) => /\/availability\/\d{4}-\d{2}-\d{2}$/.test(u.pathname), handler: (r) => json(r, DAY_AVAILABILITY) },
     { method: 'POST', match: (u) => u.pathname.endsWith('/booking-requests'), handler: (r) => json(r, { id: 'br1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' }, 201) },
