@@ -2,7 +2,10 @@ import type { ReactNode } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useGarageId } from '../../hooks/useGarageId'
 
-const SECTIONS = [
+/** Exported so SettingsHub can be checked against it: every section
+ * reachable from this side nav must also have a card on the hub, which is
+ * how most people actually find a settings page. */
+export const SECTIONS = [
   { slug: 'garage-details', label: 'Business Details' },
   { slug: 'employees', label: 'Employees' },
   { slug: 'roles', label: 'Roles' },
