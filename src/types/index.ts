@@ -122,6 +122,33 @@ export interface AppointmentType {
   base_price: string | null
   default_duration_minutes: number | null
   status: AppointmentTypeStatus
+  /** Null when ungrouped, which is the normal state for a short menu. */
+  group_id: string | null
+  order: number
+  /** Short-lived presigned URL, or null. Only shown in GRID display mode. */
+  image_url: string | null
+  image_content_type: string | null
+  image_uploaded_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** How a set of services is presented to a customer choosing one. */
+export type DisplayMode = 'GRID' | 'LIST'
+
+/** A business-defined grouping of services, for booking-page navigation. */
+export interface AppointmentTypeGroup {
+  id: string
+  garage_id: string
+  name: string
+  description: string | null
+  order: number
+  /** Null means inherit the business-wide default, so changing that default
+   * moves every group that never expressed a preference of its own. */
+  display_mode: DisplayMode | null
+  image_url: string | null
+  image_content_type: string | null
+  image_uploaded_at: string | null
   created_at: string
   updated_at: string
 }

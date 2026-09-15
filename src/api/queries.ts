@@ -5,6 +5,9 @@ import * as garageApi from './garage'
 import * as garageCapacityApi from './garageCapacity'
 import * as garageScheduleApi from './garageSchedule'
 import * as motRemindersApi from './motReminders'
+import * as bookingFlowApi from './bookingFlow'
+import * as groupsApi from './appointmentTypeGroups'
+import * as imagesApi from './images'
 import * as publicGarageApi from './publicGarage'
 import * as employeesApi from './employees'
 import * as rolesApi from './roles'
@@ -550,6 +553,189 @@ export function useBookingFlow(slug: string | undefined, appointmentTypeId?: str
     queryFn: () => publicGarageApi.getBookingFlow(slug as string, appointmentTypeId),
     enabled: !!slug,
     retry: false,
+  })
+}
+
+// Service groups (booking-page navigation)
+export function useAppointmentTypeGroups() {
+  return useQuery({
+    queryKey: ['appointmentTypeGroups'],
+    queryFn: groupsApi.listAppointmentTypeGroups,
+  })
+}
+
+/** Every group mutation also invalidates appointmentTypes: deleting a group
+ * ungroups its services, so the service list is stale too. */
+function invalidateGroups(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['appointmentTypeGroups'] })
+  qc.invalidateQueries({ queryKey: ['appointmentTypes'] })
+}
+
+export function useCreateAppointmentTypeGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: groupsApi.AppointmentTypeGroupInput) =>
+      groupsApi.createAppointmentTypeGroup(data),
+    onSuccess: () => invalidateGroups(qc),
+  })
+}
+
+export function useUpdateAppointmentTypeGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<groupsApi.AppointmentTypeGroupInput> }) =>
+      groupsApi.updateAppointmentTypeGroup(id, data),
+    onSuccess: () => invalidateGroups(qc),
+  })
+}
+
+export function useDeleteAppointmentTypeGroup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => groupsApi.deleteAppointmentTypeGroup(id),
+    onSuccess: () => invalidateGroups(qc),
+  })
+}
+
+export function useReorderAppointmentTypeGroups() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => groupsApi.reorderAppointmentTypeGroups(ids),
+    onSuccess: () => invalidateGroups(qc),
+  })
+}
+
+export function useReorderGroupServices() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ groupId, ids }: { groupId: string; ids: string[] }) =>
+      groupsApi.reorderGroupServices(groupId, ids),
+    onSuccess: () => invalidateGroups(qc),
+  })
+}
+
+// Booking workflow (what the business asks its customers)
+export function useBookingFlowSections(
+  params: { appointmentTypeId?: string; defaultOnly?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: ['bookingFlowSections', params.appointmentTypeId ?? null, !!params.defaultOnly],
+    queryFn: () => bookingFlowApi.listBookingFlowSections(params),
+  })
+}
+
+function invalidateFlow(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['bookingFlowSections'] })
+  // The customer-facing view of the same configuration.
+  qc.invalidateQueries({ queryKey: ['bookingFlow'] })
+}
+
+export function useCreateBookingFlowSection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: bookingFlowApi.BookingFlowSectionInput) =>
+      bookingFlowApi.createBookingFlowSection(data),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+export function useUpdateBookingFlowSection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: Partial<bookingFlowApi.BookingFlowSectionInput>
+    }) => bookingFlowApi.updateBookingFlowSection(id, data),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+export function useDeleteBookingFlowSection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => bookingFlowApi.deleteBookingFlowSection(id),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+export function useReorderBookingFlowSections() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => bookingFlowApi.reorderBookingFlowSections(ids),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+export function useCreateBookingFlowField() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      sectionId,
+      data,
+    }: {
+      sectionId: string
+      data: bookingFlowApi.BookingFlowFieldInput
+    }) => bookingFlowApi.createBookingFlowField(sectionId, data),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+export function useUpdateBookingFlowField() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<bookingFlowApi.BookingFlowFieldInput> }) =>
+      bookingFlowApi.updateBookingFlowField(id, data),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+export function useDeleteBookingFlowField() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => bookingFlowApi.deleteBookingFlowField(id),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+export function useReorderBookingFlowFields() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sectionId, ids }: { sectionId: string; ids: string[] }) =>
+      bookingFlowApi.reorderBookingFlowFields(sectionId, ids),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+export function useBookingFlowPresets() {
+  return useQuery({
+    queryKey: ['bookingFlowPresets'],
+    queryFn: bookingFlowApi.listBookingFlowPresets,
+  })
+}
+
+export function useApplyBookingFlowPreset() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (preset: string) => bookingFlowApi.applyBookingFlowPreset(preset),
+    onSuccess: () => invalidateFlow(qc),
+  })
+}
+
+// Images on services and service groups
+export function useUploadImage<T>(basePath: string, invalidate: () => void) {
+  return useMutation({
+    mutationFn: (file: File) => imagesApi.uploadImage<T>(basePath, file),
+    onSuccess: invalidate,
+  })
+}
+
+export function useDeleteImage<T>(basePath: string, invalidate: () => void) {
+  return useMutation({
+    mutationFn: () => imagesApi.deleteImage<T>(basePath),
+    onSuccess: invalidate,
   })
 }
 

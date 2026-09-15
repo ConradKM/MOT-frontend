@@ -7,6 +7,7 @@ const SECTIONS = [
   { slug: 'employees', label: 'Employees' },
   { slug: 'roles', label: 'Roles' },
   { slug: 'appointment-types', label: 'Appointment Types' },
+  { slug: 'booking-workflow', label: 'Booking Workflow' },
   { slug: 'appointment-statuses', label: 'Appointment Statuses' },
   { slug: 'availability', label: 'Availability' },
   { slug: 'mot-reminders', label: 'MOT Reminders' },
