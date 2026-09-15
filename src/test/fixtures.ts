@@ -4,10 +4,15 @@ import type {
   Customer,
   Employee,
   Garage,
+  AppointmentTypeGroup,
   GarageAppointmentStatus,
   Role,
   Vehicle,
 } from '../types'
+import type {
+  BookingFlowField as StaffBookingFlowField,
+  BookingFlowSection as StaffBookingFlowSection,
+} from '../api/bookingFlow'
 import type {
   AvailabilityRange,
   BookingFlow,
@@ -118,6 +123,69 @@ export function makeAppointmentType(patch: Partial<AppointmentType> = {}): Appoi
     deposit_type: null,
     deposit_value: null,
     deposit_currency: 'GBP',
+    group_id: null,
+    order: 0,
+    image_url: null,
+    image_content_type: null,
+    image_uploaded_at: null,
+    created_at: '',
+    updated_at: '',
+    ...patch,
+  }
+}
+
+export function makeAppointmentTypeGroup(
+  patch: Partial<AppointmentTypeGroup> = {},
+): AppointmentTypeGroup {
+  return {
+    id: 'grp1',
+    garage_id: GARAGE_ID,
+    name: 'Servicing',
+    description: null,
+    order: 0,
+    display_mode: null,
+    image_url: null,
+    image_content_type: null,
+    image_uploaded_at: null,
+    created_at: '',
+    updated_at: '',
+    ...patch,
+  }
+}
+
+export function makeFlowSection(
+  patch: Partial<StaffBookingFlowSection> = {},
+): StaffBookingFlowSection {
+  return {
+    id: 'sec1',
+    garage_id: GARAGE_ID,
+    title: 'About your visit',
+    description: null,
+    order: 0,
+    is_active: true,
+    appointment_type_id: null,
+    fields: [],
+    created_at: '',
+    updated_at: '',
+    ...patch,
+  }
+}
+
+export function makeFlowField(patch: Partial<StaffBookingFlowField> = {}): StaffBookingFlowField {
+  return {
+    id: 'fld1',
+    booking_flow_section_id: 'sec1',
+    label: 'Anything we should know?',
+    help_text: null,
+    placeholder: null,
+    field_type: 'TEXT',
+    is_required: false,
+    options: [],
+    order: 0,
+    min_value: null,
+    max_value: null,
+    max_length: null,
+    binds_to: null,
     created_at: '',
     updated_at: '',
     ...patch,

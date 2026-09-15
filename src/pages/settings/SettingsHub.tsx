@@ -8,7 +8,11 @@ interface SettingsPage {
   slug: string
 }
 
-const SETTINGS_PAGES: SettingsPage[] = [
+/** Also includes a few pages that aren't settings sections (Appointments,
+ * MOT Reminders) because people look for them here. Every entry in
+ * SettingsLayout's SECTIONS must appear below, though - a section with no
+ * card is unreachable for anyone who doesn't already know the URL. */
+export const SETTINGS_PAGES: SettingsPage[] = [
   {
     title: 'Business Details',
     description: 'Your business name, telephone, email, address — and your booking QR code.',
@@ -43,6 +47,15 @@ const SETTINGS_PAGES: SettingsPage[] = [
     title: 'Appointment Types',
     description: 'The services your business offers, their prices, and their checklists.',
     slug: 'settings/appointment-types',
+  },
+  {
+    title: 'Booking Workflow',
+    // The search box filters on title + description, so this deliberately
+    // names the things a business would actually type looking for it -
+    // "group", "picture", "question", "form" - rather than only the concepts.
+    description:
+      'Group your services, show them as a list or a grid of pictures, and choose the questions your booking form asks.',
+    slug: 'settings/booking-workflow',
   },
   {
     title: 'Appointment Statuses',

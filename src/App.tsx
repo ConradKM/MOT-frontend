@@ -23,6 +23,7 @@ import { ChecklistTemplateBuilder } from './pages/appointmentTypes/ChecklistTemp
 import { ChecklistTemplateViewer } from './pages/appointmentTypes/ChecklistTemplateViewer'
 import { SettingsHub } from './pages/settings/SettingsHub'
 import { AvailabilitySettings } from './pages/settings/AvailabilitySettings'
+import { BookingWorkflowSettings } from './pages/settings/BookingWorkflowSettings'
 import { MotReminderSettings } from './pages/settings/MotReminderSettings'
 import { GarageDetails } from './pages/settings/GarageDetails'
 import { BookingRequestsList } from './pages/bookingRequests/BookingRequestsList'
@@ -129,6 +130,7 @@ export default function App() {
           <Route path="settings/employees" element={<EmployeesList />} />
           <Route path="settings/roles" element={<RolesList />} />
           <Route path="settings/appointment-types" element={<AppointmentTypesList />} />
+          <Route path="settings/booking-workflow" element={<BookingWorkflowSettings />} />
           <Route path="settings/appointment-statuses" element={<AppointmentStatusesList />} />
           <Route path="settings/availability" element={<AvailabilitySettings />} />
           <Route
