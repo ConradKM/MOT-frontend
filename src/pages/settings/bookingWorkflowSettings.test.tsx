@@ -118,6 +118,30 @@ describe('Booking Workflow settings — services & groups', () => {
     expect(await screen.findByText(/stays hidden from customers/)).toBeInTheDocument()
   })
 
+  it('moves a service straight from one group to another', async () => {
+    // Not via "remove, find it in ungrouped, reassign" - moving between
+    // groups is the common operation and a three-step version of it is worse
+    // than one dropdown.
+    vi.mocked(groupsApi.listAppointmentTypeGroups).mockResolvedValue([
+      makeAppointmentTypeGroup({ id: 'grp1', name: 'Servicing' }),
+      makeAppointmentTypeGroup({ id: 'grp2', name: 'Repairs', order: 1 }),
+    ])
+    vi.mocked(appointmentTypesApi.listAppointmentTypes).mockResolvedValue([
+      makeAppointmentType({ id: 'at1', name: 'MOT test', group_id: 'grp1' }),
+    ])
+    vi.mocked(appointmentTypesApi.updateAppointmentType).mockResolvedValue(makeAppointmentType())
+    const user = userEvent.setup()
+    render()
+
+    await user.selectOptions(await screen.findByLabelText('Group for MOT test'), 'Repairs')
+
+    await waitFor(() =>
+      expect(appointmentTypesApi.updateAppointmentType).toHaveBeenCalledWith('at1', {
+        group_id: 'grp2',
+      }),
+    )
+  })
+
   it('says removing a group keeps its services', async () => {
     vi.mocked(groupsApi.listAppointmentTypeGroups).mockResolvedValue([
       makeAppointmentTypeGroup(),

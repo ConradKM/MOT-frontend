@@ -82,6 +82,7 @@ test.describe('staff pages', () => {
     ['the vehicle list', '/g1/vehicles'],
     ['the new-customer form', '/g1/customers/new'],
     ['the booking request queue', '/g1/booking-requests'],
+    ['the booking workflow settings', '/g1/settings/booking-workflow'],
   ] as const) {
     test(`${name} has no detectable accessibility violations`, async ({ page }) => {
       await page.goto(path)

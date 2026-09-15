@@ -73,7 +73,7 @@ export function GroupsPanel({
             key={group.id}
             group={group}
             services={services.filter((s) => s.group_id === group.id)}
-            allServices={services}
+            allGroups={groups}
             isFirst={i === 0}
             isLast={i === groups.length - 1}
             onMove={(direction) => move(i, direction)}
@@ -107,14 +107,16 @@ export function GroupsPanel({
 function GroupRow({
   group,
   services,
-  allServices,
+  allGroups,
   isFirst,
   isLast,
   onMove,
 }: {
   group: AppointmentTypeGroup
   services: AppointmentType[]
-  allServices: AppointmentType[]
+  /** Every group, so a service can be moved straight from this one to
+   * another rather than via a round trip through "ungrouped". */
+  allGroups: AppointmentTypeGroup[]
   isFirst: boolean
   isLast: boolean
   onMove: (direction: -1 | 1) => void
@@ -249,7 +251,7 @@ function GroupRow({
         {services.length > 0 && (
           <ul className="mt-2 space-y-2">
             {services.map((service) => (
-              <ServiceRow key={service.id} service={service} groups={[]} allServices={allServices} />
+              <ServiceRow key={service.id} service={service} groups={allGroups} />
             ))}
           </ul>
         )}
@@ -303,11 +305,13 @@ function GroupRow({
 function ServiceRow({
   service,
   groups,
-  allServices,
 }: {
   service: AppointmentType
+  /** Every group this service could be in. Rendered the same whether the row
+   * sits inside a group or in the ungrouped list: moving a service between
+   * two groups is the common operation, and making that a remove-then-reassign
+   * round trip would be worse than the one dropdown. */
   groups: AppointmentTypeGroup[]
-  allServices?: AppointmentType[]
 }) {
   const update = useUpdateAppointmentType()
   const { showToast } = useToast()
@@ -333,39 +337,28 @@ function ServiceRow({
     }
   }
 
-  const selectable = groups.length > 0 ? groups : []
-
   return (
     <li className="rounded-md border border-slate-200 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-sm font-medium text-slate-900">{service.name}</span>
-        {selectable.length > 0 && (
+        {groups.length > 0 && (
           <label className="flex items-center gap-2 text-xs text-slate-500">
             Group
             <select
+              aria-label={`Group for ${service.name}`}
               className="rounded-md border border-slate-300 px-2 py-1 text-sm"
               value={service.group_id ?? ''}
               onChange={(e) => assign(e.target.value)}
               disabled={update.isPending}
             >
               <option value="">Ungrouped</option>
-              {selectable.map((g) => (
+              {groups.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.name}
                 </option>
               ))}
             </select>
           </label>
-        )}
-        {selectable.length === 0 && allServices && (
-          <button
-            type="button"
-            onClick={() => assign('')}
-            disabled={update.isPending}
-            className="text-xs font-medium text-slate-500 hover:text-slate-800"
-          >
-            Remove from group
-          </button>
         )}
       </div>
       <div className="mt-2">
