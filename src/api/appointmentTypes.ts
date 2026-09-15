@@ -8,6 +8,10 @@ export interface AppointmentTypeInput {
   base_price?: string | null
   default_duration_minutes?: number | null
   status?: AppointmentTypeStatus
+  /** Null = ungrouped. The server rejects a group belonging to another
+   * business, so this is never trusted on its own. */
+  group_id?: string | null
+  order?: number
   deposit_required?: boolean
   deposit_type?: DepositType | null
   deposit_value?: string | null

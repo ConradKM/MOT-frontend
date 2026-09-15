@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  useAppointmentTypeGroups,
   useAppointmentTypes,
   useChecklistTemplate,
   useCreateAppointmentType,
@@ -300,7 +301,7 @@ function EditRow({ type, onDone }: { type: AppointmentType; onDone: () => void }
 
   return (
     <tr className="border-b border-slate-100 bg-slate-50 last:border-0">
-      <td colSpan={4} className="px-4 py-4">
+      <td colSpan={5} className="px-4 py-4">
         <div className="space-y-3">
           {formError && (
             <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
@@ -335,9 +336,12 @@ function EditRow({ type, onDone }: { type: AppointmentType; onDone: () => void }
 
 function AppointmentTypeRow({
   type,
+  groupName,
   onEdit,
 }: {
   type: AppointmentType
+  /** Resolved by the parent so every row doesn't refetch the group list. */
+  groupName: string | null
   onEdit: () => void
 }) {
   const garageId = useGarageId()
@@ -367,6 +371,9 @@ function AppointmentTypeRow({
       <td className="px-4 py-2">
         <p className="font-medium text-slate-900">{type.name}</p>
         {type.description && <p className="text-xs text-slate-500">{type.description}</p>}
+      </td>
+      <td className="px-4 py-2 text-slate-600">
+        {groupName ?? <span className="text-slate-400">Ungrouped</span>}
       </td>
       <td className="px-4 py-2 text-slate-600">
         {type.base_price != null ? `£${type.base_price}` : '—'}
@@ -420,7 +427,16 @@ function AppointmentTypeRow({
 
 export function AppointmentTypesList() {
   const { data: types, isLoading } = useAppointmentTypes()
+  const { data: groups } = useAppointmentTypeGroups()
+  const garageId = useGarageId()
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Resolved once here rather than per row, which would mean one lookup per
+  // service for a list that never changes between them.
+  const groupNames = useMemo(
+    () => new Map((groups ?? []).map((g) => [g.id, g.name])),
+    [groups],
+  )
 
   return (
     <SettingsLayout>
@@ -428,6 +444,13 @@ export function AppointmentTypesList() {
       <p className="mt-1 text-sm text-slate-500">
         The services your business offers. Each type can have one checklist that staff work
         through, and appears in the public booking form while it's <strong>ACTIVE</strong>.
+      </p>
+      <p className="mt-1 text-sm text-slate-500">
+        Grouping, pictures and the questions customers are asked live under{' '}
+        <Link to={`/${garageId}/settings/booking-workflow`} className="underline">
+          Booking Workflow
+        </Link>
+        .
       </p>
 
       <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
@@ -438,6 +461,7 @@ export function AppointmentTypesList() {
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-2 font-medium">Name</th>
+                <th className="px-4 py-2 font-medium">Group</th>
                 <th className="px-4 py-2 font-medium">Price / duration</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium" />
@@ -451,6 +475,7 @@ export function AppointmentTypesList() {
                   <AppointmentTypeRow
                     key={type.id}
                     type={type}
+                    groupName={type.group_id ? (groupNames.get(type.group_id) ?? null) : null}
                     onEdit={() => setEditingId(type.id)}
                   />
                 ),
