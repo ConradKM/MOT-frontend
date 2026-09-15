@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { AppointmentType, AppointmentTypeStatus } from '../types'
+import type { AppointmentType, AppointmentTypeStatus, DepositType } from '../types'
 
 export interface AppointmentTypeInput {
   name: string
@@ -12,6 +12,9 @@ export interface AppointmentTypeInput {
    * business, so this is never trusted on its own. */
   group_id?: string | null
   order?: number
+  deposit_required?: boolean
+  deposit_type?: DepositType | null
+  deposit_value?: string | null
 }
 
 export function listAppointmentTypes(

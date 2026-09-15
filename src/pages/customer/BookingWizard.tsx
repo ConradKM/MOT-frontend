@@ -3,8 +3,6 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { WizardStepper, type WizardStep } from '../../components/customer/WizardStepper'
 import { AvailabilityCalendar } from '../../components/customer/AvailabilityCalendar'
-import { TimeSlotPicker } from '../../components/customer/TimeSlotPicker'
-import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner'
 import { IncludedItems, ServicePicker } from '../../components/customer/ServicePicker'
 import {
   BookingSection,
@@ -14,21 +12,27 @@ import {
   type AnswerMap,
   type AnswerState,
 } from '../../components/customer/BookingFieldInput'
+import { BusinessBrandMark } from '../../components/BusinessBrandMark'
+import { TimeSlotPicker } from '../../components/customer/TimeSlotPicker'
+import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner'
 import { formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useBookingFlow, usePublicGarage } from '../../api/queries'
 import {
   submitBookingRequest,
   type BookingFlowSection,
+  type BookingRequestInput,
+  type DepositIntentCreated,
   type PublicAppointmentType,
 } from '../../api/publicGarage'
 import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 import { Captcha, captchaEnabled } from '../../components/Captcha'
 import { RichTextInput } from '../../components/rich/RichTextInput'
+import { DepositStep } from '../../components/customer/DepositStep'
 
 /** What the platform itself needs, and the only thing a business cannot
- * configure away: without these there is no account to attach the booking to,
- * nowhere to send the confirmation, and no reference to look it up with.
+ * configure away: without these there is no account to attach the booking
+ * to, nowhere to send the confirmation, and no reference to look it up with.
  * Everything else the customer is asked comes from the business's own
  * workflow (see useBookingFlow). */
 interface WizardData {
@@ -62,13 +66,22 @@ function addMinutesToTime(time: string, minutes: number): string {
 
 type FieldErrors = Partial<Record<keyof WizardData, string>> & { form?: string }
 
-// Service first: choosing a date before knowing what is being booked is
-// backwards for the customer, and wrong for the calendar - day availability
-// depends on how long the chosen service takes.
-const STEP_SERVICE = 1
-const STEP_TIME = 2
-const STEP_DETAILS = 3
-const STEP_REVIEW = 4
+// A plain sequence of keys, not fixed numeric ids: whether 'deposit' is
+// present depends on the selected service (see `steps` below), so the
+// step *number* shown in the stepper has to come from each step's position
+// in that list, not a hard-coded constant - otherwise turning a deposit on
+// mid-flow would leave "Step 3 of 3" stuck showing the wrong total.
+type StepKey = 'service' | 'time' | 'details' | 'deposit' | 'review'
+
+const STEP_LABELS: Record<StepKey, string> = {
+  service: 'Service',
+  time: 'Date & time',
+  // No longer "Vehicle & your details": what is asked beyond name and contact
+  // details is the business's own configuration now.
+  details: 'Your details',
+  deposit: 'Deposit',
+  review: 'Review',
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -95,34 +108,82 @@ function validateYourDetails(d: WizardData): FieldErrors {
   return errors
 }
 
+/** The one service in `groupId`, or undefined when the group holds none or
+ * several - a group deep link should narrow the choice, not make it. */
+function singleServiceIn(
+  services: PublicAppointmentType[],
+  groupId: string,
+): PublicAppointmentType | undefined {
+  const inGroup = services.filter((s) => s.group_id === groupId)
+  return inGroup.length === 1 ? inGroup[0] : undefined
+}
+
 export function BookingWizard() {
   const { garageId: urlGarageId } = useParams<{ garageId: string }>()
   const [searchParams] = useSearchParams()
-  const { data: garage, isLoading: garageLoading } = usePublicGarage(urlGarageId)
+  const {
+    data: garage,
+    isLoading: garageLoading,
+  } = usePublicGarage(urlGarageId)
   const queryClient = useQueryClient()
   const { loginWithReference } = useCustomerAuth()
 
   const garageSlug = garage?.slug ?? ''
 
-  const [step, setStep] = useState(STEP_SERVICE)
+  const [step, setStep] = useState<StepKey>('service')
   const [data, setData] = useState<WizardData>(initialData)
-  const [answers, setAnswers] = useState<AnswerMap>({})
   const [errors, setErrors] = useState<FieldErrors>({})
-  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [bookingReference, setBookingReference] = useState<string | null>(null)
   const [captchaToken, setCaptchaToken] = useState('')
+  const [answers, setAnswers] = useState<AnswerMap>({})
+  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({})
   const [deepLinkApplied, setDeepLinkApplied] = useState(false)
+  // Set once the Deposit step's payment has succeeded (server-confirmed via
+  // webhook, not just "Stripe didn't error") - the booking request already
+  // exists at that point (see app/payments/service.py), so Review just
+  // shows a summary and finishes rather than submitting anything again.
+  const [depositResult, setDepositResult] = useState<DepositIntentCreated | null>(null)
 
-  const services = useMemo(() => garage?.appointment_types ?? [], [garage])
-  const hasServices = services.length > 0
+  const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
+
+  const update = (field: keyof WizardData, value: string) => {
+    setData((d) => ({ ...d, [field]: value }))
+    if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }))
+  }
+
+  const selectDate = (date: string) => {
+    // The chosen service persists across a date change (still driving
+    // duration once a new time is picked) - only the stale time resets.
+    setData((d) => ({ ...d, date, time: '' }))
+    setErrors((e) => ({ ...e, form: undefined }))
+  }
+
+  const selectService = (appointmentTypeId: string) => {
+    // Duration drives which days and times are even offered, so a service
+    // change invalidates any date/time already picked.
+    setData((d) => ({ ...d, appointmentTypeId, date: '', time: '' }))
+    setErrors({})
+    setStep('time')
+  }
+
+  const updateAnswer = (fieldId: string, next: AnswerState) => {
+    setAnswers((a) => ({ ...a, [fieldId]: next }))
+    setAnswerErrors((e) => (e[fieldId] ? { ...e, [fieldId]: '' } : e))
+  }
+
+  const selectSlot = (time: string) => {
+    setData((d) => ({ ...d, time }))
+    setErrors((e) => ({ ...e, form: undefined }))
+    setStep('details')
+  }
 
   const { data: flow } = useBookingFlow(garageSlug, data.appointmentTypeId || undefined)
   const sections: BookingFlowSection[] = useMemo(() => flow?.sections ?? [], [flow])
 
   // Seed an entry per configured field whenever the workflow changes - which
-  // it does when the chosen service has its own override.
+  // it does when the chosen service has an override of its own.
   useEffect(() => {
     setAnswers((current) => {
       const seeded = initialAnswers(sections)
@@ -135,118 +196,114 @@ export function BookingWizard() {
     })
   }, [sections])
 
+  const services = useMemo(() => garage?.appointment_types ?? [], [garage])
+  const hasServices = services.length > 0
+  const selectedAppointmentType = services.find((t) => t.id === data.appointmentTypeId)
+  const requiresDeposit = selectedAppointmentType?.deposit_required ?? false
+
+  // Two steps are conditional, for the same reason: the Service step only
+  // exists when there is something to choose between, and the Deposit step
+  // only when the chosen service requires one. Everything else - numbering,
+  // Back/Continue, the stepper - derives from this one list.
+  const steps: StepKey[] = [
+    ...(hasServices ? (['service'] as StepKey[]) : []),
+    'time',
+    'details',
+    ...(requiresDeposit ? (['deposit'] as StepKey[]) : []),
+    'review',
+  ]
   /**
    * Deep link: /book/<id>?service=<id> or ?group=<id>.
    *
    * A business can put a button on its own site that drops the customer
-   * straight onto the date step for one service. Applied once, before first
-   * paint of the service step, so the stepper and the calendar start in the
-   * right place rather than visibly jumping.
+   * straight onto the date step for one service, rather than back onto a menu
+   * they have already chosen from. Applied once, before first paint.
    */
   useEffect(() => {
     if (deepLinkApplied || !hasServices) return
 
     const serviceParam = searchParams.get('service')
     const groupParam = searchParams.get('group')
-
     const target = serviceParam
-      ? services.find((s) => s.id === serviceParam)
-      : // A group link narrows to that group; it only auto-selects when the
-        // group holds exactly one service, since otherwise the customer still
-        // has a real choice to make.
+      ? services.find((svc) => svc.id === serviceParam)
+      : // A group link narrows the choice; it only auto-selects when the group
+        // holds exactly one service, since otherwise there is still a real
+        // decision to make.
         groupParam
         ? singleServiceIn(services, groupParam)
         : undefined
 
     if (target) {
       setData((d) => ({ ...d, appointmentTypeId: target.id }))
-      setStep(STEP_TIME)
+      setStep('time')
     }
     setDeepLinkApplied(true)
   }, [deepLinkApplied, hasServices, searchParams, services])
 
-  const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
-
-  const update = (field: keyof WizardData, value: string) => {
-    setData((d) => ({ ...d, [field]: value }))
-    if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }))
-  }
-
-  const updateAnswer = (fieldId: string, next: AnswerState) => {
-    setAnswers((a) => ({ ...a, [fieldId]: next }))
-    setAnswerErrors((e) => (e[fieldId] ? { ...e, [fieldId]: '' } : e))
-  }
-
-  const selectService = (appointmentTypeId: string) => {
-    // Duration drives which days and times are even offered, so a service
-    // change invalidates any date/time already picked.
-    setData((d) => ({ ...d, appointmentTypeId, date: '', time: '' }))
-    setErrors({})
-    setStep(STEP_TIME)
-  }
-
-  const selectDate = (date: string) => {
-    setData((d) => ({ ...d, date, time: '' }))
-    setErrors((e) => ({ ...e, form: undefined }))
-  }
-
-  const selectSlot = (time: string) => {
-    setData((d) => ({ ...d, time }))
-    setErrors((e) => ({ ...e, form: undefined }))
-    setStep(STEP_DETAILS)
-  }
-
-  const steps: WizardStep[] = useMemo(() => {
-    const all: WizardStep[] = [
-      { id: STEP_SERVICE, label: 'Service' },
-      { id: STEP_TIME, label: 'Date & time' },
-      { id: STEP_DETAILS, label: 'Your details' },
-      { id: STEP_REVIEW, label: 'Review' },
-    ]
-    // A business with nothing configured to book has no choice to present -
-    // showing an empty first step would be a dead end.
-    return hasServices ? all : all.filter((s) => s.id !== STEP_SERVICE)
-  }, [hasServices])
-
-  // Same reason: skip straight past the service step when there is nothing
-  // to choose between.
+  // A business with nothing bookable has no choice to present; showing an
+  // empty first step would be a dead end.
   useEffect(() => {
-    if (!garageLoading && garage && !hasServices && step === STEP_SERVICE) {
-      setStep(STEP_TIME)
-    }
+    if (!garageLoading && garage && !hasServices && step === 'service') setStep('time')
   }, [garage, garageLoading, hasServices, step])
 
+  const wizardSteps: WizardStep[] = steps.map((key, i) => ({ id: i + 1, label: STEP_LABELS[key] }))
+  const currentStepNumber = steps.indexOf(step) + 1
+
   const goNext = () => {
-    if (step === STEP_TIME) {
+    if (step === 'time') {
       if (!data.date) return setErrors({ form: 'Please choose an available date.' })
       if (!data.time) return setErrors({ form: 'Please choose an available time.' })
     }
-    if (step === STEP_DETAILS) {
+    if (step === 'details') {
       const detailErrors = validateYourDetails(data)
       const configuredErrors = validateAnswers(sections, answers)
       if (Object.keys(detailErrors).length > 0 || Object.keys(configuredErrors).length > 0) {
-        setErrors({
-          ...detailErrors,
-          form: 'Please fix the highlighted details.',
-        })
+        setErrors({ ...detailErrors, form: 'Please fix the highlighted details.' })
         setAnswerErrors(configuredErrors)
         return
       }
     }
+    // Verified once, here, right before the first server call either path
+    // makes (submitting directly, or creating a deposit intent) - not on
+    // Review, which the deposit path never reaches until after that first
+    // call already succeeded.
+    if (step === 'details' && captchaEnabled && !captchaToken) {
+      setErrors({ form: 'Please confirm that you are not a robot.' })
+      return
+    }
     setErrors({})
     setAnswerErrors({})
-    setStep((s) => Math.min(s + 1, STEP_REVIEW))
+    const idx = steps.indexOf(step)
+    setStep(steps[Math.min(idx + 1, steps.length - 1)])
   }
 
-  const goBack = () =>
-    setStep((s) => {
-      const index = steps.findIndex((x) => x.id === s)
-      return index > 0 ? steps[index - 1].id : s
-    })
+  const goBack = () => {
+    const idx = steps.indexOf(step)
+    setStep(steps[Math.max(idx - 1, 0)])
+  }
 
-  const goToStep = (target: number) => {
+  const goToStep = (target: StepKey) => {
     setErrors({})
     setStep(target)
+  }
+
+  const handleDepositPaid = (result: DepositIntentCreated) => {
+    setDepositResult(result)
+    setBookingReference(result.booking_reference)
+    setStep('review')
+  }
+
+  // The payment hold expired (or the slot was otherwise lost) while paying -
+  // the booking never went through, so there is nothing to keep: send the
+  // customer back to pick a fresh slot rather than showing a dead-end error.
+  const handleDepositSlotLost = () => {
+    setDepositResult(null)
+    setData((d) => ({ ...d, time: '' }))
+    refreshAvailability()
+    setErrors({
+      form: 'Your payment window expired before it completed, so this slot was released. Please choose another time.',
+    })
+    setStep('time')
   }
 
   const refreshAvailability = () => {
@@ -255,6 +312,14 @@ export function BookingWizard() {
   }
 
   const handleSubmit = async () => {
+    // The deposit flow already created (and paid) the booking request server-
+    // side - see handleDepositPaid. Review just finishes; there is nothing
+    // left to submit, and definitely nothing to submit a second time.
+    if (depositResult) {
+      setSubmitted(true)
+      return
+    }
+
     if (captchaEnabled && !captchaToken) {
       setErrors({ form: 'Please confirm that you are not a robot.' })
       return
@@ -263,24 +328,12 @@ export function BookingWizard() {
     setErrors({})
     try {
       const email = data.email.trim()
-      const result = await submitBookingRequest(garageSlug, {
-        customer_first_name: data.firstName.trim(),
-        customer_last_name: data.lastName.trim(),
-        customer_email: email,
-        // Required (validated above) - the server normalises it to E.164.
-        customer_phone: data.phone.trim(),
-        // The customer's chosen service - its duration is what determined
-        // which days and times were even offered. Null only for a business
-        // with nothing configured to book.
-        appointment_type_id: data.appointmentTypeId || null,
-        preferred_date: data.date,
-        preferred_time: data.time || null,
-        preferred_employee_note: null,
-        answers: toAnswerInput(sections, answers),
-        captcha_token: captchaToken,
-      })
+      const result = await submitBookingRequest(
+        garageSlug,
+        buildBookingPayload(data, captchaToken, sections, answers),
+      )
       setBookingReference(result.booking_reference)
-      // The account already exists at this point (see
+      // The account (Customer + Vehicle) already exists at this point (see
       // app/public_booking/routes.py), so sign the customer straight in with
       // the reference just issued - "View my account" then works immediately
       // without asking them to log in again. Best-effort: if it fails for any
@@ -298,13 +351,13 @@ export function BookingWizard() {
         setErrors({
           form: `${errorMessage(err)} We've refreshed the calendar — please pick another time.`,
         })
-        setStep(STEP_TIME)
+        setStep('time')
         return
       }
 
       // CAPTCHA rejected / expired server-side (the only 400 this endpoint
       // returns). Void the stale token and let the customer verify again -
-      // their answers and details are untouched.
+      // their date/time and form details are untouched.
       if (isApiError(err) && err.code === 400) {
         setCaptchaToken('')
         setErrors({
@@ -319,8 +372,8 @@ export function BookingWizard() {
       if (fields.customer_phone) mapped.phone = fields.customer_phone
 
       // The server rejects configured answers keyed by field id, which is
-      // exactly what the form renders from - so they land back on the right
-      // controls rather than as one opaque message.
+      // what the form renders from - so they land back on the right controls
+      // rather than as one opaque message.
       const configured: Record<string, string> = {}
       for (const [key, message] of Object.entries(fields)) {
         if (answers[key] !== undefined) configured[key] = message
@@ -332,8 +385,8 @@ export function BookingWizard() {
         Object.keys(mapped).length > 0 || Object.keys(configured).length > 0 || timeIssue
       mapped.form = hasFieldIssue ? 'Please fix the highlighted details.' : errorMessage(err)
       setErrors(mapped)
-      if (timeIssue) setStep(STEP_TIME)
-      else if (hasFieldIssue) setStep(STEP_DETAILS)
+      if (timeIssue) setStep('time')
+      else if (hasFieldIssue) setStep('details')
     } finally {
       setSubmitting(false)
     }
@@ -341,12 +394,11 @@ export function BookingWizard() {
 
   const restart = () => {
     setData(initialData)
-    setAnswers(initialAnswers(sections))
     setErrors({})
-    setAnswerErrors({})
-    setStep(hasServices ? STEP_SERVICE : STEP_TIME)
+    setStep('time')
     setSubmitted(false)
     setBookingReference(null)
+    setDepositResult(null)
     setCaptchaToken('')
   }
 
@@ -383,78 +435,88 @@ export function BookingWizard() {
     )
   }
 
-  const selectedService = services.find((s) => s.id === data.appointmentTypeId)
-  const showSlotBanner = Boolean(data.date && data.time && step >= STEP_DETAILS)
+  const showSlotBanner = Boolean(data.date && data.time && step !== 'time')
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-6">
-        <p className="text-sm font-medium text-slate-500">Book an appointment</p>
-        <h1 className="text-xl font-semibold text-slate-900">{garage.name}</h1>
+      <div className="mb-6 flex items-center gap-3">
+        <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
+        <div>
+          <p className="text-sm font-medium text-slate-500">Book an appointment</p>
+          <h1 className="text-xl font-semibold text-slate-900">{garage.name}</h1>
+        </div>
       </div>
 
-      <WizardStepper steps={steps} currentStep={step} />
+      <WizardStepper steps={wizardSteps} currentStep={currentStepNumber} />
 
       <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
         {showSlotBanner && (
           <SelectedSlotBanner
             date={data.date}
             time={data.time}
-            onChange={() => goToStep(STEP_TIME)}
+            onChange={() => goToStep('time')}
           />
         )}
 
         {/* Keyed on the step so the fade replays on each transition. */}
         <div key={step} className="animate-step-in">
-          {step === STEP_SERVICE && (
-            <>
-              <ServicePicker
-                groups={garage.appointment_type_groups}
-                services={services}
-                businessDisplayMode={garage.booking_display_mode}
-                selectedId={data.appointmentTypeId}
-                onSelect={selectService}
-              />
-              <IncludedItems service={selectedService} />
-            </>
-          )}
-
-          {step === STEP_TIME && (
-            <DateTimeStep
-              slug={garageSlug}
-              date={data.date}
-              appointmentTypeId={data.appointmentTypeId}
-              selectedService={selectedService}
-              time={data.time}
-              onSelectDate={selectDate}
-              onSelectSlot={selectSlot}
-              onChangeService={hasServices ? () => goToStep(STEP_SERVICE) : undefined}
+        {step === 'service' && (
+          <>
+            <ServicePicker
+              groups={garage.appointment_type_groups}
+              services={services}
+              businessDisplayMode={garage.booking_display_mode}
+              selectedId={data.appointmentTypeId}
+              onSelect={selectService}
             />
-          )}
-
-          {step === STEP_DETAILS && (
-            <DetailsStep
-              data={data}
-              errors={errors}
-              update={update}
-              sections={sections}
-              answers={answers}
-              answerErrors={answerErrors}
-              onAnswerChange={updateAnswer}
-            />
-          )}
-
-          {step === STEP_REVIEW && (
-            <ReviewStep
-              data={data}
-              garageName={garage.name}
-              appointmentType={selectedService}
-              sections={sections}
-              answers={answers}
-              onEditStep={goToStep}
-              onCaptchaToken={handleCaptchaToken}
-            />
-          )}
+            <IncludedItems service={selectedAppointmentType} />
+          </>
+        )}
+        {step === 'time' && (
+          <DateTimeStep
+            slug={garageSlug}
+            date={data.date}
+            appointmentTypeId={data.appointmentTypeId}
+            selectedService={selectedAppointmentType}
+            time={data.time}
+            onSelectDate={selectDate}
+            onSelectSlot={selectSlot}
+            onChangeService={hasServices ? () => goToStep('service') : undefined}
+          />
+        )}
+        {step === 'details' && (
+          <DetailsStep
+            data={data}
+            errors={errors}
+            update={update}
+            sections={sections}
+            answers={answers}
+            answerErrors={answerErrors}
+            onAnswerChange={updateAnswer}
+            onCaptchaToken={handleCaptchaToken}
+          />
+        )}
+        {step === 'deposit' && (
+          <DepositStep
+            slug={garageSlug}
+            garageName={garage.name}
+            payload={buildBookingPayload(data, captchaToken, sections, answers)}
+            appointmentType={selectedAppointmentType}
+            onPaid={handleDepositPaid}
+            onSlotLost={handleDepositSlotLost}
+          />
+        )}
+        {step === 'review' && (
+          <ReviewStep
+            data={data}
+            garageName={garage.name}
+            appointmentType={selectedAppointmentType}
+            depositResult={depositResult}
+            sections={sections}
+            answers={answers}
+            onEditStep={goToStep}
+          />
+        )}
         </div>
 
         {errors.form && (
@@ -462,7 +524,7 @@ export function BookingWizard() {
         )}
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6">
-          {step > steps[0].id ? (
+          {step !== steps[0] && step !== 'deposit' && !(step === 'review' && depositResult) ? (
             <button
               type="button"
               onClick={goBack}
@@ -473,29 +535,30 @@ export function BookingWizard() {
           ) : (
             <span />
           )}
-          {step === STEP_REVIEW ? (
+          {step === 'deposit' ? (
+            <span />
+          ) : step === 'review' ? (
             <button
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
             >
-              {submitting ? 'Sending…' : 'Submit booking request'}
+              {submitting
+                ? 'Sending…'
+                : depositResult
+                  ? 'Finish'
+                  : 'Submit booking request'}
             </button>
           ) : (
-            // The service step advances on selection, so it has no Continue
-            // button to press - a second click to confirm a choice already
-            // made is just friction.
-            step !== STEP_SERVICE && (
-              <button
-                type="button"
-                onClick={goNext}
-                disabled={step === STEP_TIME && (!data.date || !data.time)}
-                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
-              >
-                Continue
-              </button>
-            )
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={step === 'time' && (!data.date || !data.time)}
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
+            >
+              Continue
+            </button>
           )}
         </div>
       </div>
@@ -503,15 +566,33 @@ export function BookingWizard() {
   )
 }
 
-/** The one service in `groupId`, or undefined when the group holds none or
- * several - a group deep link should narrow the choice, not make it. */
-function singleServiceIn(
-  services: PublicAppointmentType[],
-  groupId: string,
-): PublicAppointmentType | undefined {
-  const inGroup = services.filter((s) => s.group_id === groupId)
-  return inGroup.length === 1 ? inGroup[0] : undefined
+/** Shared between the plain submit path and the deposit-intent creation
+ * call - same customer/vehicle/slot payload either way (see
+ * app/public_booking/routes.py::_build_booking_request). */
+function buildBookingPayload(
+  data: WizardData,
+  captchaToken: string,
+  sections: BookingFlowSection[],
+  answers: AnswerMap,
+): BookingRequestInput {
+  return {
+    customer_first_name: data.firstName.trim(),
+    customer_last_name: data.lastName.trim(),
+    customer_email: data.email.trim(),
+    // Required (validated above) - the server normalises it to E.164.
+    customer_phone: data.phone.trim(),
+    appointment_type_id: data.appointmentTypeId || null,
+    preferred_date: data.date,
+    preferred_time: data.time || null,
+    preferred_employee_note: null,
+    // Shared with the deposit path, which passes this same payload to
+    // DepositStep - a deposit booking must ask the business's own questions
+    // too, not skip them because it happens to be paid for up front.
+    answers: toAnswerInput(sections, answers),
+    captcha_token: captchaToken,
+  }
 }
+
 
 /** Props a Field hands its control so the label, the control and any
  * validation message are programmatically associated - without them a screen
@@ -624,6 +705,7 @@ function DateTimeStep({
   )
 }
 
+
 function DetailsStep({
   data,
   errors,
@@ -632,6 +714,7 @@ function DetailsStep({
   answers,
   answerErrors,
   onAnswerChange,
+  onCaptchaToken,
 }: {
   data: WizardData
   errors: FieldErrors
@@ -640,6 +723,7 @@ function DetailsStep({
   answers: AnswerMap
   answerErrors: Record<string, string>
   onAnswerChange: (fieldId: string, next: AnswerState) => void
+  onCaptchaToken: (token: string) => void
 }) {
   return (
     <div className="space-y-8">
@@ -706,6 +790,17 @@ function DetailsStep({
           onChange={onAnswerChange}
         />
       ))}
+
+      {/* Verified here rather than on Review: the deposit path makes its
+          first server call on leaving this step and never reaches Review
+          until that call has already succeeded. */}
+      {captchaEnabled && (
+        <section>
+          <Field label="Verification" required>
+            {() => <Captcha onToken={onCaptchaToken} />}
+          </Field>
+        </section>
+      )}
     </div>
   )
 }
@@ -714,31 +809,43 @@ function ReviewStep({
   data,
   garageName,
   appointmentType,
+  depositResult,
   sections,
   answers,
   onEditStep,
-  onCaptchaToken,
 }: {
   data: WizardData
   garageName: string
   appointmentType: PublicAppointmentType | undefined
+  depositResult: DepositIntentCreated | null
   sections: BookingFlowSection[]
   answers: AnswerMap
-  onEditStep: (step: number) => void
-  onCaptchaToken: (token: string) => void
+  onEditStep: (step: StepKey) => void
 }) {
   const finishTime =
     data.time && appointmentType?.default_duration_minutes != null
       ? addMinutesToTime(data.time, appointmentType.default_duration_minutes)
       : null
 
+  // Once a deposit is paid the booking already exists server-side, so nothing
+  // here is still editable - every Edit link goes away rather than offering a
+  // change that can no longer be made.
+  const editable = depositResult === null
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-900">Review</h2>
-      <p className="mt-1 text-sm text-slate-500">Please check everything below before you submit.</p>
+      <p className="mt-1 text-sm text-slate-500">
+        {depositResult
+          ? 'Your deposit is paid. Here is a summary of your booking.'
+          : 'Please check everything below before you submit.'}
+      </p>
 
       <div className="mt-4 space-y-4">
-        <SummarySection title="Appointment" onEdit={() => onEditStep(STEP_TIME)}>
+        <SummarySection
+          title="Appointment"
+          onEdit={editable ? () => onEditStep('time') : undefined}
+        >
           <SummaryRow label="Business" value={garageName} />
           {appointmentType && <SummaryRow label="Service" value={appointmentType.name} />}
           {appointmentType?.base_price != null && (
@@ -751,7 +858,27 @@ function ReviewStep({
           />
         </SummarySection>
 
-        <SummarySection title="Your details" onEdit={() => onEditStep(STEP_DETAILS)}>
+        {depositResult && (
+          <SummarySection title="Payment">
+            <SummaryRow
+              label="Service total"
+              value={depositResult.service_total ? `£${depositResult.service_total}` : '—'}
+            />
+            <SummaryRow
+              label="Deposit paid"
+              value={depositResult.deposit_amount ? `£${depositResult.deposit_amount}` : '—'}
+            />
+            <SummaryRow
+              label="Left to pay"
+              value={depositResult.remaining_balance ? `£${depositResult.remaining_balance}` : '—'}
+            />
+          </SummarySection>
+        )}
+
+        <SummarySection
+          title="Your details"
+          onEdit={editable ? () => onEditStep('details') : undefined}
+        >
           <SummaryRow label="Name" value={`${data.firstName} ${data.lastName}`.trim()} />
           <SummaryRow label="Email" value={data.email} />
           <SummaryRow label="Mobile number" value={data.phone || '—'} />
@@ -761,7 +888,7 @@ function ReviewStep({
           <SummarySection
             key={section.id}
             title={section.title}
-            onEdit={() => onEditStep(STEP_DETAILS)}
+            onEdit={editable ? () => onEditStep('details') : undefined}
           >
             {section.fields.map((field) => {
               const answer = answers[field.id]
@@ -782,17 +909,12 @@ function ReviewStep({
       </div>
 
       <p className="mt-6 text-sm text-slate-600">
-        Submitting sends a request to {garageName}. They'll review it and be in touch at{' '}
-        {data.email || 'the email you gave'} to confirm.
+        {depositResult
+          ? `${garageName} will be in touch at ${data.email || 'the email you gave'} to confirm.`
+          : `Submitting sends a request to ${garageName}. They'll review it and be in touch at ${
+              data.email || 'the email you gave'
+            } to confirm.`}
       </p>
-
-      {captchaEnabled && (
-        <div className="mt-4">
-          <Field label="Verification" required>
-            {() => <Captcha onToken={onCaptchaToken} />}
-          </Field>
-        </div>
-      )}
     </div>
   )
 }
@@ -803,20 +925,22 @@ function SummarySection({
   children,
 }: {
   title: string
-  onEdit: () => void
+  onEdit?: () => void
   children: ReactNode
 }) {
   return (
     <div className="rounded-md border border-slate-200 p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-slate-900">{title}</p>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="text-xs font-medium text-slate-500 hover:text-slate-800"
-        >
-          Edit
-        </button>
+        {onEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="text-xs font-medium text-slate-500 hover:text-slate-800"
+          >
+            Edit
+          </button>
+        )}
       </div>
       <dl className="mt-2 space-y-1">{children}</dl>
     </div>

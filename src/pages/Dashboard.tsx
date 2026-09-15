@@ -1,5 +1,5 @@
 import { Link, Navigate } from 'react-router-dom'
-import logo from '../assets/logo.png'
+import { BusinessBrandMark } from '../components/BusinessBrandMark'
 import {
   useAppointments,
   useAppointmentStatuses,
@@ -89,7 +89,7 @@ export function Dashboard() {
   return (
     <div>
       <div className="flex items-center gap-3">
-        <img src={logo} alt="" className="h-10 w-auto shrink-0" />
+        <BusinessBrandMark name={garage?.name ?? '?'} logoUrl={garage?.logo_url ?? null} />
         <h1 className="text-2xl font-semibold text-slate-900">
           {garage?.name ?? 'Welcome'}
         </h1>

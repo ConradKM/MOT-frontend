@@ -1,6 +1,44 @@
 import { apiFetch } from './client'
 
-export type BookingRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
+export type BookingRequestStatus =
+  | 'AWAITING_PAYMENT'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'CANCELLED'
+
+export type BookingPaymentStatus =
+  | 'REQUIRES_PAYMENT'
+  | 'PENDING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | 'REFUND_PENDING'
+  | 'REFUNDED'
+  | 'PARTIALLY_REFUNDED'
+  | 'REFUND_FAILED'
+
+export interface BookingPaymentSummary {
+  id: string
+  status: BookingPaymentStatus
+  currency: string
+  /** Decimal string, e.g. "20.00". */
+  amount: string
+  provider: string
+  /** Staff/admin troubleshooting reference only - never shown to customers. */
+  provider_payment_id: string | null
+  refunded_amount_minor: number | null
+  refunded_at: string | null
+  paid_at: string | null
+  failure_reason: string | null
+}
+
+/** What the reject response says happened to the customer notification.
+ * Only ever populated on the response to a reject call itself - a later
+ * plain GET/list read reports `null`, since it isn't current information
+ * about anything, just what happened at the moment of that one decision. */
+export type NotificationResult = 'SENT' | 'FAILED' | 'NO_EMAIL'
 
 export interface RequestAppointmentType {
   id: string
@@ -73,10 +111,18 @@ export interface BookingRequest {
   reviewed_by_employee_id: string | null
   reviewed_by_name: string | null
   reviewed_at: string | null
+  /** Internal - staff only. Never shown to the customer. */
   staff_notes: string | null
+  /** Set only on REJECTED, only when supplied - what the customer actually
+   * saw in the rejection email. Kept separate from staff_notes so an
+   * internal note can never leak by accident. */
+  customer_rejection_reason: string | null
+  notification_result: NotificationResult | null
   customer_id: string | null
   vehicle_id: string | null
   appointment_id: string | null
+  /** Null when this request's type never required a deposit. */
+  payment: BookingPaymentSummary | null
   created_at: string
   updated_at: string
 }
@@ -112,11 +158,31 @@ export function approveBookingRequest(
   })
 }
 
+export interface RejectBookingRequestInput {
+  /** Internal - never shown to the customer. */
+  staff_notes?: string | null
+  /** Optional, shown to the customer verbatim in the rejection email. */
+  customer_rejection_reason?: string | null
+}
+
 export function rejectBookingRequest(
   id: string,
-  data: { staff_notes?: string | null },
+  data: RejectBookingRequestInput,
 ): Promise<BookingRequest> {
   return apiFetch<BookingRequest>(`/api/booking-requests/${id}/reject`, {
+    method: 'POST',
+    body: data,
+  })
+}
+
+/** Manual refund trigger for a paid booking - infrastructure for the
+ * cancellation case, which (unlike rejection, which always refunds in
+ * full automatically) has no automatic policy. */
+export function refundBookingRequest(
+  id: string,
+  data: { reason?: string | null } = {},
+): Promise<BookingRequest> {
+  return apiFetch<BookingRequest>(`/api/booking-requests/${id}/refund`, {
     method: 'POST',
     body: data,
   })

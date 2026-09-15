@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { BookingRequest, BookingRequestStatus } from '../../api/bookingRequests'
+import type {
+  BookingRequest,
+  BookingRequestStatus,
+  NotificationResult,
+} from '../../api/bookingRequests'
 import {
   useApproveBookingRequest,
   useAppointmentTypes,
@@ -17,17 +21,45 @@ import { ContactShortcuts } from '../../components/communications/ContactShortcu
 const STATUS_TABS: BookingRequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED']
 
 const statusClasses: Record<BookingRequestStatus, string> = {
+  AWAITING_PAYMENT: 'bg-amber-100 text-amber-700',
   PENDING: 'bg-violet-100 text-violet-700',
   APPROVED: 'bg-emerald-100 text-emerald-700',
   REJECTED: 'bg-slate-100 text-slate-500',
   EXPIRED: 'bg-amber-100 text-amber-700',
+  CANCELLED: 'bg-slate-100 text-slate-500',
 }
 
 const statusLabels: Record<BookingRequestStatus, string> = {
+  AWAITING_PAYMENT: 'Awaiting payment',
   PENDING: 'Pending',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   EXPIRED: 'Expired',
+  CANCELLED: 'Cancelled',
+}
+
+const paymentStatusLabels: Record<string, string> = {
+  REQUIRES_PAYMENT: 'Awaiting payment',
+  PENDING: 'Processing',
+  SUCCEEDED: 'Paid',
+  FAILED: 'Failed',
+  CANCELLED: 'Cancelled',
+  REFUND_PENDING: 'Refund processing',
+  REFUNDED: 'Refunded',
+  PARTIALLY_REFUNDED: 'Partially refunded',
+  REFUND_FAILED: 'Refund failed',
+}
+
+const paymentStatusClasses: Record<string, string> = {
+  REQUIRES_PAYMENT: 'bg-amber-100 text-amber-700',
+  PENDING: 'bg-amber-100 text-amber-700',
+  SUCCEEDED: 'bg-emerald-100 text-emerald-700',
+  FAILED: 'bg-red-100 text-red-700',
+  CANCELLED: 'bg-slate-100 text-slate-500',
+  REFUND_PENDING: 'bg-amber-100 text-amber-700',
+  REFUNDED: 'bg-slate-100 text-slate-600',
+  PARTIALLY_REFUNDED: 'bg-slate-100 text-slate-600',
+  REFUND_FAILED: 'bg-red-100 text-red-700',
 }
 
 const priceFormatter = new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })
@@ -112,6 +144,15 @@ function CustomerAnswers({ request }: { request: BookingRequest }) {
 
 const SLOT_UNAVAILABLE_TEXT = 'This time slot is no longer available.'
 
+/** What to tell the operator about a reject that already happened - the
+ * booking decision itself is never in question here, only whether the
+ * customer found out. */
+const NOTIFICATION_MESSAGES: Record<NotificationResult, string> = {
+  SENT: 'Booking rejected and customer notified.',
+  FAILED: 'Booking rejected, but the customer notification could not be sent.',
+  NO_EMAIL: 'Booking rejected — the customer has no email on file and could not be notified.',
+}
+
 function RequestDetails({ request }: { request: BookingRequest }) {
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -163,6 +204,30 @@ function RequestDetails({ request }: { request: BookingRequest }) {
           {formatPrice(request.appointment_type?.base_price ?? request.requested_price)}
         </dd>
       </div>
+      {request.payment && (
+        <div>
+          <dt className="font-medium text-slate-700">Deposit</dt>
+          <dd className="text-slate-600">
+            {priceFormatter.format(Number(request.payment.amount))}
+            {' — '}
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${paymentStatusClasses[request.payment.status] ?? ''}`}
+            >
+              {paymentStatusLabels[request.payment.status] ?? request.payment.status}
+            </span>
+            {request.appointment_type?.base_price && (
+              <span className="ml-2 text-slate-500">
+                · Remaining balance:{' '}
+                {formatPrice(
+                  (
+                    Number(request.appointment_type.base_price) - Number(request.payment.amount)
+                  ).toFixed(2),
+                )}
+              </span>
+            )}
+          </dd>
+        </div>
+      )}
       <div>
         <dt className="font-medium text-slate-700">Preferred date/time</dt>
         <dd className="text-slate-600">{formatPreferred(request)}</dd>
@@ -197,8 +262,17 @@ function RequestDetails({ request }: { request: BookingRequest }) {
             {statusLabels[request.status]}
             {request.reviewed_by_name ? ` by ${request.reviewed_by_name}` : ''}
             {request.reviewed_at ? ` · ${formatDateTime(request.reviewed_at)}` : ''}
-            {request.staff_notes ? ` — "${request.staff_notes}"` : ''}
           </dd>
+          {request.customer_rejection_reason && (
+            <dd className="mt-1 text-slate-600">
+              Told the customer: “{request.customer_rejection_reason}”
+            </dd>
+          )}
+          {request.staff_notes && (
+            <dd className="mt-1 text-slate-500">
+              Internal note (never shown to the customer): “{request.staff_notes}”
+            </dd>
+          )}
         </div>
       )}
     </dl>
@@ -226,6 +300,7 @@ function ReviewRow({ request }: { request: BookingRequest }) {
   const [startLocal, setStartLocal] = useState(defaultStart)
   const [typeId, setTypeId] = useState(request.appointment_type_id ?? '')
   const [staffNotes, setStaffNotes] = useState('')
+  const [customerReason, setCustomerReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [confirmDespiteConflict, setConfirmDespiteConflict] = useState(false)
 
@@ -264,8 +339,18 @@ function ReviewRow({ request }: { request: BookingRequest }) {
   const submitReject = async () => {
     setError(null)
     try {
-      await reject.mutateAsync({ id: request.id, staff_notes: staffNotes || null })
-      showToast('Booking request rejected.', 'success')
+      const rejected = await reject.mutateAsync({
+        id: request.id,
+        staff_notes: staffNotes || null,
+        customer_rejection_reason: customerReason || null,
+      })
+      const result = rejected.notification_result
+      // notification_result is only ever meaningful on this response; a
+      // missing value would mean the server hasn't shipped it yet, not that
+      // nothing happened - fall back to the plain confirmation rather than
+      // claiming a status we don't actually have.
+      const message = result ? NOTIFICATION_MESSAGES[result] : 'Booking request rejected.'
+      showToast(message, result && result !== 'SENT' ? 'error' : 'success')
       setOpen(null)
     } catch (err) {
       setError(errorMessage(err))
@@ -291,6 +376,13 @@ function ReviewRow({ request }: { request: BookingRequest }) {
             {formatDurationMinutes(request.duration_minutes)} ·{' '}
             {formatPrice(request.appointment_type?.base_price)}
           </p>
+          {request.payment && (
+            <span
+              className={`mt-1 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${paymentStatusClasses[request.payment.status] ?? ''}`}
+            >
+              Deposit {paymentStatusLabels[request.payment.status] ?? request.payment.status}
+            </span>
+          )}
         </td>
         <td className="px-4 py-2 text-slate-600">{formatPreferred(request)}</td>
         <td className="px-4 py-2">
@@ -428,7 +520,26 @@ function ReviewRow({ request }: { request: BookingRequest }) {
             {open === 'reject' && (
               <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
                 <label className="block text-sm">
-                  <span className="block font-medium text-slate-700">Reason (optional)</span>
+                  <span className="block font-medium text-slate-700">
+                    Reason shown to the customer (optional)
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    Included in the rejection email, word for word.
+                  </span>
+                  <textarea
+                    rows={2}
+                    value={customerReason}
+                    onChange={(e) => setCustomerReason(e.target.value)}
+                    className="mt-1 w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="block font-medium text-slate-700">
+                    Internal note (staff only, optional)
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    Never sent to the customer - visible only here.
+                  </span>
                   <textarea
                     rows={2}
                     value={staffNotes}

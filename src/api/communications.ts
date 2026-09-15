@@ -60,6 +60,7 @@ export interface CommunicationLog {
 /** A short-lived Twilio Voice Access Token for the browser dialler. `token`
  * is scoped to outgoing calls only; `caller_id` is what the customer sees. */
 export interface VoiceToken {
+  provider?: string
   token: string
   identity: string
   expires_in: number

@@ -43,6 +43,7 @@ export function makeGarage(patch: Partial<Garage> = {}): Garage {
     address: '1 Long Lane',
     postcode: 'AB1 2CD',
     website: null,
+    logo_url: null,
     created_at: '2026-01-01T09:00:00+00:00',
     updated_at: '2026-01-01T09:00:00+00:00',
     ...patch,
@@ -118,6 +119,10 @@ export function makeAppointmentType(patch: Partial<AppointmentType> = {}): Appoi
     base_price: '54.85',
     default_duration_minutes: 60,
     status: 'ACTIVE',
+    deposit_required: false,
+    deposit_type: null,
+    deposit_value: null,
+    deposit_currency: 'GBP',
     group_id: null,
     order: 0,
     image_url: null,
@@ -263,6 +268,12 @@ export function makePublicAppointmentType(
     order: 0,
     image_url: null,
     included_items: [],
+    // No deposit by default - a service only asks for one when a business
+    // explicitly turns it on, so that is the shape most tests want.
+    deposit_required: false,
+    deposit_type: null,
+    deposit_value: null,
+    deposit_currency: 'GBP',
     ...patch,
   }
 }

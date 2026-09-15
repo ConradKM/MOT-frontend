@@ -79,7 +79,10 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
 
   const refreshToken = useCallback(async () => {
     try {
-      const { token } = await getVoiceToken()
+      const { token, provider } = await getVoiceToken()
+      if (provider && provider !== 'twilio') {
+        throw new Error('This calling provider is not supported by the browser dialler.')
+      }
       deviceRef.current?.updateToken(token)
     } catch {
       /* the next call attempt surfaces the failure */
@@ -94,7 +97,10 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
       setStatus('initialising')
       setError(null)
       try {
-        const { token } = await getVoiceToken()
+        const { token, provider } = await getVoiceToken()
+        if (provider && provider !== 'twilio') {
+          throw new Error('This calling provider is not supported by the browser dialler.')
+        }
         if (cancelled) return
         const device = new Device(token, {
           logLevel: 'error',

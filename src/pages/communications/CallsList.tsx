@@ -148,7 +148,7 @@ function CallDetailRow({ call, garageId }: { call: CommunicationLog; garageId: s
           <div className="mt-4">
             <Disclosure title="Technical details">
               <dl className="grid grid-cols-2 gap-2 text-xs text-slate-500">
-                <dt>Twilio Call SID</dt>
+                <dt>Call reference</dt>
                 <dd className="font-mono">{call.external_id}</dd>
                 <dt>Provider</dt>
                 <dd>{call.external_provider}</dd>
