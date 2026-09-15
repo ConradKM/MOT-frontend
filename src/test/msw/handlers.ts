@@ -52,6 +52,9 @@ export const handlers = [
   http.get('*/api/appointments/', () => HttpResponse.json([makeAppointment()])),
   http.get('*/api/appointment-types/', () => HttpResponse.json([makeAppointmentType()])),
   http.get('*/api/appointment-statuses/', () => HttpResponse.json([])),
+  http.get('*/api/appointment-type-groups/', () => HttpResponse.json([])),
+  http.get('*/api/booking-flow/sections', () => HttpResponse.json([])),
+  http.get('*/api/booking-flow/presets', () => HttpResponse.json({ presets: [] })),
   http.get('*/api/booking-requests/', () => HttpResponse.json([])),
   http.get('*/api/mot-reminders/', () => HttpResponse.json([])),
   http.get('*/api/communications/unread-count', () =>
@@ -61,6 +64,9 @@ export const handlers = [
   // --- public booking ----------------------------------------------------
   http.get('*/api/public/garages/:id', () => HttpResponse.json(makePublicGarage())),
   http.get('*/api/public/:slug', () => HttpResponse.json(makePublicGarage())),
+  http.get('*/api/public/:slug/booking-flow', () =>
+    HttpResponse.json({ appointment_type_id: null, sections: [] }),
+  ),
   http.get('*/api/public/:slug/availability', () =>
     HttpResponse.json(makeAvailabilityRange()),
   ),

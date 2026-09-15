@@ -76,10 +76,122 @@ export const APPOINTMENT_TYPES = [
     base_price: '54.85',
     default_duration_minutes: 60,
     status: 'ACTIVE',
+    group_id: 'grp-testing',
+    order: 0,
+    image_url: null,
+    image_content_type: null,
+    image_uploaded_at: null,
+    created_at: '',
+    updated_at: '',
+  },
+  {
+    id: 'at2',
+    garage_id: 'g1',
+    name: 'Full service',
+    description: null,
+    base_price: '180.00',
+    default_duration_minutes: 180,
+    status: 'ACTIVE',
+    group_id: null,
+    order: 1,
+    image_url: null,
+    image_content_type: null,
+    image_uploaded_at: null,
     created_at: '',
     updated_at: '',
   },
 ]
+
+/** One group holding one service, so the settings page shows both the grouped
+ * and the ungrouped path in a single render. */
+export const APPOINTMENT_TYPE_GROUPS = [
+  {
+    id: 'grp-testing',
+    garage_id: 'g1',
+    name: 'Testing & servicing',
+    description: 'Annual testing and scheduled servicing.',
+    order: 0,
+    display_mode: null,
+    image_url: null,
+    image_content_type: null,
+    image_uploaded_at: null,
+    created_at: '',
+    updated_at: '',
+  },
+  {
+    id: 'grp-repairs',
+    garage_id: 'g1',
+    name: 'Repairs',
+    description: null,
+    order: 1,
+    display_mode: 'GRID',
+    image_url: null,
+    image_content_type: null,
+    image_uploaded_at: null,
+    created_at: '',
+    updated_at: '',
+  },
+]
+
+/** The business's default questions, as the settings builder sees them -
+ * including a bound field, which is what keeps a tracked record populated. */
+export const FLOW_SECTIONS = [
+  {
+    id: 'sec-vehicle',
+    garage_id: 'g1',
+    title: 'Vehicle details',
+    description: 'So we know what we are working on.',
+    order: 0,
+    is_active: true,
+    appointment_type_id: null,
+    created_at: '',
+    updated_at: '',
+    fields: [
+      {
+        id: 'fld-reg',
+        booking_flow_section_id: 'sec-vehicle',
+        label: 'Registration number',
+        help_text: null,
+        placeholder: 'AB12 CDE',
+        field_type: 'TEXT',
+        is_required: true,
+        options: [],
+        order: 0,
+        min_value: null,
+        max_value: null,
+        max_length: 20,
+        binds_to: 'ITEM_REFERENCE',
+        created_at: '',
+        updated_at: '',
+      },
+      {
+        id: 'fld-mileage',
+        booking_flow_section_id: 'sec-vehicle',
+        label: 'Current mileage',
+        help_text: null,
+        placeholder: null,
+        field_type: 'NUMBER',
+        is_required: false,
+        options: [],
+        order: 1,
+        min_value: 0,
+        max_value: null,
+        max_length: null,
+        binds_to: 'ITEM_USAGE',
+        created_at: '',
+        updated_at: '',
+      },
+    ],
+  },
+]
+
+export const FLOW_PRESETS = {
+  presets: [
+    { key: 'automotive', sections: ['Vehicle details', 'Anything else'] },
+    { key: 'appointments', sections: ['About your appointment'] },
+    { key: 'generic', sections: ['Anything else'] },
+  ],
+}
 
 export const CAPACITY = {
   today: { booked_minutes: 120, capacity_minutes: 480, level: 'green' },

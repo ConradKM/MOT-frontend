@@ -32,6 +32,8 @@ function makeRequest(patch: Partial<BookingRequest> = {}): BookingRequest {
     preferred_time: '09:00:00',
     preferred_employee_note: null,
     notes: null,
+    answers: [],
+    answers_collected: true,
     staff_notes: null,
     customer_rejection_reason: null,
     notification_result: null,
@@ -538,5 +540,115 @@ describe('BookingRequestsList — deposit/payment status', () => {
     await user.click(await screen.findByRole('button', { name: 'View' }))
 
     expect(screen.queryByText('Deposit')).not.toBeInTheDocument()
+  })
+})
+
+
+describe('BookingRequestsList — the business\'s own questions', () => {
+  const ANSWERS = [
+    // Bound: already shown by the dedicated Vehicle row, so it must not be
+    // repeated here.
+    {
+      id: 'a1',
+      order: 0,
+      section_title: 'Vehicle details',
+      label: 'Registration number',
+      field_type: 'TEXT',
+      value: 'OB08AUD',
+      value_list: [],
+      binds_to: 'ITEM_REFERENCE',
+    },
+    {
+      id: 'a2',
+      order: 1,
+      section_title: 'About your visit',
+      label: 'Anything we should know?',
+      field_type: 'TEXTAREA',
+      value: null,
+      value_list: [],
+      binds_to: null,
+    },
+    {
+      id: 'a3',
+      order: 2,
+      section_title: 'About your visit',
+      label: 'Add-ons',
+      field_type: 'MULTI_SELECT',
+      value: null,
+      value_list: ['Wash', 'Wax'],
+      binds_to: null,
+    },
+  ]
+
+  async function openFirstRequest() {
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'View' }))
+    return user
+  }
+
+  it('shows the answers under the headings they were asked under', async () => {
+    serveRequests({ PENDING: [makeRequest({ answers: ANSWERS })] })
+    renderList()
+    await openFirstRequest()
+
+    expect(await screen.findByText('About your visit')).toBeInTheDocument()
+    expect(screen.getByText('Add-ons:')).toBeInTheDocument()
+  })
+
+  it('does not repeat an answer the Vehicle row already shows', async () => {
+    // Bound answers populate the very columns those rows read from, so an
+    // automotive business would otherwise see every field twice.
+    serveRequests({ PENDING: [makeRequest({ answers: ANSWERS })] })
+    renderList()
+    await openFirstRequest()
+
+    await screen.findByText('About your visit')
+    // The reg legitimately appears twice already - once in the table row and
+    // once in the Vehicle detail row - so the thing to assert is that the
+    // answers block hasn't added a third under its own label.
+    expect(screen.queryByText('Registration number:')).not.toBeInTheDocument()
+  })
+
+  it('shows a list answer as one readable line', async () => {
+    serveRequests({ PENDING: [makeRequest({ answers: ANSWERS })] })
+    renderList()
+    await openFirstRequest()
+
+    expect(await screen.findByText('Wash, Wax')).toBeInTheDocument()
+  })
+
+  it('distinguishes a question that was asked and skipped', async () => {
+    // "Asked and skipped" must not look like "never asked" - the blank answer
+    // is recorded deliberately for exactly this.
+    serveRequests({ PENDING: [makeRequest({ answers: ANSWERS })] })
+    renderList()
+    await openFirstRequest()
+
+    expect(await screen.findByText('Anything we should know?:')).toBeInTheDocument()
+    expect(screen.getByText('Not provided')).toBeInTheDocument()
+  })
+
+  it('says so when the channel could not ask them at all', async () => {
+    // A phone or WhatsApp booking arrives with no answers, which on its own
+    // is indistinguishable from a business that asks nothing.
+    serveRequests({
+      PENDING: [makeRequest({ answers: [], answers_collected: false })],
+    })
+    renderList()
+    await openFirstRequest()
+
+    expect(await screen.findByText(/Not collected/)).toBeInTheDocument()
+    expect(screen.getByText(/WhatsApp or the phone/)).toBeInTheDocument()
+  })
+
+  it('renders nothing extra when every answer is already shown elsewhere', async () => {
+    serveRequests({
+      PENDING: [makeRequest({ answers: [ANSWERS[0]], answers_collected: true })],
+    })
+    renderList()
+    await openFirstRequest()
+
+    await screen.findByText('Availability')
+    expect(screen.queryByText(/Not collected/)).not.toBeInTheDocument()
   })
 })

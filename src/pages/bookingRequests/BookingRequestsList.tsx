@@ -75,6 +75,73 @@ function formatPrice(price: string | null | undefined): string {
 }
 
 /** Plain-English reason a slot check failed - never expose the internal code. */
+/**
+ * What the customer answered to this business's own configured questions.
+ *
+ * Grouped under the headings they were asked under, and rendered from the
+ * snapshot rather than the live configuration - a question renamed or deleted
+ * since still shows here as it was actually put to the customer.
+ *
+ * An empty list is ambiguous on its own, so it is never rendered as nothing:
+ * a booking taken over WhatsApp or the phone could not ask these at all, and
+ * staff need to see that rather than assume the customer skipped everything.
+ */
+function CustomerAnswers({ request }: { request: BookingRequest }) {
+  if (!request.answers_collected) {
+    return (
+      <div className="sm:col-span-2">
+        <dt className="font-medium text-slate-700">Your questions</dt>
+        <dd className="text-slate-500">
+          Not collected — this booking was taken over WhatsApp or the phone, which can't ask them.
+        </dd>
+      </div>
+    )
+  }
+
+  // A bound answer is already on screen in the Vehicle / Mileage rows
+  // above - showing it again would give an automotive business its
+  // registration, make, model and mileage twice over.
+  const unbound = request.answers.filter((a) => a.binds_to === null)
+  if (unbound.length === 0) return null
+
+  const sections: { title: string; answers: typeof request.answers }[] = []
+  for (const answer of unbound) {
+    const last = sections[sections.length - 1]
+    if (last && last.title === answer.section_title) last.answers.push(answer)
+    else sections.push({ title: answer.section_title, answers: [answer] })
+  }
+
+  return (
+    <>
+      {sections.map((section) => (
+        <div key={section.title} className="sm:col-span-2">
+          <dt className="font-medium text-slate-700">{section.title}</dt>
+          <dd>
+            <dl className="mt-1 space-y-0.5">
+              {section.answers.map((answer) => {
+                const shown =
+                  answer.value_list.length > 0
+                    ? answer.value_list.join(', ')
+                    : (answer.value ?? '')
+                return (
+                  <div key={answer.id} className="flex gap-2">
+                    <dt className="text-slate-500">{answer.label}:</dt>
+                    <dd className="whitespace-pre-wrap text-slate-600">
+                      {/* Blank is recorded deliberately, so "asked and skipped"
+                          never looks the same as "never asked". */}
+                      {shown.trim() || <span className="text-slate-400">Not provided</span>}
+                    </dd>
+                  </div>
+                )
+              })}
+            </dl>
+          </dd>
+        </div>
+      ))}
+    </>
+  )
+}
+
 const SLOT_UNAVAILABLE_TEXT = 'This time slot is no longer available.'
 
 /** What to tell the operator about a reject that already happened - the
@@ -187,6 +254,7 @@ function RequestDetails({ request }: { request: BookingRequest }) {
           <dd className="whitespace-pre-wrap text-slate-600">{request.notes}</dd>
         </div>
       )}
+      <CustomerAnswers request={request} />
       {request.status !== 'PENDING' && (
         <div className="sm:col-span-2">
           <dt className="font-medium text-slate-700">Decision</dt>
