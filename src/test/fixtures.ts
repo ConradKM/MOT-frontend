@@ -10,7 +10,12 @@ import type {
 } from '../types'
 import type {
   AvailabilityRange,
+  BookingFlow,
+  BookingFlowField,
+  BookingFlowSection,
   DayAvailabilityDetail,
+  PublicAppointmentType,
+  PublicAppointmentTypeGroup,
   PublicGarage,
 } from '../api/publicGarage'
 
@@ -169,7 +174,67 @@ export function makePublicGarage(patch: Partial<PublicGarage> = {}): PublicGarag
     id: GARAGE_ID,
     name: 'Bennett Motors',
     slug: 'bennett-motors',
+    logo_url: null,
+    booking_display_mode: 'LIST',
+    appointment_type_groups: [],
     appointment_types: [],
+    ...patch,
+  }
+}
+
+export function makePublicAppointmentType(
+  patch: Partial<PublicAppointmentType> = {},
+): PublicAppointmentType {
+  return {
+    id: 'at1',
+    name: 'MOT test',
+    description: 'Annual MOT',
+    base_price: '54.85',
+    default_duration_minutes: 60,
+    group_id: null,
+    order: 0,
+    image_url: null,
+    included_items: [],
+    ...patch,
+  }
+}
+
+export function makePublicAppointmentTypeGroup(
+  patch: Partial<PublicAppointmentTypeGroup> = {},
+): PublicAppointmentTypeGroup {
+  return {
+    id: 'grp1',
+    name: 'Servicing',
+    description: null,
+    order: 0,
+    display_mode: 'LIST',
+    image_url: null,
+    ...patch,
+  }
+}
+
+export function makeBookingFlow(patch: Partial<BookingFlow> = {}): BookingFlow {
+  return { appointment_type_id: null, sections: [], ...patch }
+}
+
+export function makeBookingFlowSection(
+  patch: Partial<BookingFlowSection> = {},
+): BookingFlowSection {
+  return { id: 's1', title: 'Extra details', description: null, fields: [], ...patch }
+}
+
+export function makeBookingFlowField(patch: Partial<BookingFlowField> = {}): BookingFlowField {
+  return {
+    id: 'f1',
+    label: 'Anything else?',
+    help_text: null,
+    placeholder: null,
+    field_type: 'TEXT',
+    is_required: false,
+    options: [],
+    min_value: null,
+    max_value: null,
+    max_length: null,
     ...patch,
   }
 }

@@ -15,6 +15,10 @@ interface RichTextInputProps {
   placeholder?: string
   type?: 'text' | 'email' | 'tel' | 'number' | 'date' | 'time' | 'datetime-local'
   min?: string | number
+  max?: string | number
+  /** Character cap for text-ish inputs, mirrored from a configured field's
+   * own max_length (see BookingFieldInput). */
+  maxLength?: number
   required?: boolean
   disabled?: boolean
   className?: string
@@ -33,6 +37,8 @@ export function RichTextInput({
   placeholder,
   type = 'text',
   min,
+  max,
+  maxLength,
   required,
   disabled,
   className = '',
@@ -46,6 +52,8 @@ export function RichTextInput({
       aria-invalid={invalid}
       type={type}
       min={min}
+      max={max}
+      maxLength={maxLength}
       value={value}
       onChange={handleChange}
       placeholder={placeholder}

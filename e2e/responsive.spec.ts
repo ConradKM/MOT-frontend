@@ -27,6 +27,12 @@ for (const [name, size] of Object.entries(VIEWPORTS)) {
     test('the booking wizard fits the viewport without sideways scrolling', async ({ page }) => {
       await stubApi(page)
       await page.goto('/book/g1')
+      // The service step is what a customer lands on, and it is the widest
+      // thing the wizard renders - grid cards in particular.
+      await expect(page.getByRole('heading', { name: 'What would you like to book?' })).toBeVisible()
+      expect(await overflowsHorizontally(page)).toBe(false)
+
+      await page.getByRole('button', { name: /^MOT test/ }).click()
       await expect(page.getByRole('heading', { name: 'Pick a date & time' })).toBeVisible()
       expect(await overflowsHorizontally(page)).toBe(false)
     })
@@ -137,15 +143,15 @@ test.describe('layout reflow between breakpoints', () => {
     await stubApi(page)
     await page.goto('/book/g1')
 
-    await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
     await page.getByRole('button', { name: /^MOT test/ }).click()
+    await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
     await page.getByRole('button', { name: '09:00 — Available' }).click()
 
-    await page.getByLabel('Registration number').fill('OB08AUD')
     await page.getByLabel('First name').fill('Oliver')
     await page.getByLabel('Last name').fill('Bennett')
     await page.getByLabel('Email').fill('oliver@example.com')
     await page.getByLabel('Mobile number').fill('07123456789')
+    await page.getByLabel('Registration number').fill('OB08AUD')
     expect(await overflowsHorizontally(page)).toBe(false)
 
     await page.getByRole('button', { name: 'Continue' }).click()
@@ -157,8 +163,8 @@ test.describe('layout reflow between breakpoints', () => {
     await page.setViewportSize(VIEWPORTS.mobile)
     await stubApi(page)
     await page.goto('/book/g1')
-    await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
     await page.getByRole('button', { name: /^MOT test/ }).click()
+    await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
 
     const slot = page.getByRole('button', { name: '09:00 — Available' })
     const box = (await slot.boundingBox())!

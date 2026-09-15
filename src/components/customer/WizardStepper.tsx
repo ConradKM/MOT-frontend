@@ -9,17 +9,22 @@ interface Props {
 }
 
 export function WizardStepper({ steps, currentStep }: Props) {
-  const current = steps.find((s) => s.id === currentStep)
+  // Index-based rather than comparing ids numerically: the steps a customer
+  // sees are built from the business's own configuration, so their ids are
+  // not guaranteed to be a contiguous ascending run and `s.id < currentStep`
+  // would mark the wrong ones done.
+  const currentIndex = steps.findIndex((s) => s.id === currentStep)
+  const current = steps[currentIndex]
 
   return (
     <div>
       <p className="text-sm font-medium text-slate-500">
-        Step {currentStep} of {steps.length}
+        Step {currentIndex + 1} of {steps.length}
         {current ? `: ${current.label}` : ''}
       </p>
       <ol className="mt-3 flex items-center">
         {steps.map((s, i) => {
-          const state = s.id < currentStep ? 'done' : s.id === currentStep ? 'current' : 'upcoming'
+          const state = i < currentIndex ? 'done' : i === currentIndex ? 'current' : 'upcoming'
           return (
             <li key={s.id} className="flex flex-1 items-center last:flex-none">
               <div className="flex items-center gap-2">
@@ -32,7 +37,7 @@ export function WizardStepper({ steps, currentStep }: Props) {
                         : 'bg-slate-200 text-slate-500'
                   }`}
                 >
-                  {state === 'done' ? '✓' : s.id}
+                  {state === 'done' ? '✓' : i + 1}
                 </span>
                 <span
                   className={`hidden text-xs font-medium sm:block ${

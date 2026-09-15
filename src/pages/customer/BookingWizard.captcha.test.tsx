@@ -6,6 +6,7 @@ import { renderWithAppProviders } from '../../test/utils'
 import { BookingWizard } from './BookingWizard'
 import { ApiError } from '../../api/client'
 import * as api from '../../api/publicGarage'
+import { makeBookingFlow, makePublicGarage } from '../../test/fixtures'
 
 // Force the CAPTCHA on and make it operable from the test: clicking the button
 // delivers a token the same way Turnstile's success callback would.
@@ -21,13 +22,14 @@ vi.mock('../../components/Captcha', () => ({
 vi.mock('../../api/publicGarage', async (orig) => ({
   ...(await orig<typeof import('../../api/publicGarage')>()),
   getPublicGarage: vi.fn(),
+  getBookingFlow: vi.fn(),
   getGarageAvailability: vi.fn(),
   getGarageDayAvailability: vi.fn(),
   submitBookingRequest: vi.fn(),
 }))
 
 const TODAY = '2026-09-10'
-const GARAGE = { id: 'gid', name: 'Test Garage', slug: 'test-garage', appointment_types: [] }
+const GARAGE = makePublicGarage({ id: 'gid', name: 'Test Garage', slug: 'test-garage' })
 
 function renderWizard() {
   return renderWithAppProviders(
@@ -46,12 +48,12 @@ async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
     }),
   )
   await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
-  const inputs = await screen.findAllByRole('textbox')
-  await user.type(inputs[0], 'PB11REQ')
-  await user.type(inputs[3], 'Alex')
-  await user.type(inputs[4], 'Turner')
-  await user.type(inputs[5], 'alex@example.com')
-  await user.type(inputs[6], '07123456789')
+  // By label, not by position: the details step is assembled partly from the
+  // business's own configuration, so field order is not fixed.
+  await user.type(await screen.findByLabelText(/First name/), 'Alex')
+  await user.type(screen.getByLabelText(/Last name/), 'Turner')
+  await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
+  await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
   await screen.findByRole('heading', { name: 'Review' })
 }
@@ -60,6 +62,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 8, 10, 9, 0, 0))
   vi.mocked(api.getPublicGarage).mockResolvedValue(GARAGE)
+  vi.mocked(api.getBookingFlow).mockResolvedValue(makeBookingFlow())
   vi.mocked(api.getGarageAvailability).mockResolvedValue({
     garage: { slug: 'test-garage', name: 'Test Garage' },
     rules: {
@@ -130,9 +133,8 @@ describe('BookingWizard — CAPTCHA on Step 3', () => {
 
     // Still on Review; details intact.
     await user.click(screen.getByRole('button', { name: 'Back' }))
-    const inputs = await screen.findAllByRole('textbox')
-    expect(inputs[0]).toHaveValue('PB11REQ')
-    expect(inputs[5]).toHaveValue('alex@example.com')
+    expect(await screen.findByLabelText(/First name/)).toHaveValue('Alex')
+    expect(screen.getByLabelText(/^Email/)).toHaveValue('alex@example.com')
 
     // The stale token was cleared: submitting again asks for the challenge.
     await user.click(screen.getByRole('button', { name: 'Continue' }))

@@ -25,6 +25,12 @@ interface Props {
   slug: string
   selectedDate: string | null
   onSelectDate: (date: string) => void
+  /** The service being booked. Each day's level is computed at this
+   * service's duration, so without it a long service can show a day as
+   * available and then offer no times at all - see
+   * app/public_booking/availability.py::day_summary. The wizard asks what
+   * the customer is booking before this step precisely so it can be passed. */
+  appointmentTypeId?: string
 }
 
 function isoFor(month: string, day: number): string {
@@ -37,9 +43,18 @@ function clamp(iso: string, min?: string, max?: string): string {
   return iso
 }
 
-export function AvailabilityCalendar({ slug, selectedDate, onSelectDate }: Props) {
-  const { data, isLoading, isError, refetch, isFetching } =
-    useGarageAvailability(slug)
+export function AvailabilityCalendar({
+  slug,
+  selectedDate,
+  onSelectDate,
+  appointmentTypeId,
+}: Props) {
+  const { data, isLoading, isError, refetch, isFetching } = useGarageAvailability(
+    slug,
+    undefined,
+    undefined,
+    appointmentTypeId,
+  )
 
   const byDate = useMemo(() => {
     const m = new Map<string, DayAvailability>()
