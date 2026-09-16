@@ -33,6 +33,7 @@ import { CommunicationsLayout } from './components/communications/Communications
 import { CommunicationsOverview } from './pages/communications/CommunicationsOverview'
 import { CallsList } from './pages/communications/CallsList'
 import { WhatsAppInbox } from './pages/communications/WhatsAppInbox'
+import { SmsInbox } from './pages/communications/SmsInbox'
 import { CommunicationsAttentionQueue } from './pages/communications/CommunicationsAttentionQueue'
 import { CallbackRequestsList } from './pages/communications/CallbackRequestsList'
 import { ConversationSimulator } from './pages/communications/ConversationSimulator'
@@ -101,6 +102,7 @@ export default function App() {
             <Route index element={<CommunicationsOverview />} />
             <Route path="calls" element={<CallsList />} />
             <Route path="whatsapp" element={<WhatsAppInbox />} />
+            <Route path="sms" element={<SmsInbox />} />
             <Route path="attention" element={<CommunicationsAttentionQueue />} />
             <Route path="callbacks" element={<CallbackRequestsList />} />
             <Route path="contact" element={<ContactCustomer />} />

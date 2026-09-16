@@ -82,6 +82,9 @@ export interface CommunicationsCapabilities {
   communications_enabled: boolean
   voice_number_configured: boolean
   whatsapp_configured: boolean
+  /** Reuses the business's voice number/messaging service - see
+   * app/communications/providers/twilio.py::TwilioSMSProvider. */
+  sms_configured: boolean
   outbound_calling_supported: boolean
 }
 
@@ -89,6 +92,7 @@ export interface CommunicationsOverview {
   calls_today: number
   missed_calls_today: number
   whatsapp_unread: number
+  sms_unread: number
   outgoing_contacts_today: number
   recent: CommunicationLog[]
   capabilities: CommunicationsCapabilities
@@ -122,7 +126,7 @@ export function getOverview(): Promise<CommunicationsOverview> {
   return apiFetch<CommunicationsOverview>('/api/communications/overview')
 }
 
-export function getUnreadCount(): Promise<{ whatsapp_unread: number }> {
+export function getUnreadCount(): Promise<{ whatsapp_unread: number; sms_unread: number }> {
   return apiFetch('/api/communications/unread-count')
 }
 
@@ -212,6 +216,49 @@ export function sendWhatsAppMessage(data: {
 
 export function getCustomerCommunications(customerId: string): Promise<CommunicationLog[]> {
   return apiFetch(`/api/customers/${customerId}/communications`)
+}
+
+// --------------------------------------------------------------------------
+// SMS - a first-class channel alongside Voice/WhatsApp. Deliberately its own
+// small set of functions rather than reusing the WhatsApp conversation ones
+// above: SMS conversations have no archive/delete state yet, and addresses
+// are stored as plain E.164 (no "whatsapp:" prefix) - see
+// app/communications/queries.py's SMS section.
+// --------------------------------------------------------------------------
+
+export interface SmsConversationListParams {
+  search?: string
+  limit?: number
+  offset?: number
+}
+
+export function listSmsConversations(
+  params: SmsConversationListParams = {},
+): Promise<Paginated<Conversation>> {
+  return apiFetch(`/api/communications/sms/conversations${toQuery(params)}`)
+}
+
+export function getSmsConversationMessages(
+  phone: string,
+  params: { limit?: number } = {},
+): Promise<ConversationMessages> {
+  return apiFetch(
+    `/api/communications/sms/conversations/${encodeURIComponent(phone)}/messages${toQuery(params)}`,
+  )
+}
+
+export function markSmsConversationRead(phone: string): Promise<{ updated: number }> {
+  return apiFetch(`/api/communications/sms/conversations/${encodeURIComponent(phone)}/read`, {
+    method: 'POST',
+  })
+}
+
+export function sendSmsMessage(data: {
+  customer_id?: string
+  to?: string
+  body: string
+}): Promise<CommunicationLog> {
+  return apiFetch('/api/communications/sms/send', { method: 'POST', body: data })
 }
 
 // --------------------------------------------------------------------------

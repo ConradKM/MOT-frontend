@@ -8,10 +8,10 @@ interface ContactShortcutsProps {
   className?: string
 }
 
-/** [Call] [WhatsApp] buttons that route into the central Contact Customer
- * flow - used from Customer Detail, Appointment, and Booking Request pages
- * so there is exactly one place that actually places a call or sends a
- * WhatsApp message, not a separate implementation per page. */
+/** [Call] [WhatsApp] [SMS] buttons that route into the central Contact
+ * Customer flow - used from Customer Detail, Appointment, and Booking
+ * Request pages so there is exactly one place that actually places a call
+ * or sends a WhatsApp/SMS message, not a separate implementation per page. */
 export function ContactShortcuts({ customerId, phone, name, className }: ContactShortcutsProps) {
   const garageId = useGarageId()
 
@@ -40,6 +40,12 @@ export function ContactShortcuts({ customerId, phone, name, className }: Contact
         className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
         WhatsApp
+      </Link>
+      <Link
+        to={`${base}&tab=sms`}
+        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+      >
+        SMS
       </Link>
     </div>
   )

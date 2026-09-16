@@ -6,6 +6,7 @@ const TABS = [
   { end: true, slug: '', label: 'Overview' },
   { end: false, slug: 'calls', label: 'Calls' },
   { end: false, slug: 'whatsapp', label: 'WhatsApp' },
+  { end: false, slug: 'sms', label: 'SMS' },
   { end: false, slug: 'attention', label: 'Needs Attention' },
   { end: false, slug: 'callbacks', label: 'Callbacks' },
   { end: false, slug: 'contact', label: 'Contact Customer' },
@@ -50,6 +51,11 @@ export function CommunicationsLayout() {
             {tab.slug === 'whatsapp' && !!unread?.whatsapp_unread && (
               <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-violet-600 px-1 text-xs font-semibold text-white">
                 {unread.whatsapp_unread}
+              </span>
+            )}
+            {tab.slug === 'sms' && !!unread?.sms_unread && (
+              <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-violet-600 px-1 text-xs font-semibold text-white">
+                {unread.sms_unread}
               </span>
             )}
             {tab.slug === 'attention' && !!attentionQueue?.items.length && (

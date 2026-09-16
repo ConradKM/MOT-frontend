@@ -995,6 +995,50 @@ export function useSendWhatsAppMessage() {
   })
 }
 
+// SMS - a first-class channel alongside Voice/WhatsApp. Mirrors the
+// WhatsApp conversation hooks above, minus archive/delete (SMS has no
+// equivalent state yet - see app/communications/queries.py).
+export function useSmsConversations(params: communicationsApi.SmsConversationListParams = {}) {
+  return useQuery({
+    queryKey: ['smsConversations', params],
+    queryFn: () => communicationsApi.listSmsConversations(params),
+    refetchInterval: 20_000,
+  })
+}
+
+export function useSmsConversationMessages(phone: string | undefined) {
+  return useQuery({
+    queryKey: ['smsConversationMessages', phone],
+    queryFn: () => communicationsApi.getSmsConversationMessages(phone as string),
+    enabled: !!phone,
+    refetchInterval: 10_000,
+  })
+}
+
+export function useMarkSmsConversationRead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (phone: string) => communicationsApi.markSmsConversationRead(phone),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['smsConversations'] })
+      qc.invalidateQueries({ queryKey: ['communicationsUnreadCount'] })
+      qc.invalidateQueries({ queryKey: ['communicationsOverview'] })
+    },
+  })
+}
+
+export function useSendSmsMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { customer_id?: string; to?: string; body: string }) =>
+      communicationsApi.sendSmsMessage(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['smsConversations'] })
+      qc.invalidateQueries({ queryKey: ['smsConversationMessages'] })
+    },
+  })
+}
+
 export function useCustomerCommunications(customerId: string | undefined) {
   return useQuery({
     queryKey: ['customerCommunications', customerId],

@@ -8,6 +8,8 @@ import {
   counterpartLabel,
   directionLabel,
   formatRecentTimestamp,
+  smsStatusBadgeClass,
+  smsStatusLabel,
   whatsappStatusBadgeClass,
   whatsappStatusLabel,
 } from '../../lib/communications'
@@ -24,11 +26,26 @@ function SummaryCard({ label, value }: { label: string; value: number }) {
 function RecentRow({ log }: { log: CommunicationLog }) {
   const garageId = useGarageId()
   const isWhatsApp = log.channel === 'WHATSAPP'
-  const unread = isWhatsApp && log.direction === 'INBOUND' && !log.read_at
+  const isSms = log.channel === 'SMS'
+  const unread = (isWhatsApp || isSms) && log.direction === 'INBOUND' && !log.read_at
 
   const href = isWhatsApp
     ? `/${garageId}/communications/whatsapp`
-    : `/${garageId}/communications/calls`
+    : isSms
+      ? `/${garageId}/communications/sms`
+      : `/${garageId}/communications/calls`
+
+  const channelLabel = isWhatsApp ? 'WhatsApp' : isSms ? 'SMS' : 'Phone'
+  const statusLabel = isWhatsApp
+    ? whatsappStatusLabel(log.status)
+    : isSms
+      ? smsStatusLabel(log.status)
+      : callStatusLabel(log)
+  const statusBadgeClass = isWhatsApp
+    ? whatsappStatusBadgeClass(log.status)
+    : isSms
+      ? smsStatusBadgeClass(log.status)
+      : callStatusBadgeClass(log)
 
   return (
     <Link
@@ -38,7 +55,7 @@ function RecentRow({ log }: { log: CommunicationLog }) {
       <div className="min-w-0">
         <p className="font-medium text-slate-900">{counterpartLabel(log)}</p>
         <p className="text-xs text-slate-500">
-          {isWhatsApp ? 'WhatsApp' : 'Phone'} · {directionLabel(log.direction)}
+          {channelLabel} · {directionLabel(log.direction)}
         </p>
         {log.body && (
           <p className="mt-0.5 truncate text-sm text-slate-600" title={log.body}>
@@ -48,12 +65,8 @@ function RecentRow({ log }: { log: CommunicationLog }) {
       </div>
       <div className="shrink-0 text-right">
         <p className="text-xs text-slate-400">{formatRecentTimestamp(log.created_at)}</p>
-        <span
-          className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-            isWhatsApp ? whatsappStatusBadgeClass(log.status) : callStatusBadgeClass(log)
-          }`}
-        >
-          {unread ? 'Unread' : isWhatsApp ? whatsappStatusLabel(log.status) : callStatusLabel(log)}
+        <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeClass}`}>
+          {unread ? 'Unread' : statusLabel}
         </span>
       </div>
     </Link>
@@ -77,10 +90,11 @@ export function CommunicationsOverview() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <SummaryCard label="Calls today" value={data.calls_today} />
         <SummaryCard label="Missed calls" value={data.missed_calls_today} />
         <SummaryCard label="WhatsApp unread" value={data.whatsapp_unread} />
+        <SummaryCard label="SMS unread" value={data.sms_unread} />
         <SummaryCard label="Outgoing contacts" value={data.outgoing_contacts_today} />
       </div>
 
@@ -89,7 +103,7 @@ export function CommunicationsOverview() {
         <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
           {data.recent.length === 0 ? (
             <p className="px-4 py-6 text-sm text-slate-500">
-              Nothing yet. Calls and WhatsApp messages will show up here as they happen.
+              Nothing yet. Calls, WhatsApp and SMS messages will show up here as they happen.
             </p>
           ) : (
             <div className="divide-y divide-slate-100">

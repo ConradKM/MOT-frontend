@@ -5,6 +5,7 @@ import {
   useCommunicationsOverview,
   useCustomer,
   useCustomers,
+  useSendSmsMessage,
   useSendWhatsAppMessage,
   useVehicles,
 } from '../../api/queries'
@@ -16,7 +17,7 @@ import { useTwilioDevice, type DialerStatus, type TwilioDialer } from '../../hoo
 import { formatDateTime } from '../../lib/datetime'
 import type { Customer } from '../../types'
 
-type Tab = 'call' | 'whatsapp'
+type Tab = 'call' | 'whatsapp' | 'sms'
 
 const STATUS_LABEL: Record<DialerStatus, string> = {
   initialising: 'Connecting…',
@@ -260,10 +261,13 @@ export function ContactCustomer() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { data: overview } = useCommunicationsOverview()
   const sendMessage = useSendWhatsAppMessage()
+  const sendSms = useSendSmsMessage()
 
   const [pickedCustomer, setPickedCustomer] = useState<Customer | null>(null)
   const [whatsappBody, setWhatsappBody] = useState('')
+  const [smsBody, setSmsBody] = useState('')
   const [sent, setSent] = useState(false)
+  const [smsSent, setSmsSent] = useState(false)
   // The editable dialler draft. Kept here (not in <Dialler>) so it survives
   // remounts and can be synced from a picked customer / query param.
   const [manualNumber, setManualNumber] = useState('')
@@ -314,6 +318,7 @@ export function ContactCustomer() {
   }
 
   const whatsappPhone = targetPhone || manualNumber
+  const smsPhone = targetPhone || manualNumber
 
   const handleSendWhatsApp = async () => {
     if (!whatsappBody.trim()) return
@@ -326,6 +331,22 @@ export function ContactCustomer() {
       })
       setSent(true)
       setWhatsappBody('')
+    } catch (err) {
+      showToast(errorMessage(err))
+    }
+  }
+
+  const handleSendSms = async () => {
+    if (!smsBody.trim()) return
+    const effectiveCustomerId = selectedCustomer?.id ?? undefined
+    try {
+      await sendSms.mutateAsync({
+        customer_id: effectiveCustomerId,
+        to: effectiveCustomerId ? undefined : smsPhone,
+        body: smsBody.trim(),
+      })
+      setSmsSent(true)
+      setSmsBody('')
     } catch (err) {
       showToast(errorMessage(err))
     }
@@ -350,7 +371,7 @@ export function ContactCustomer() {
 
       <div>
         <div className="flex gap-1 border-b border-slate-200">
-          {(['call', 'whatsapp'] as Tab[]).map((t) => (
+          {(['call', 'whatsapp', 'sms'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -360,7 +381,7 @@ export function ContactCustomer() {
                   : 'text-slate-500 hover:text-slate-900'
               }`}
             >
-              {t === 'call' ? 'Call' : 'WhatsApp'}
+              {t === 'call' ? 'Call' : t === 'whatsapp' ? 'WhatsApp' : 'SMS'}
             </button>
           ))}
         </div>
@@ -373,6 +394,50 @@ export function ContactCustomer() {
               onNumberChange={setManualNumber}
               enabled={callingEnabled}
             />
+          ) : tab === 'sms' ? (
+            <div className="max-w-lg">
+              {!smsPhone ? (
+                <p className="text-sm text-slate-500">
+                  Pick a customer or enter a number to send an SMS.
+                </p>
+              ) : (
+                <>
+                  {smsSent && (
+                    <p className="mb-3 rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                      Message recorded.{' '}
+                      <Link
+                        to={`/${garageId}/communications/sms?phone=${encodeURIComponent(smsPhone)}`}
+                        className="font-medium underline"
+                      >
+                        View conversation
+                      </Link>
+                    </p>
+                  )}
+                  <label className="block text-sm font-medium text-slate-700" htmlFor="sms-body">
+                    Message customer…
+                  </label>
+                  <textarea
+                    id="sms-body"
+                    value={smsBody}
+                    onChange={(e) => setSmsBody(e.target.value)}
+                    rows={3}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleSendSms}
+                    disabled={sendSms.isPending || !smsBody.trim()}
+                    className="mt-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    {sendSms.isPending ? 'Sending…' : 'Send'}
+                  </button>
+                  {!overview?.capabilities.sms_configured && (
+                    <p className="mt-2 text-xs text-amber-700">
+                      SMS is not connected yet - this will be logged but not actually delivered.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
           ) : (
             <div className="max-w-lg">
               {!whatsappPhone ? (
