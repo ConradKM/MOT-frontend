@@ -122,7 +122,7 @@ describe('BookingWizard — CAPTCHA on the Details step', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
     await screen.findByRole('heading', { name: 'Review' })
 
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
 
     await waitFor(() => expect(api.submitBookingRequest).toHaveBeenCalled())
     expect(api.submitBookingRequest).toHaveBeenCalledWith(
@@ -139,7 +139,7 @@ describe('BookingWizard — CAPTCHA on the Details step', () => {
     renderWizard()
     await walkToReview(user)
 
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
 
     expect(await screen.findByText(/Verification failed or expired/)).toBeInTheDocument()
 

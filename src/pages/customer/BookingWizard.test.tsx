@@ -147,7 +147,7 @@ describe('BookingWizard — a business with no services configured', () => {
     renderWizard()
 
     await walkToReview(user)
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
 
     await waitFor(() => expect(api.submitBookingRequest).toHaveBeenCalled())
     expect(api.submitBookingRequest).toHaveBeenCalledWith(
@@ -179,7 +179,7 @@ describe('BookingWizard — a business with no services configured', () => {
     renderWizard()
 
     await walkToReview(user)
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
 
     await waitFor(() => expect(api.submitBookingRequest).toHaveBeenCalled())
     const sent = vi.mocked(api.submitBookingRequest).mock.calls[0][1]
@@ -201,7 +201,7 @@ describe('BookingWizard — a business with no services configured', () => {
     renderWizard()
 
     await walkToReview(user)
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
 
     expect(await screen.findByText(/no longer available/)).toBeInTheDocument()
     expect(screen.getByText('Pick a date & time')).toBeInTheDocument()
@@ -325,7 +325,7 @@ describe('BookingWizard — choosing a service first', () => {
     expect(screen.getByText('£189.00')).toBeInTheDocument()
     expect(screen.getByText('09:00–10:30')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
     await waitFor(() =>
       expect(api.submitBookingRequest).toHaveBeenCalledWith(
         'test-garage',
@@ -525,7 +525,7 @@ describe('BookingWizard — a business with configured questions', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await screen.findByRole('heading', { name: 'Review' })
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
 
     await waitFor(() => expect(api.submitBookingRequest).toHaveBeenCalled())
     expect(api.submitBookingRequest).toHaveBeenCalledWith(
@@ -560,7 +560,7 @@ describe('BookingWizard — a business with configured questions', () => {
     await fillYourDetails(user)
     await user.selectOptions(screen.getByLabelText(/Hair length/), 'Long')
     await user.click(screen.getByRole('button', { name: 'Continue' }))
-    await user.click(await screen.findByRole('button', { name: 'Submit booking request' }))
+    await user.click(await screen.findByRole('button', { name: 'Confirm Booking' }))
 
     expect(await screen.findByText('Hair length is required.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Your details' })).toBeInTheDocument()

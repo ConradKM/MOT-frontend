@@ -51,7 +51,7 @@ test('a customer books a slot end to end and sees a confirmation', async ({ page
   await expect(page.getByText('09:00–10:00')).toBeVisible()
   await expect(page.getByText('£54.85')).toBeVisible()
 
-  await page.getByRole('button', { name: 'Submit booking request' }).click()
+  await page.getByRole('button', { name: 'Confirm Booking' }).click()
 
   await expect(page.getByRole('heading', { name: 'Request received' })).toBeVisible()
   await expect(page.getByText(/Thanks, Oliver/)).toBeVisible()
@@ -114,7 +114,7 @@ test('a slot taken during checkout sends the customer back to pick another time'
     },
   ])
   await fillWizard(page)
-  await page.getByRole('button', { name: 'Submit booking request' }).click()
+  await page.getByRole('button', { name: 'Confirm Booking' }).click()
 
   await expect(page.getByText(/That time was just taken\./)).toBeVisible()
   await expect(page.getByText(/please pick another time/)).toBeVisible()
