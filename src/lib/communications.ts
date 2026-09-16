@@ -44,6 +44,22 @@ export function whatsappStatusLabel(status: string): string {
   return WHATSAPP_STATUS_LABELS[status] ?? status
 }
 
+// SMS uses the same underlying provider message-status vocabulary as
+// WhatsApp (queued/sent/delivered/failed/undelivered/received) - only the
+// "not connected" copy differs.
+const SMS_STATUS_LABELS: Record<string, string> = {
+  ...WHATSAPP_STATUS_LABELS,
+  SKIPPED_NOT_CONFIGURED: 'Not sent — SMS not connected',
+}
+
+export function smsStatusLabel(status: string): string {
+  return SMS_STATUS_LABELS[status] ?? status
+}
+
+export function smsStatusBadgeClass(status: string): string {
+  return whatsappStatusBadgeClass(status)
+}
+
 const GREEN = 'bg-emerald-100 text-emerald-700'
 const BLUE = 'bg-blue-100 text-blue-700'
 const RED = 'bg-red-100 text-red-700'
