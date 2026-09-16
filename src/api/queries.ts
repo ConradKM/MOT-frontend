@@ -10,6 +10,7 @@ import * as groupsApi from './appointmentTypeGroups'
 import * as imagesApi from './images'
 import * as publicGarageApi from './publicGarage'
 import * as employeesApi from './employees'
+import * as feedbackApi from './feedback'
 import * as rolesApi from './roles'
 import * as customersApi from './customers'
 import * as vehiclesApi from './vehicles'
@@ -156,6 +157,13 @@ export function useUpdateEmployee(id: string) {
     mutationFn: (data: Parameters<typeof employeesApi.updateEmployee>[1]) =>
       employeesApi.updateEmployee(id, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['employees'] }),
+  })
+}
+
+// Feedback (Business Dashboard Help Centre)
+export function useCreateFeedback() {
+  return useMutation({
+    mutationFn: (data: feedbackApi.FeedbackInput) => feedbackApi.createFeedback(data),
   })
 }
 
