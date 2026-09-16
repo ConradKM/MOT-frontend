@@ -157,7 +157,7 @@ test.describe('layout reflow between breakpoints', () => {
     expect(await overflowsHorizontally(page)).toBe(false)
 
     await page.getByRole('button', { name: 'Continue' }).click()
-    await page.getByRole('button', { name: 'Submit booking request' }).click()
+    await page.getByRole('button', { name: 'Confirm Booking' }).click()
     await expect(page.getByRole('heading', { name: 'Request received' })).toBeVisible()
   })
 
