@@ -39,6 +39,7 @@ import { CallbackRequestsList } from './pages/communications/CallbackRequestsLis
 import { ConversationSimulator } from './pages/communications/ConversationSimulator'
 import { ContactCustomer } from './pages/communications/ContactCustomer'
 import { CommunicationsAutomationSettings } from './pages/settings/CommunicationsAutomationSettings'
+import { PaymentsSettings } from './pages/settings/PaymentsSettings'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
 import { BookingWizard } from './pages/customer/BookingWizard'
@@ -141,6 +142,7 @@ export default function App() {
             path="settings/communications-automation"
             element={<CommunicationsAutomationSettings />}
           />
+          <Route path="settings/payments" element={<PaymentsSettings />} />
         </Route>
       </Route>
 

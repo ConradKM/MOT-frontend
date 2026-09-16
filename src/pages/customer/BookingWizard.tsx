@@ -71,7 +71,7 @@ type FieldErrors = Partial<Record<keyof WizardData, string>> & { form?: string }
 // step *number* shown in the stepper has to come from each step's position
 // in that list, not a hard-coded constant - otherwise turning a deposit on
 // mid-flow would leave "Step 3 of 3" stuck showing the wrong total.
-type StepKey = 'service' | 'time' | 'details' | 'deposit' | 'review'
+type StepKey = 'service' | 'time' | 'details' | 'review'
 
 const STEP_LABELS: Record<StepKey, string> = {
   service: 'Service',
@@ -79,7 +79,6 @@ const STEP_LABELS: Record<StepKey, string> = {
   // No longer "Vehicle & your details": what is asked beyond name and contact
   // details is the business's own configuration now.
   details: 'Your details',
-  deposit: 'Deposit',
   review: 'Review',
 }
 
@@ -209,7 +208,6 @@ export function BookingWizard() {
     ...(hasServices ? (['service'] as StepKey[]) : []),
     'time',
     'details',
-    ...(requiresDeposit ? (['deposit'] as StepKey[]) : []),
     'review',
   ]
   /**
@@ -264,9 +262,7 @@ export function BookingWizard() {
       }
     }
     // Verified once, here, right before the first server call either path
-    // makes (submitting directly, or creating a deposit intent) - not on
-    // Review, which the deposit path never reaches until after that first
-    // call already succeeded.
+    // makes (submitting directly, or creating a deposit intent from Review).
     if (step === 'details' && captchaEnabled && !captchaToken) {
       setErrors({ form: 'Please confirm that you are not a robot.' })
       return
@@ -496,16 +492,6 @@ export function BookingWizard() {
             onCaptchaToken={handleCaptchaToken}
           />
         )}
-        {step === 'deposit' && (
-          <DepositStep
-            slug={garageSlug}
-            garageName={garage.name}
-            payload={buildBookingPayload(data, captchaToken, sections, answers)}
-            appointmentType={selectedAppointmentType}
-            onPaid={handleDepositPaid}
-            onSlotLost={handleDepositSlotLost}
-          />
-        )}
         {step === 'review' && (
           <ReviewStep
             data={data}
@@ -515,6 +501,19 @@ export function BookingWizard() {
             sections={sections}
             answers={answers}
             onEditStep={goToStep}
+            requiresDeposit={requiresDeposit}
+            paymentCheckout={
+              requiresDeposit && !depositResult ? (
+                <DepositStep
+                  slug={garageSlug}
+                  garageName={garage.name}
+                  payload={buildBookingPayload(data, captchaToken, sections, answers)}
+                  appointmentType={selectedAppointmentType}
+                  onPaid={handleDepositPaid}
+                  onSlotLost={handleDepositSlotLost}
+                />
+              ) : null
+            }
           />
         )}
         </div>
@@ -524,7 +523,7 @@ export function BookingWizard() {
         )}
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6">
-          {step !== steps[0] && step !== 'deposit' && !(step === 'review' && depositResult) ? (
+          {step !== steps[0] && !(step === 'review' && (depositResult || requiresDeposit)) ? (
             <button
               type="button"
               onClick={goBack}
@@ -535,9 +534,7 @@ export function BookingWizard() {
           ) : (
             <span />
           )}
-          {step === 'deposit' ? (
-            <span />
-          ) : step === 'review' ? (
+          {step === 'review' && (!requiresDeposit || depositResult) ? (
             <button
               type="button"
               onClick={handleSubmit}
@@ -550,6 +547,8 @@ export function BookingWizard() {
                   enabled here before an authoritative SUCCEEDED status. */}
               {submitting ? 'Confirming…' : 'Confirm Booking'}
             </button>
+          ) : step === 'review' ? (
+            <span />
           ) : (
             <button
               type="button"
@@ -813,6 +812,8 @@ function ReviewStep({
   sections,
   answers,
   onEditStep,
+  requiresDeposit,
+  paymentCheckout,
 }: {
   data: WizardData
   garageName: string
@@ -821,6 +822,8 @@ function ReviewStep({
   sections: BookingFlowSection[]
   answers: AnswerMap
   onEditStep: (step: StepKey) => void
+  requiresDeposit: boolean
+  paymentCheckout: ReactNode
 }) {
   const finishTime =
     data.time && appointmentType?.default_duration_minutes != null
@@ -838,6 +841,8 @@ function ReviewStep({
       <p className="mt-1 text-sm text-slate-500">
         {depositResult
           ? 'Your deposit is paid. Here is a summary of your booking.'
+          : requiresDeposit
+            ? 'Review your booking, then pay the required deposit securely below.'
           : 'Please check everything below before you submit.'}
       </p>
 
@@ -874,6 +879,8 @@ function ReviewStep({
             />
           </SummarySection>
         )}
+
+        {paymentCheckout && <div className="mt-6">{paymentCheckout}</div>}
 
         <SummarySection
           title="Your details"

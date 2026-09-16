@@ -15,6 +15,7 @@ export const SECTIONS = [
   { slug: 'availability', label: 'Availability' },
   { slug: 'mot-reminders', label: 'MOT Reminders' },
   { slug: 'communications-automation', label: 'Communications Automation' },
+  { slug: 'payments', label: 'Payments' },
 ]
 
 /** Wraps a settings subsection page with a mini nav for jumping between subsections. */

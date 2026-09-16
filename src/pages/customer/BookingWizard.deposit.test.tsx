@@ -26,16 +26,18 @@ vi.mock('../../api/publicGarage', async (orig) => ({
 }))
 
 let confirmPaymentMock = vi.fn()
+let loadStripeMock = vi.fn()
 
 vi.mock('@stripe/react-stripe-js', () => ({
   Elements: ({ children }: { children: ReactNode }) => children,
+  ExpressCheckoutElement: () => <div data-testid="express-checkout-element" />,
   PaymentElement: () => <div data-testid="payment-element" />,
   useStripe: () => ({ confirmPayment: confirmPaymentMock }),
   useElements: () => ({}),
 }))
 
 vi.mock('@stripe/stripe-js', () => ({
-  loadStripe: () => Promise.resolve({}),
+  loadStripe: (...args: unknown[]) => loadStripeMock(...args),
 }))
 
 const TODAY = '2026-09-10'
@@ -83,13 +85,14 @@ async function fillDetailsAndReachDeposit(user: ReturnType<typeof userEvent.setu
   await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
   await user.click(screen.getByRole('button', { name: 'Continue' }))
 
-  await screen.findByRole('heading', { name: 'Deposit' })
+  await screen.findByRole('heading', { name: 'Review' })
 }
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 8, 10, 9, 0, 0))
   confirmPaymentMock = vi.fn()
+  loadStripeMock = vi.fn(() => Promise.resolve({}))
   vi.mocked(api.getPublicGarage).mockResolvedValue(GARAGE)
   vi.mocked(api.getBookingFlow).mockResolvedValue(makeBookingFlow())
   vi.mocked(api.getGarageAvailability).mockResolvedValue({
@@ -166,6 +169,7 @@ describe('BookingWizard — deposit step', () => {
       provider_data: {
         client_secret: 'pi_1_secret_abc',
         publishable_key: 'pk_test_123',
+        stripe_account_id: 'acct_connected_123',
         available_wallets: ['apple_pay', 'google_pay'],
       },
       hold_expires_at: '2026-09-10T09:15:00Z',
@@ -175,6 +179,11 @@ describe('BookingWizard — deposit step', () => {
 
     await fillDetailsAndReachDeposit(user)
 
+    expect(screen.getByTestId('express-checkout-element')).toBeInTheDocument()
+    expect(screen.getByTestId('payment-element')).toBeInTheDocument()
+    expect(loadStripeMock).toHaveBeenCalledWith('pk_test_123', {
+      stripeAccount: 'acct_connected_123',
+    })
     expect(screen.getAllByText('£20.00', { exact: false }).length).toBeGreaterThan(0)
     expect(screen.getByText(/Deposit due now/)).toBeInTheDocument()
     expect(screen.getByText('£80.00')).toBeInTheDocument()
