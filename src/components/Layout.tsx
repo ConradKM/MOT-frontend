@@ -28,6 +28,7 @@ export function Layout() {
     { to: `/${garageId}/customers`, label: 'Customers' },
     { to: `/${garageId}/appointments`, label: 'Appointments' },
     { to: `/${garageId}/booking-requests`, label: 'Requests' },
+    { to: `/${garageId}/payments`, label: 'Payments' },
     { to: `/${garageId}/communications`, label: 'Communications', badge: unread?.whatsapp_unread },
     { to: `/${garageId}/settings`, label: 'Settings' },
   ]
