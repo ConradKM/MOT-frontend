@@ -45,6 +45,7 @@ import { BookingWizard } from './pages/customer/BookingWizard'
 import { CustomerAccount } from './pages/customer/CustomerAccount'
 import { CustomerAppointmentDetail } from './pages/customer/CustomerAppointmentDetail'
 import { Dashboard, DashboardRedirect } from './pages/Dashboard'
+import { FeedbackPage } from './pages/Feedback'
 
 export default function App() {
   return (
@@ -97,6 +98,7 @@ export default function App() {
 
           <Route path="booking-requests" element={<BookingRequestsList />} />
           <Route path="mot-reminders" element={<MotRemindersList />} />
+          <Route path="feedback" element={<FeedbackPage />} />
 
           <Route path="communications" element={<CommunicationsLayout />}>
             <Route index element={<CommunicationsOverview />} />

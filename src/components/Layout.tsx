@@ -2,6 +2,7 @@ import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { BusinessBrandMark } from './BusinessBrandMark'
 import { Footer } from './Footer'
 import { ImpersonationBanner } from './ImpersonationBanner'
+import { NeedHelpMenu } from './NeedHelpMenu'
 import { useAuth } from '../auth/AuthContext'
 import { useGarage, useUnreadWhatsAppCount } from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
@@ -79,12 +80,15 @@ export function Layout() {
               ))}
             </nav>
           </div>
-          <button
-            onClick={logout}
-            className="shrink-0 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-          >
-            Log out
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <NeedHelpMenu />
+            <button
+              onClick={logout}
+              className="shrink-0 rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+            >
+              Log out
+            </button>
+          </div>
         </div>
       </header>
       <main>

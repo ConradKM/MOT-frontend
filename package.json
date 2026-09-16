@@ -25,6 +25,7 @@
     "@stripe/stripe-js": "^9.16.0",
     "@tanstack/react-query": "^5.101.4",
     "@twilio/voice-sdk": "^2.18.4",
+    "lucide-react": "^1.46.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

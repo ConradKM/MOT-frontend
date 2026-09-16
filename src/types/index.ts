@@ -290,6 +290,32 @@ export interface AppointmentChecklist {
   updated_at: string
 }
 
+export type FeedbackType =
+  | 'GENERAL'
+  | 'SUGGESTION'
+  | 'BUG'
+  | 'NOT_WORKING'
+  | 'COMPLIMENT'
+  | 'OTHER'
+
+export type FeedbackPriority = 'LOW' | 'NORMAL' | 'HIGH'
+
+/** Business Dashboard Help Centre submission. `business_name`/`user_email`
+ * are snapshotted server-side at submission time; `done` is backend-owned
+ * (always false for a freshly created row) - see api/feedback.ts. */
+export interface Feedback {
+  id: string
+  business_name: string
+  user_email: string
+  type: FeedbackType
+  subject: string | null
+  message: string
+  priority: FeedbackPriority
+  done: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface ApiErrorBody {
   code: number
   status: string
