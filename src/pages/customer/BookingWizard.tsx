@@ -544,11 +544,11 @@ export function BookingWizard() {
               disabled={submitting}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
             >
-              {submitting
-                ? 'Sending…'
-                : depositResult
-                  ? 'Finish'
-                  : 'Submit booking request'}
+              {/* Deposit bookings only ever reach Review once depositResult
+                  is set - i.e. once the server has confirmed the deposit
+                  succeeded (see handleDepositPaid) - so this button is never
+                  enabled here before an authoritative SUCCEEDED status. */}
+              {submitting ? 'Confirming…' : 'Confirm Booking'}
             </button>
           ) : (
             <button

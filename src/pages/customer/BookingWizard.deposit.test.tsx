@@ -163,7 +163,11 @@ describe('BookingWizard — deposit step', () => {
       remaining_balance: '80.00',
       provider: 'stripe',
       checkout_mode: 'EMBEDDED',
-      provider_data: { client_secret: 'pi_1_secret_abc', publishable_key: 'pk_test_123' },
+      provider_data: {
+        client_secret: 'pi_1_secret_abc',
+        publishable_key: 'pk_test_123',
+        available_wallets: ['apple_pay', 'google_pay'],
+      },
       hold_expires_at: '2026-09-10T09:15:00Z',
     })
     const user = userEvent.setup()
@@ -175,6 +179,7 @@ describe('BookingWizard — deposit step', () => {
     expect(screen.getByText(/Deposit due now/)).toBeInTheDocument()
     expect(screen.getByText('£80.00')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Pay deposit/ })).toBeInTheDocument()
+    expect(screen.getByText(/Apple Pay or Google Pay may also appear/)).toBeInTheDocument()
   })
 
   it('pays successfully, then finishes without submitting a second booking request', async () => {
@@ -215,7 +220,7 @@ describe('BookingWizard — deposit step', () => {
     expect(screen.getByText('Deposit paid')).toBeInTheDocument()
     expect(screen.getByText('£80.00')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Finish' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
     await screen.findByRole('heading', { name: 'Request received' })
     expect(api.submitBookingRequest).not.toHaveBeenCalled()
   })

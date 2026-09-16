@@ -225,11 +225,15 @@ export interface DepositIntentCreated {
   provider: PaymentProviderName | null
   checkout_mode: CheckoutMode | null
   /** Provider-specific, client-safe fields only (e.g. Stripe's
-   * client_secret + publishable_key) - shape depends on `provider`/
-   * `checkout_mode`. Only present on creation, never on the status-poll
-   * response - a fresh session token is only ever handed out once. Never
-   * contains anything that isn't already safe to show a customer. */
-  provider_data: Record<string, string | null> | null
+   * client_secret + publishable_key + available_wallets) - shape depends on
+   * `provider`/`checkout_mode`. Only present on creation, never on the
+   * status-poll response - a fresh session token is only ever handed out
+   * once. Never contains anything that isn't already safe to show a
+   * customer. `available_wallets` (e.g. ["apple_pay", "google_pay"]) is
+   * purely informational - the wallet buttons themselves are rendered by
+   * the provider's own checkout widget (see StripeCheckout.tsx's
+   * PaymentElement), never built by CoMaz. */
+  provider_data: Record<string, string | string[] | null> | null
   hold_expires_at: string | null
 }
 

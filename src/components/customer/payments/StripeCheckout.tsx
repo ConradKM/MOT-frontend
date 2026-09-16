@@ -9,8 +9,9 @@ import type { PaymentCheckoutProps } from './types'
  * generic `provider_data` envelope (see PaymentCheckoutProps) rather than
  * assuming they exist at the top level of the deposit-intent response. */
 export function StripeCheckout({ slug, intent, onPaid, onSlotLost }: PaymentCheckoutProps) {
-  const clientSecret = intent.provider_data?.client_secret ?? null
-  const publishableKey = intent.provider_data?.publishable_key ?? null
+  const clientSecret = (intent.provider_data?.client_secret as string | undefined) ?? null
+  const publishableKey = (intent.provider_data?.publishable_key as string | undefined) ?? null
+  const availableWallets = (intent.provider_data?.available_wallets as string[] | undefined) ?? []
   const stripePromiseRef = useRef<Promise<Stripe | null> | null>(null)
 
   if (!clientSecret || !publishableKey) {
@@ -27,14 +28,26 @@ export function StripeCheckout({ slug, intent, onPaid, onSlotLost }: PaymentChec
 
   return (
     <Elements stripe={stripePromiseRef.current} options={{ clientSecret }}>
-      <StripePaymentForm slug={slug} intent={intent} onPaid={onPaid} onSlotLost={onSlotLost} />
+      <StripePaymentForm
+        slug={slug}
+        intent={intent}
+        onPaid={onPaid}
+        onSlotLost={onSlotLost}
+        availableWallets={availableWallets}
+      />
     </Elements>
   )
 }
 
 type PaymentPhase = 'ready' | 'submitting' | 'confirming' | 'error'
 
-function StripePaymentForm({ slug, intent, onPaid, onSlotLost }: PaymentCheckoutProps) {
+function StripePaymentForm({
+  slug,
+  intent,
+  onPaid,
+  onSlotLost,
+  availableWallets,
+}: PaymentCheckoutProps & { availableWallets: string[] }) {
   const stripe = useStripe()
   const elements = useElements()
   const [phase, setPhase] = useState<PaymentPhase>('ready')
@@ -84,6 +97,15 @@ function StripePaymentForm({ slug, intent, onPaid, onSlotLost }: PaymentCheckout
   return (
     <form onSubmit={handlePay} className="space-y-4">
       <PaymentElement />
+
+      {/* The Payment Element above already renders any wallet button itself
+          (it detects device/browser support live) - this is just a heads-up
+          for a device that doesn't happen to show one. */}
+      {availableWallets.length > 0 && (
+        <p className="text-xs text-slate-500">
+          Apple Pay or Google Pay may also appear above if your device supports it.
+        </p>
+      )}
 
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       {phase === 'confirming' && (

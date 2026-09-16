@@ -202,7 +202,7 @@ describe('BookingWizard — accessibility', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await screen.findByRole('heading', { name: 'Review' })
-    await user.click(screen.getByRole('button', { name: 'Submit booking request' }))
+    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
 
     await screen.findByRole('heading', { name: 'Request received' })
     await expectNoA11yViolations(container)
