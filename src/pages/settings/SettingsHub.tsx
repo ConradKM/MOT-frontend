@@ -72,6 +72,11 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     description: 'Automated WhatsApp assistant, message wording, and reminder timing.',
     slug: 'settings/communications-automation',
   },
+  {
+    title: 'Payments',
+    description: 'Connect Stripe and see whether your business is ready to accept online deposits.',
+    slug: 'settings/payments',
+  },
 ]
 
 export function SettingsHub() {

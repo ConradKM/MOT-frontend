@@ -39,6 +39,8 @@ import { CallbackRequestsList } from './pages/communications/CallbackRequestsLis
 import { ConversationSimulator } from './pages/communications/ConversationSimulator'
 import { ContactCustomer } from './pages/communications/ContactCustomer'
 import { CommunicationsAutomationSettings } from './pages/settings/CommunicationsAutomationSettings'
+import { PaymentsSettings } from './pages/settings/PaymentsSettings'
+import { PaymentsList } from './pages/payments/PaymentsList'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
 import { BookingWizard } from './pages/customer/BookingWizard'
@@ -97,6 +99,7 @@ export default function App() {
           <Route path="vehicles/:id/edit" element={<VehicleForm />} />
 
           <Route path="booking-requests" element={<BookingRequestsList />} />
+          <Route path="payments" element={<PaymentsList />} />
           <Route path="mot-reminders" element={<MotRemindersList />} />
           <Route path="feedback" element={<FeedbackPage />} />
 
@@ -141,6 +144,7 @@ export default function App() {
             path="settings/communications-automation"
             element={<CommunicationsAutomationSettings />}
           />
+          <Route path="settings/payments" element={<PaymentsSettings />} />
         </Route>
       </Route>
 
