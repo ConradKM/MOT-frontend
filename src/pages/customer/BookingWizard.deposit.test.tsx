@@ -367,6 +367,7 @@ describe('BookingWizard — a deposit booking still asks the business its questi
       'test-garage',
       expect.objectContaining({
         answers: [{ field_id: 'f-notes', value: 'Please call first' }],
+        payment_attempt_id: expect.any(String),
       }),
     )
   })
