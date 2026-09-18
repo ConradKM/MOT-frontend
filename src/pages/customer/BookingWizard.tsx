@@ -17,8 +17,10 @@ import { TimeSlotPicker } from '../../components/customer/TimeSlotPicker'
 import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner'
 import { formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
+import { clearBookingDraft, loadBookingDraft, saveBookingDraft } from '../../lib/bookingDraft'
 import { useBookingFlow, usePublicGarage } from '../../api/queries'
 import {
+  getGarageDayAvailability,
   submitBookingRequest,
   type BookingFlowSection,
   type BookingRequestInput,
@@ -74,6 +76,12 @@ type FieldErrors = Partial<Record<keyof WizardData, string>> & { form?: string }
 // in that list, not a hard-coded constant - otherwise turning a deposit on
 // mid-flow would leave "Step 3 of 3" stuck showing the wrong total.
 type StepKey = 'service' | 'time' | 'details' | 'review'
+
+const STEP_KEYS: readonly StepKey[] = ['service', 'time', 'details', 'review']
+
+function isStepKey(value: string): value is StepKey {
+  return (STEP_KEYS as readonly string[]).includes(value)
+}
 
 const STEP_LABELS: Record<StepKey, string> = {
   service: 'Service',
@@ -141,6 +149,7 @@ export function BookingWizard() {
   const [answers, setAnswers] = useState<AnswerMap>({})
   const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({})
   const [deepLinkApplied, setDeepLinkApplied] = useState(false)
+  const [draftChecked, setDraftChecked] = useState(false)
   // Set once the Deposit step's payment has succeeded (server-confirmed via
   // webhook, not just "Stripe didn't error") - the booking request already
   // exists at that point (see app/payments/service.py), so Review just
@@ -240,6 +249,122 @@ export function BookingWizard() {
     setDeepLinkApplied(true)
   }, [deepLinkApplied, hasServices, searchParams, services])
 
+  // Resume an in-progress booking after a refresh (or the tab closing and
+  // reopening within the same browser session) - see src/lib/bookingDraft.ts.
+  // Runs once, after this business's services have loaded, so a restored
+  // service id can be checked against what's actually still offered. Takes
+  // priority over the deep-link effect above (marks deepLinkApplied itself)
+  // - a customer's own resumed progress should win over a bookmarked link.
+  useEffect(() => {
+    if (draftChecked || !urlGarageId || garageLoading || !garage) return
+
+    const draft = loadBookingDraft(urlGarageId)
+    if (!draft) {
+      setDraftChecked(true)
+      return
+    }
+
+    const restoredService = draft.appointmentTypeId
+      ? services.find((s) => s.id === draft.appointmentTypeId)
+      : undefined
+    // A service the business no longer offers (removed/disabled since the
+    // draft was saved) can't be resumed at all - nothing past it is
+    // trustworthy either.
+    const serviceStillValid = !draft.appointmentTypeId || Boolean(restoredService)
+
+    const finish = (next: Partial<WizardData>, step: StepKey, formMessage?: string) => {
+      setData((d) => ({ ...d, ...next }))
+      setAnswers(draft.answers)
+      setStep(step)
+      if (formMessage) setErrors({ form: formMessage })
+      setDeepLinkApplied(true)
+      setDraftChecked(true)
+    }
+
+    if (!serviceStillValid) {
+      finish(
+        { appointmentTypeId: '', date: '', time: '', paymentAttemptId: '' },
+        hasServices ? 'service' : 'time',
+      )
+      return
+    }
+
+    const baseData: Partial<WizardData> = {
+      appointmentTypeId: draft.appointmentTypeId,
+      firstName: draft.firstName,
+      lastName: draft.lastName,
+      email: draft.email,
+      phone: draft.phone,
+    }
+
+    if (!draft.date || !draft.time) {
+      finish(
+        { ...baseData, date: draft.date, time: '', paymentAttemptId: '' },
+        isStepKey(draft.step) && draft.step !== 'review' ? draft.step : 'time',
+      )
+      return
+    }
+
+    // Never trust a saved date/time without checking it against real,
+    // current availability first - someone else (or the customer's own
+    // earlier attempt) may already have taken it, or the garage's schedule
+    // may have changed, since it was saved.
+    getGarageDayAvailability(garage.slug, draft.date, draft.appointmentTypeId || undefined)
+      .then((day) => {
+        const slot = day.slots.find((s) => s.start === draft.time)
+        const stillAvailable = day.is_open && slot != null && slot.status !== 'booked'
+        if (stillAvailable) {
+          finish(
+            {
+              ...baseData,
+              date: draft.date,
+              time: draft.time,
+              paymentAttemptId: draft.paymentAttemptId,
+            },
+            isStepKey(draft.step) ? draft.step : 'details',
+          )
+        } else {
+          // The date itself is kept (mirrors handleDepositUnavailable/
+          // handleDepositSlotLost below) - only the specific time is no
+          // longer good, so the calendar can stay on the same day while a
+          // new time is picked.
+          finish(
+            { ...baseData, date: draft.date, time: '', paymentAttemptId: '' },
+            'time',
+            'Your previously selected time is no longer available. Please choose another.',
+          )
+        }
+      })
+      .catch(() => {
+        // Couldn't confirm the saved slot is still real - safest is to drop
+        // just the time rather than silently resume something unverified.
+        finish({ ...baseData, date: draft.date, time: '', paymentAttemptId: '' }, 'time')
+      })
+  }, [draftChecked, urlGarageId, garageLoading, garage, services, hasServices])
+
+  // Persist the in-progress draft so a refresh doesn't lose it - see
+  // src/lib/bookingDraft.ts. Waits for the restore check above to finish
+  // first, so a not-yet-checked initial render can't stomp a saved draft
+  // with the wizard's blank starting state. Deliberately excludes
+  // depositResult (its provider_data carries a payment-provider secret -
+  // see DepositStep.tsx) and everything ephemeral (captcha token,
+  // submitting/submitted, validation errors).
+  useEffect(() => {
+    if (!draftChecked || !urlGarageId || submitted) return
+    saveBookingDraft(urlGarageId, {
+      step,
+      appointmentTypeId: data.appointmentTypeId,
+      date: data.date,
+      time: data.time,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      phone: data.phone,
+      paymentAttemptId: data.paymentAttemptId,
+      answers,
+    })
+  }, [draftChecked, urlGarageId, submitted, step, data, answers])
+
   // A business with nothing bookable has no choice to present; showing an
   // empty first step would be a dead end.
   useEffect(() => {
@@ -292,6 +417,15 @@ export function BookingWizard() {
     setDepositResult(result)
     setBookingReference(result.booking_reference)
     setStep('review')
+    // The deposit succeeding is what actually creates/confirms the booking
+    // server-side (see app/payments/service.py) - the remaining "Confirm
+    // Booking" click just finishes the wizard's own local state, so there is
+    // nothing left worth resuming from a draft past this point. Clearing now
+    // (rather than only at that final click) also avoids a subtler problem:
+    // restoring a stale draft after a successful deposit would try to create
+    // a *second* deposit intent for a request that already moved on from
+    // AWAITING_PAYMENT, which the server would correctly reject.
+    if (urlGarageId) clearBookingDraft(urlGarageId)
   }
 
   // The payment hold expired (or the slot was otherwise lost) while paying -
@@ -303,6 +437,21 @@ export function BookingWizard() {
     refreshAvailability()
     setErrors({
       form: 'Your payment window expired before it completed, so this slot was released. Please choose another time.',
+    })
+    setStep('time')
+  }
+
+  // The deposit hold couldn't even be created - the slot was already gone by
+  // the time Review tried to start payment (see DepositStep.tsx). Distinct
+  // message from handleDepositSlotLost's (no payment window was ever open
+  // here), but the same recovery: keep everything except the dead slot, and
+  // send the customer straight back to pick another time rather than leaving
+  // them stuck on an error with no obvious way forward.
+  const handleDepositUnavailable = () => {
+    setData((d) => ({ ...d, time: '', paymentAttemptId: '' }))
+    refreshAvailability()
+    setErrors({
+      form: 'This time is no longer available. Please choose another time.',
     })
     setStep('time')
   }
@@ -343,6 +492,7 @@ export function BookingWizard() {
       if (result.booking_reference) {
         void loginWithReference(email, result.booking_reference).catch(() => {})
       }
+      if (urlGarageId) clearBookingDraft(urlGarageId)
       setSubmitted(true)
     } catch (err) {
       // The slot was taken between loading the calendar and submitting.
@@ -394,7 +544,9 @@ export function BookingWizard() {
   }
 
   const restart = () => {
+    if (urlGarageId) clearBookingDraft(urlGarageId)
     setData(initialData)
+    setAnswers({})
     setErrors({})
     setStep('time')
     setSubmitted(false)
@@ -516,6 +668,7 @@ export function BookingWizard() {
                   appointmentType={selectedAppointmentType}
                   onPaid={handleDepositPaid}
                   onSlotLost={handleDepositSlotLost}
+                  onUnavailable={handleDepositUnavailable}
                 />
               ) : null
             }

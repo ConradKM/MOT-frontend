@@ -15,6 +15,10 @@ interface Props {
   appointmentType: PublicAppointmentType | undefined
   onPaid: (result: DepositIntentCreated) => void
   onSlotLost: () => void
+  /** The hold couldn't even be created - the slot was already gone before
+   * payment started (a 409 from POST .../deposit-intent). Distinct from
+   * onSlotLost, which is for a hold that expired *during* payment. */
+  onUnavailable: () => void
 }
 
 /** The Deposit step: creates a short-lived payment hold + provider session
@@ -26,7 +30,15 @@ interface Props {
  * branding, error/retry chrome - is completely provider-independent; only
  * PaymentCheckout's child component ever talks to a specific provider.
  */
-export function DepositStep({ slug, garageName, payload, appointmentType, onPaid, onSlotLost }: Props) {
+export function DepositStep({
+  slug,
+  garageName,
+  payload,
+  appointmentType,
+  onPaid,
+  onSlotLost,
+  onUnavailable,
+}: Props) {
   const [intent, setIntent] = useState<DepositIntentCreated | null>(null)
   const [creating, setCreating] = useState(true)
   const [createError, setCreateError] = useState<string | null>(null)
@@ -44,8 +56,14 @@ export function DepositStep({ slug, garageName, payload, appointmentType, onPaid
       .catch((err: unknown) => {
         if (cancelled) return
         if (isApiError(err) && err.code === 409) {
-          setCreateError('This time is no longer available. Please go back and choose another.')
-        } else if (isApiError(err) && err.code === 503) {
+          // Send the customer straight back to Date & time (preserving
+          // everything else they've entered) rather than stranding them on
+          // an error with no obvious next step - see BookingWizard.tsx's
+          // handleDepositUnavailable.
+          onUnavailable()
+          return
+        }
+        if (isApiError(err) && err.code === 503) {
           setCreateError(
             "This business isn't able to take deposit payments online right now. Please contact them directly to book.",
           )
