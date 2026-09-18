@@ -43,6 +43,7 @@ interface WizardData {
   date: string
   appointmentTypeId: string
   time: string
+  paymentAttemptId: string
 }
 
 const initialData: WizardData = {
@@ -53,6 +54,7 @@ const initialData: WizardData = {
   date: '',
   appointmentTypeId: '',
   time: '',
+  paymentAttemptId: '',
 }
 
 /** "09:00" + 90 -> "10:30" - the expected finish time shown on review. */
@@ -148,21 +150,21 @@ export function BookingWizard() {
   const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
 
   const update = (field: keyof WizardData, value: string) => {
-    setData((d) => ({ ...d, [field]: value }))
+    setData((d) => ({ ...d, [field]: value, paymentAttemptId: '' }))
     if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }))
   }
 
   const selectDate = (date: string) => {
     // The chosen service persists across a date change (still driving
     // duration once a new time is picked) - only the stale time resets.
-    setData((d) => ({ ...d, date, time: '' }))
+    setData((d) => ({ ...d, date, time: '', paymentAttemptId: '' }))
     setErrors((e) => ({ ...e, form: undefined }))
   }
 
   const selectService = (appointmentTypeId: string) => {
     // Duration drives which days and times are even offered, so a service
     // change invalidates any date/time already picked.
-    setData((d) => ({ ...d, appointmentTypeId, date: '', time: '' }))
+    setData((d) => ({ ...d, appointmentTypeId, date: '', time: '', paymentAttemptId: '' }))
     setErrors({})
     setStep('time')
   }
@@ -173,7 +175,7 @@ export function BookingWizard() {
   }
 
   const selectSlot = (time: string) => {
-    setData((d) => ({ ...d, time }))
+    setData((d) => ({ ...d, time, paymentAttemptId: '' }))
     setErrors((e) => ({ ...e, form: undefined }))
     setStep('details')
   }
@@ -267,6 +269,9 @@ export function BookingWizard() {
       setErrors({ form: 'Please confirm that you are not a robot.' })
       return
     }
+    if (step === 'details' && requiresDeposit && !data.paymentAttemptId) {
+      setData((d) => ({ ...d, paymentAttemptId: crypto.randomUUID() }))
+    }
     setErrors({})
     setAnswerErrors({})
     const idx = steps.indexOf(step)
@@ -294,7 +299,7 @@ export function BookingWizard() {
   // customer back to pick a fresh slot rather than showing a dead-end error.
   const handleDepositSlotLost = () => {
     setDepositResult(null)
-    setData((d) => ({ ...d, time: '' }))
+    setData((d) => ({ ...d, time: '', paymentAttemptId: '' }))
     refreshAvailability()
     setErrors({
       form: 'Your payment window expired before it completed, so this slot was released. Please choose another time.',
@@ -342,7 +347,7 @@ export function BookingWizard() {
     } catch (err) {
       // The slot was taken between loading the calendar and submitting.
       if (isApiError(err) && err.code === 409) {
-        setData((d) => ({ ...d, time: '' }))
+        setData((d) => ({ ...d, time: '', paymentAttemptId: '' }))
         refreshAvailability()
         setErrors({
           form: `${errorMessage(err)} We've refreshed the calendar — please pick another time.`,
@@ -589,6 +594,7 @@ function buildBookingPayload(
     // too, not skip them because it happens to be paid for up front.
     answers: toAnswerInput(sections, answers),
     captcha_token: captchaToken,
+    payment_attempt_id: data.paymentAttemptId || undefined,
   }
 }
 
