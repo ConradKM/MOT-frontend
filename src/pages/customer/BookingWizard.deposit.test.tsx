@@ -301,16 +301,42 @@ describe('BookingWizard — deposit step', () => {
     expect(screen.getByText('Pick a date & time')).toBeInTheDocument()
   })
 
-  it('shows a plain "slot unavailable" message on an ordinary 409', async () => {
+  it('returns to Date & time and keeps entered details if the slot is gone before payment starts', async () => {
+    // Distinct from "returns to the time step if the payment hold expires"
+    // above: this is a 409 on the *first* call, before any payment session
+    // ever existed - see app/public_booking/routes.py::_lock_and_validate_slot.
+    // Bounces straight back to Date & time rather than landing on Review at
+    // all, so this doesn't use fillDetailsAndReachDeposit's own wait for the
+    // Review heading.
     vi.mocked(api.createDepositIntent).mockRejectedValue(
       new ApiError({ code: 409, status: 'Conflict', message: 'Full up.' }, 'fallback'),
     )
 
     const user = userEvent.setup()
     renderWizard()
-    await fillDetailsAndReachDeposit(user)
 
-    await screen.findByText('This time is no longer available. Please go back and choose another.')
+    await screen.findByText('Test Garage')
+    await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+    await user.click(
+      await screen.findByRole('gridcell', {
+        name: /10 September 2026 — Good availability, selectable/,
+      }),
+    )
+    await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+    await user.type(await screen.findByLabelText(/First name/), 'Alex')
+    await user.type(screen.getByLabelText(/Last name/), 'Turner')
+    await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
+    await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await screen.findByText('This time is no longer available. Please choose another time.')
+    expect(screen.getByText('Pick a date & time')).toBeInTheDocument()
+
+    // Everything but the dead slot survives the bounce-back.
+    await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+    await screen.findByRole('heading', { name: 'Your details' })
+    expect(screen.getByLabelText(/First name/)).toHaveValue('Alex')
+    expect(screen.getByLabelText(/^Email/)).toHaveValue('alex@example.com')
   })
 
   it('does not treat a vehicle-reference conflict as the slot being unavailable', async () => {
@@ -318,8 +344,9 @@ describe('BookingWizard — deposit step', () => {
     // app/booking_requests/service.py::resolve_customer_and_vehicle (a
     // different customer already owns a vehicle with this registration at
     // this garage) has nothing to do with the slot, but used to be shown
-    // identically to "This time is no longer available" - see the plain
-    // 409 test above for the message this must NOT share.
+    // identically to "This time is no longer available" and bounced the
+    // customer back to Date & time - see the test above for the behaviour
+    // this must NOT share.
     vi.mocked(api.createDepositIntent).mockRejectedValue(
       new ApiError(
         {
@@ -338,6 +365,8 @@ describe('BookingWizard — deposit step', () => {
     await fillDetailsAndReachDeposit(user)
 
     await screen.findByText(/already registered under a different profile/)
+    // Must stay on Review/Deposit, not bounce back to Date & time.
+    expect(screen.queryByText('Pick a date & time')).not.toBeInTheDocument()
   })
 
   it('shows a clear fallback for a provider/checkout mode the frontend has no component for', async () => {
