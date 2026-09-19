@@ -43,7 +43,17 @@ export function DepositStep({ slug, garageName, payload, appointmentType, onPaid
       })
       .catch((err: unknown) => {
         if (cancelled) return
-        if (isApiError(err) && err.code === 409) {
+        // A 409 with this specific reason (see app/booking_requests/service.py::
+        // resolve_customer_and_vehicle) has nothing to do with the slot - a
+        // different customer already owns a vehicle with this registration at
+        // this garage - so it must not be shown as "slot unavailable".
+        if (isApiError(err) && err.code === 409 && err.reason === 'vehicle_reference_conflict') {
+          setCreateError(
+            'That vehicle registration is already registered under a different profile ' +
+              'with this business. Please double-check what you entered, or contact them ' +
+              'directly if you believe this is a mistake.',
+          )
+        } else if (isApiError(err) && err.code === 409) {
           setCreateError('This time is no longer available. Please go back and choose another.')
         } else if (isApiError(err) && err.code === 503) {
           setCreateError(

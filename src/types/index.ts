@@ -325,5 +325,13 @@ export interface ApiErrorBody {
   errors?: {
     json?: Record<string, string[]>
     query?: Record<string, string[]>
+    /** A machine-readable reason code on an application-level abort (not a
+     * schema validation failure) - e.g. the public booking 409s from
+     * app/public_booking/routes.py and app/booking_requests/service.py. */
+    reason?: string
   }
+  /** Correlation id echoed on every error response (see app/__init__.py::
+   * _configure_request_id) - worth showing/logging alongside any error a
+   * customer reports, so it can be traced server-side without guesswork. */
+  request_id?: string
 }
