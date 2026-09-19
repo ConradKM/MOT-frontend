@@ -6,6 +6,7 @@ import { Route, Routes } from 'react-router-dom'
 import { renderWithAppProviders } from '../../test/utils'
 import { BookingWizard } from './BookingWizard'
 import * as api from '../../api/publicGarage'
+import { ApiError } from '../../api/client'
 import {
   makeBookingFlow,
   makeBookingFlowField,
@@ -298,6 +299,45 @@ describe('BookingWizard — deposit step', () => {
 
     await screen.findByText(/window expired/)
     expect(screen.getByText('Pick a date & time')).toBeInTheDocument()
+  })
+
+  it('shows a plain "slot unavailable" message on an ordinary 409', async () => {
+    vi.mocked(api.createDepositIntent).mockRejectedValue(
+      new ApiError({ code: 409, status: 'Conflict', message: 'Full up.' }, 'fallback'),
+    )
+
+    const user = userEvent.setup()
+    renderWizard()
+    await fillDetailsAndReachDeposit(user)
+
+    await screen.findByText('This time is no longer available. Please go back and choose another.')
+  })
+
+  it('does not treat a vehicle-reference conflict as the slot being unavailable', async () => {
+    // Regression guard for a real production incident: a 409 from
+    // app/booking_requests/service.py::resolve_customer_and_vehicle (a
+    // different customer already owns a vehicle with this registration at
+    // this garage) has nothing to do with the slot, but used to be shown
+    // identically to "This time is no longer available" - see the plain
+    // 409 test above for the message this must NOT share.
+    vi.mocked(api.createDepositIntent).mockRejectedValue(
+      new ApiError(
+        {
+          code: 409,
+          status: 'Conflict',
+          message:
+            'An item with this reference already exists for a different customer - resolve it manually before approving.',
+          errors: { reason: 'vehicle_reference_conflict' },
+        },
+        'fallback',
+      ),
+    )
+
+    const user = userEvent.setup()
+    renderWizard()
+    await fillDetailsAndReachDeposit(user)
+
+    await screen.findByText(/already registered under a different profile/)
   })
 
   it('shows a clear fallback for a provider/checkout mode the frontend has no component for', async () => {

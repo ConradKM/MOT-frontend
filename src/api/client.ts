@@ -6,12 +6,17 @@ export class ApiError extends Error {
   code: number
   status: string
   fieldErrors?: Record<string, string[]>
+  /** See ApiErrorBody.errors.reason. */
+  reason?: string
+  requestId?: string
 
   constructor(body: ApiErrorBody, fallbackMessage: string) {
     super(body.message ?? body.msg ?? fallbackMessage)
     this.code = body.code
     this.status = body.status
     this.fieldErrors = body.errors?.json ?? body.errors?.query
+    this.reason = body.errors?.reason
+    this.requestId = body.request_id
   }
 }
 
