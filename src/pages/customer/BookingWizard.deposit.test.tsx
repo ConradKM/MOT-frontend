@@ -339,6 +339,36 @@ describe('BookingWizard — deposit step', () => {
     expect(screen.getByLabelText(/^Email/)).toHaveValue('alex@example.com')
   })
 
+  it('does not treat a vehicle-reference conflict as the slot being unavailable', async () => {
+    // Regression guard for a real production incident: a 409 from
+    // app/booking_requests/service.py::resolve_customer_and_vehicle (a
+    // different customer already owns a vehicle with this registration at
+    // this garage) has nothing to do with the slot, but used to be shown
+    // identically to "This time is no longer available" and bounced the
+    // customer back to Date & time - see the test above for the behaviour
+    // this must NOT share.
+    vi.mocked(api.createDepositIntent).mockRejectedValue(
+      new ApiError(
+        {
+          code: 409,
+          status: 'Conflict',
+          message:
+            'An item with this reference already exists for a different customer - resolve it manually before approving.',
+          errors: { reason: 'vehicle_reference_conflict' },
+        },
+        'fallback',
+      ),
+    )
+
+    const user = userEvent.setup()
+    renderWizard()
+    await fillDetailsAndReachDeposit(user)
+
+    await screen.findByText(/already registered under a different profile/)
+    // Must stay on Review/Deposit, not bounce back to Date & time.
+    expect(screen.queryByText('Pick a date & time')).not.toBeInTheDocument()
+  })
+
   it('shows a clear fallback for a provider/checkout mode the frontend has no component for', async () => {
     vi.mocked(api.createDepositIntent).mockResolvedValue({
       booking_request_id: 'br1',
