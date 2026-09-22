@@ -3,13 +3,17 @@ import { useGarageId } from '../../hooks/useGarageId'
 
 const TABS = [
   { end: true, slug: '', label: 'Appointment Reminders' },
-  { end: false, slug: 'mot', label: 'MOT Reminders' },
+  { end: false, slug: 'customer', label: 'Customer / Sale Reminders' },
 ]
 
 /** Single "Reminders" nav entry, switching between reminder types via tabs -
- * mirrors CommunicationsLayout. Appointment Reminders applies to any
- * business; the MOT tab is the automotive-specific use case, kept as its
- * own tab rather than defining the page. */
+ * mirrors CommunicationsLayout. Appointment Reminders (before a booked
+ * appointment) applies to any business. Customer / Sale Reminders is the
+ * generic "follow up with a customer by some due date/event" concept -
+ * MOT expiry is its only implemented use case today (an automotive
+ * business), with service-due, renewals, post-sale follow-up etc. as
+ * future additions under the same tab - so this tab is never named after
+ * MOT itself. */
 export function RemindersLayout() {
   const garageId = useGarageId()
 

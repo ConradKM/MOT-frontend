@@ -26,7 +26,7 @@ export const SETTINGS_PAGES: SettingsPage[] = [
   {
     title: 'Reminders',
     description:
-      'Automatic appointment reminders, plus MOT reminders for automotive businesses.',
+      'Automatic appointment reminders, plus customer/sale reminders such as MOT expiry.',
     slug: 'reminders',
   },
   {

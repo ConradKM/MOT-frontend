@@ -27,9 +27,9 @@ import { BookingWorkflowSettings } from './pages/settings/BookingWorkflowSetting
 import { MotReminderSettings } from './pages/settings/MotReminderSettings'
 import { GarageDetails } from './pages/settings/GarageDetails'
 import { BookingRequestsList } from './pages/bookingRequests/BookingRequestsList'
-import { MotRemindersList } from './pages/motReminders/MotRemindersList'
 import { RemindersLayout } from './pages/reminders/RemindersLayout'
 import { AppointmentRemindersSettings } from './pages/reminders/AppointmentRemindersSettings'
+import { CustomerSaleReminders } from './pages/reminders/CustomerSaleReminders'
 import { AppointmentStatusesList } from './pages/appointmentStatuses/AppointmentStatusesList'
 import { CommunicationsLayout } from './components/communications/CommunicationsLayout'
 import { CommunicationsOverview } from './pages/communications/CommunicationsOverview'
@@ -104,7 +104,7 @@ export default function App() {
           <Route path="payments" element={<PaymentsList />} />
           <Route path="reminders" element={<RemindersLayout />}>
             <Route index element={<AppointmentRemindersSettings />} />
-            <Route path="mot" element={<MotRemindersList />} />
+            <Route path="customer" element={<CustomerSaleReminders />} />
           </Route>
           <Route path="feedback" element={<FeedbackPage />} />
 
