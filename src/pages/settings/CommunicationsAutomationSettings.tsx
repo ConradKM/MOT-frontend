@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
+import { useGarageId } from '../../hooks/useGarageId'
 import {
   useAutomationSettings,
   useMessageTemplates,
@@ -51,6 +53,7 @@ function ToggleRow({ id, label, description, checked, onChange }: ToggleRowProps
 function AutomationTogglesForm({ settings }: { settings: AutomationSettings }) {
   const update = useUpdateAutomationSettings()
   const { showToast } = useToast()
+  const garageId = useGarageId()
   const [form, setForm] = useState(settings)
   const [error, setError] = useState<string | null>(null)
 
@@ -104,31 +107,13 @@ function AutomationTogglesForm({ settings }: { settings: AutomationSettings }) {
         checked={form.missed_call_ack_enabled}
         onChange={(v) => setForm((f) => ({ ...f, missed_call_ack_enabled: v }))}
       />
-      <ToggleRow
-        id="reminder-enabled"
-        label="Appointment reminders"
-        description="Sends a reminder before each upcoming appointment."
-        checked={form.reminder_enabled}
-        onChange={(v) => setForm((f) => ({ ...f, reminder_enabled: v }))}
-      />
-      <div className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-3">
-        <label htmlFor="reminder-hours" className="w-48 text-sm font-medium text-slate-700">
-          Send reminder how long before?
-        </label>
-        <input
-          id="reminder-hours"
-          type="number"
-          min={1}
-          max={168}
-          disabled={!form.reminder_enabled}
-          value={form.reminder_hours_before}
-          onChange={(e) =>
-            setForm((f) => ({ ...f, reminder_hours_before: Number(e.target.value) }))
-          }
-          className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
-        />
-        <span className="text-sm text-slate-500">hours before</span>
-      </div>
+      <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+        Looking for appointment reminders? They've moved to their own{' '}
+        <Link to={`/${garageId}/reminders`} className="font-medium text-slate-700 underline">
+          Reminders
+        </Link>{' '}
+        page, with support for multiple timings and channels.
+      </p>
 
       <button
         type="submit"

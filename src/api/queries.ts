@@ -5,6 +5,7 @@ import * as garageApi from './garage'
 import * as garageCapacityApi from './garageCapacity'
 import * as garageScheduleApi from './garageSchedule'
 import * as motRemindersApi from './motReminders'
+import * as appointmentRemindersApi from './appointmentReminders'
 import * as bookingFlowApi from './bookingFlow'
 import * as groupsApi from './appointmentTypeGroups'
 import * as imagesApi from './images'
@@ -91,6 +92,21 @@ export function useSendManualReminder() {
         acknowledge_booking: acknowledgeBooking,
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['motReminders'] }),
+  })
+}
+
+export function useAppointmentReminderSettings() {
+  return useQuery({
+    queryKey: ['appointmentReminderSettings'],
+    queryFn: appointmentRemindersApi.getAppointmentReminderSettings,
+  })
+}
+
+export function useUpdateAppointmentReminderSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: appointmentRemindersApi.updateAppointmentReminderSettings,
+    onSuccess: (settings) => qc.setQueryData(['appointmentReminderSettings'], settings),
   })
 }
 

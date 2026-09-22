@@ -9,7 +9,7 @@ interface SettingsPage {
 }
 
 /** Also includes a few pages that aren't settings sections (Appointments,
- * MOT Reminders) because people look for them here. Every entry in
+ * Reminders) because people look for them here. Every entry in
  * SettingsLayout's SECTIONS must appear below, though - a section with no
  * card is unreachable for anyone who doesn't already know the URL. */
 export const SETTINGS_PAGES: SettingsPage[] = [
@@ -24,14 +24,10 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     slug: 'appointments',
   },
   {
-    title: 'MOT Reminders',
-    description: 'Upcoming MOT expiries and the status of each reminder.',
-    slug: 'mot-reminders',
-  },
-  {
-    title: 'MOT Reminder Schedule',
-    description: 'Choose how far before MOT expiry customers are reminded.',
-    slug: 'settings/mot-reminders',
+    title: 'Reminders',
+    description:
+      'Automatic appointment reminders, plus customer/sale reminders such as MOT expiry.',
+    slug: 'reminders',
   },
   {
     title: 'Employees',
