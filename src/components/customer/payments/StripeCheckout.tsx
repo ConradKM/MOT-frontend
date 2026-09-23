@@ -94,6 +94,17 @@ function StripePaymentForm({
     setError(null)
 
     try {
+      // Stripe's current Payment Element flow requires submit() before
+      // confirmPayment(). It validates the mounted Element and collects any
+      // wallet data. Calling confirmPayment first can reject before Stripe
+      // attaches a payment method, leaving the PaymentIntent incomplete.
+      const submitResult = await elements.submit?.()
+      if (submitResult?.error) {
+        setPhase('error')
+        setError(submitResult.error.message ?? 'Please complete your payment details and try again.')
+        return
+      }
+
       const { error: confirmError } = await stripe.confirmPayment({
         elements,
         redirect: 'if_required',
