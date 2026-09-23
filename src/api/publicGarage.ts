@@ -236,6 +236,9 @@ export interface DepositIntentCreated {
    * the provider's own checkout widget (see StripeCheckout.tsx's
    * PaymentElement), never built by CoMaz. */
   provider_data: Record<string, string | string[] | null> | null
+  /** Opaque server-issued recovery capability. It is safe to keep only in
+   * sessionStorage and is never a Stripe credential. */
+  recovery_token?: string | null
   hold_expires_at: string | null
 }
 
@@ -243,6 +246,24 @@ export type DepositStatusPoll = Omit<
   DepositIntentCreated,
   'provider' | 'checkout_mode' | 'provider_data'
 >
+
+export interface RecoveredDepositAttempt extends DepositIntentCreated {
+  appointment_type_id: string | null
+  appointment_type_name: string | null
+  preferred_date: string
+  preferred_time: string | null
+  requested_duration_minutes: number | null
+  customer_first_name: string
+  customer_last_name: string
+  customer_email: string | null
+  customer_phone: string | null
+  vehicle_registration: string | null
+  vehicle_make: string | null
+  vehicle_model: string | null
+  vehicle_year: number | null
+  vehicle_mileage: number | null
+  answers: Array<{ field_id: string; value: string | null; values: string[] }>
+}
 
 export function createDepositIntent(
   slug: string,
@@ -262,6 +283,18 @@ export function getDepositStatus(
   return apiFetch<DepositStatusPoll>(
     `/api/public/${slug}/booking-requests/${bookingReference}/payment-status`,
     { skipAuth: true },
+  )
+}
+
+/** Recover exactly one public payment attempt. The opaque token is posted,
+ * never placed in a URL, and server state wins over any browser draft. */
+export function recoverDepositAttempt(
+  slug: string,
+  recoveryToken: string,
+): Promise<RecoveredDepositAttempt> {
+  return apiFetch<RecoveredDepositAttempt>(
+    `/api/public/${slug}/booking-requests/deposit-attempt/recover`,
+    { method: 'POST', body: { recovery_token: recoveryToken }, skipAuth: true },
   )
 }
 

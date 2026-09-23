@@ -15,6 +15,8 @@ interface Props {
   appointmentType: PublicAppointmentType | undefined
   onPaid: (result: DepositIntentCreated) => void
   onSlotLost: () => void
+  initialIntent?: DepositIntentCreated | null
+  onRecoveryToken: (token: string) => void
 }
 
 /** The Deposit step: creates a short-lived payment hold + provider session
@@ -26,12 +28,19 @@ interface Props {
  * branding, error/retry chrome - is completely provider-independent; only
  * PaymentCheckout's child component ever talks to a specific provider.
  */
-export function DepositStep({ slug, garageName, payload, appointmentType, onPaid, onSlotLost }: Props) {
-  const [intent, setIntent] = useState<DepositIntentCreated | null>(null)
-  const [creating, setCreating] = useState(true)
+export function DepositStep({
+  slug, garageName, payload, appointmentType, onPaid, onSlotLost, initialIntent, onRecoveryToken,
+}: Props) {
+  const [intent, setIntent] = useState<DepositIntentCreated | null>(initialIntent ?? null)
+  const [creating, setCreating] = useState(!initialIntent)
   const [createError, setCreateError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (initialIntent) {
+      setIntent(initialIntent)
+      setCreating(false)
+      return
+    }
     let cancelled = false
     setCreating(true)
     setCreateError(null)
@@ -39,6 +48,7 @@ export function DepositStep({ slug, garageName, payload, appointmentType, onPaid
       .then((result) => {
         if (cancelled) return
         setIntent(result)
+        if (result.recovery_token) onRecoveryToken(result.recovery_token)
         setCreating(false)
       })
       .catch((err: unknown) => {
@@ -72,7 +82,7 @@ export function DepositStep({ slug, garageName, payload, appointmentType, onPaid
     // keystroke (there's no path back into this step without re-entering it
     // via Details, which remounts this component fresh).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug])
+  }, [slug, initialIntent, onRecoveryToken])
 
   if (creating) {
     return <div className="py-12 text-center text-sm text-slate-500">Setting up your payment…</div>
