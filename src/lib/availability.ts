@@ -1,4 +1,4 @@
-import type { DayLevel, SlotStatus } from '../api/publicGarage'
+import type { AvailabilitySlot, DayLevel, SlotStatus } from '../api/publicGarage'
 
 export interface LevelStyle {
   /** Human text — never rely on colour alone. */
@@ -72,4 +72,65 @@ export const SLOT_STATUS: Record<
     selectable: false,
     pill: 'text-slate-400',
   },
+}
+
+/** Above this many slots for a day, TimeSlotPicker groups them into coarser
+ * buckets first rather than rendering one button per slot (relevant once
+ * garages can offer 5-minute granularity - a full day can be 80+ slots). At
+ * or below it, slots render as a single flat grid same as before. */
+export const BUCKET_STEP_THRESHOLD = 8
+
+const BUCKET_MINUTES = 60
+
+export interface SlotBucket {
+  /** "HH:MM" bucket start, e.g. "09:00". */
+  bucketStart: string
+  /** "HH:MM" bucket end (exclusive), e.g. "10:00". */
+  bucketEnd: string
+  /** Best status among the bucket's slots - available > limited > booked. */
+  status: SlotStatus
+  slots: AvailabilitySlot[]
+}
+
+function parseHHMM(value: string): number {
+  const [h, m] = value.split(':').map(Number)
+  return h * 60 + m
+}
+
+function formatHHMM(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60) % 24
+  const m = totalMinutes % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+function aggregateBucketStatus(slots: AvailabilitySlot[]): SlotStatus {
+  if (slots.some((s) => s.status === 'available')) return 'available'
+  if (slots.some((s) => s.status === 'limited')) return 'limited'
+  return 'booked'
+}
+
+/** Group a day's flat slot list into fixed-size time windows (default 1
+ * hour), each carrying the best status of the slots it contains. Slots are
+ * bucketed by their own start time only - a slot's own duration may run past
+ * its bucket's end, which is fine since the bucket is a display grouping,
+ * not a booking constraint. */
+export function groupIntoHourBuckets(
+  slots: AvailabilitySlot[],
+  bucketMinutes: number = BUCKET_MINUTES,
+): SlotBucket[] {
+  const buckets = new Map<number, AvailabilitySlot[]>()
+  for (const slot of slots) {
+    const bucketStartMin = Math.floor(parseHHMM(slot.start) / bucketMinutes) * bucketMinutes
+    const bucketSlots = buckets.get(bucketStartMin) ?? []
+    bucketSlots.push(slot)
+    buckets.set(bucketStartMin, bucketSlots)
+  }
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([bucketStartMin, bucketSlots]) => ({
+      bucketStart: formatHHMM(bucketStartMin),
+      bucketEnd: formatHHMM(bucketStartMin + bucketMinutes),
+      status: aggregateBucketStatus(bucketSlots),
+      slots: bucketSlots,
+    }))
 }
