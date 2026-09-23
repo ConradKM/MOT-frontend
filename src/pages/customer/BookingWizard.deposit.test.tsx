@@ -24,6 +24,7 @@ vi.mock('../../api/publicGarage', async (orig) => ({
   submitBookingRequest: vi.fn(),
   createDepositIntent: vi.fn(),
   getDepositStatus: vi.fn(),
+  recoverDepositAttempt: vi.fn(),
 }))
 
 let confirmPaymentMock = vi.fn()
@@ -121,9 +122,111 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers()
   vi.clearAllMocks()
+  sessionStorage.clear()
 })
 
 describe('BookingWizard — deposit step', () => {
+  it('recovers an active server-held attempt without creating a second PaymentIntent', async () => {
+    sessionStorage.setItem('comaz:public-booking-recovery:test-garage', 'opaque-recovery-token')
+    vi.mocked(api.recoverDepositAttempt).mockResolvedValue({
+      booking_request_id: 'br-held',
+      booking_reference: 'BKHELD',
+      status: 'AWAITING_PAYMENT',
+      payment_status: 'REQUIRES_PAYMENT',
+      currency: 'GBP',
+      service_total: '100.00',
+      deposit_amount: '20.00',
+      remaining_balance: '80.00',
+      provider: 'stripe',
+      checkout_mode: 'EMBEDDED',
+      provider_data: { client_secret: 'pi_existing_secret', publishable_key: 'pk_test_123' },
+      hold_expires_at: '2026-09-10T09:15:00Z',
+      appointment_type_id: 'type-deposit',
+      appointment_type_name: 'Full Service',
+      preferred_date: TODAY,
+      preferred_time: '09:00',
+      requested_duration_minutes: 60,
+      customer_first_name: 'Alex',
+      customer_last_name: 'Turner',
+      customer_email: 'alex@example.com',
+      customer_phone: '07123456789',
+      vehicle_registration: null,
+      vehicle_make: null,
+      vehicle_model: null,
+      vehicle_year: null,
+      vehicle_mileage: null,
+      answers: [],
+    })
+
+    renderWizard()
+
+    await screen.findByRole('heading', { name: 'Review' })
+    expect(api.recoverDepositAttempt).toHaveBeenCalledWith('test-garage', 'opaque-recovery-token')
+    expect(api.createDepositIntent).not.toHaveBeenCalled()
+    expect(screen.getByTestId('payment-element')).toBeInTheDocument()
+  })
+
+  it('shows a server-confirmed recovered payment as complete without asking to pay again', async () => {
+    sessionStorage.setItem('comaz:public-booking-recovery:test-garage', 'opaque-recovery-token')
+    vi.mocked(api.recoverDepositAttempt).mockResolvedValue({
+      booking_request_id: 'br-paid',
+      booking_reference: 'BKPAID',
+      status: 'PENDING',
+      payment_status: 'SUCCEEDED',
+      currency: 'GBP',
+      service_total: '100.00',
+      deposit_amount: '20.00',
+      remaining_balance: '80.00',
+      provider: 'stripe',
+      checkout_mode: 'EMBEDDED',
+      provider_data: null,
+      hold_expires_at: null,
+      appointment_type_id: 'type-deposit',
+      appointment_type_name: 'Full Service',
+      preferred_date: TODAY,
+      preferred_time: '09:00',
+      requested_duration_minutes: 60,
+      customer_first_name: 'Alex',
+      customer_last_name: 'Turner',
+      customer_email: 'alex@example.com',
+      customer_phone: '07123456789',
+      vehicle_registration: null,
+      vehicle_make: null,
+      vehicle_model: null,
+      vehicle_year: null,
+      vehicle_mileage: null,
+      answers: [],
+    })
+
+    renderWizard()
+
+    await screen.findByRole('heading', { name: 'Request received' })
+    expect(api.createDepositIntent).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: /Pay deposit/ })).not.toBeInTheDocument()
+    expect(sessionStorage.getItem('comaz:public-booking-recovery:test-garage')).toBeNull()
+  })
+
+  it('drops an expired recovery capability and never resurrects its hold', async () => {
+    sessionStorage.setItem('comaz:public-booking-recovery:test-garage', 'expired-recovery-token')
+    vi.mocked(api.recoverDepositAttempt).mockResolvedValue({
+      booking_request_id: 'br-expired', booking_reference: 'BKEXP', status: 'EXPIRED',
+      payment_status: 'CANCELLED', currency: 'GBP', service_total: '100.00',
+      deposit_amount: '20.00', remaining_balance: '80.00', provider: 'stripe',
+      checkout_mode: 'EMBEDDED', provider_data: null, hold_expires_at: null,
+      appointment_type_id: 'type-deposit', appointment_type_name: 'Full Service',
+      preferred_date: TODAY, preferred_time: '09:00', requested_duration_minutes: 60,
+      customer_first_name: 'Alex', customer_last_name: 'Turner', customer_email: 'alex@example.com',
+      customer_phone: '07123456789', vehicle_registration: null, vehicle_make: null,
+      vehicle_model: null, vehicle_year: null, vehicle_mileage: null, answers: [],
+    })
+
+    renderWizard()
+
+    await screen.findByText(/reservation expired before payment completed/)
+    expect(api.createDepositIntent).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem('comaz:public-booking-recovery:test-garage')).toBeNull()
+  })
+
   it('is skipped entirely when the selected service has no deposit', async () => {
     vi.mocked(api.getPublicGarage).mockResolvedValue({
       ...GARAGE,
