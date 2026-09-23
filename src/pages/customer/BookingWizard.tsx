@@ -19,10 +19,12 @@ import { formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useBookingFlow, usePublicGarage } from '../../api/queries'
 import {
+  recoverDepositAttempt,
   submitBookingRequest,
   type BookingFlowSection,
   type BookingRequestInput,
   type DepositIntentCreated,
+  type RecoveredDepositAttempt,
   type PublicAppointmentType,
 } from '../../api/publicGarage'
 import { useCustomerAuth } from '../../auth/CustomerAuthContext'
@@ -55,6 +57,10 @@ const initialData: WizardData = {
   appointmentTypeId: '',
   time: '',
   paymentAttemptId: '',
+}
+
+function recoveryStorageKey(garageId: string): string {
+  return `comaz:public-booking-recovery:${garageId}`
 }
 
 /** "09:00" + 90 -> "10:30" - the expected finish time shown on review. */
@@ -146,8 +152,18 @@ export function BookingWizard() {
   // exists at that point (see app/payments/service.py), so Review just
   // shows a summary and finishes rather than submitting anything again.
   const [depositResult, setDepositResult] = useState<DepositIntentCreated | null>(null)
+  const [recoveredIntent, setRecoveredIntent] = useState<DepositIntentCreated | null>(null)
+  const [recoveryChecked, setRecoveryChecked] = useState(false)
 
   const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
+  const persistRecoveryToken = useCallback((token: string) => {
+    if (!urlGarageId) return
+    try { sessionStorage.setItem(recoveryStorageKey(urlGarageId), token) } catch { /* optional UX */ }
+  }, [urlGarageId])
+  const clearRecoveryToken = useCallback(() => {
+    if (!urlGarageId) return
+    try { sessionStorage.removeItem(recoveryStorageKey(urlGarageId)) } catch { /* optional UX */ }
+  }, [urlGarageId])
 
   const update = (field: keyof WizardData, value: string) => {
     setData((d) => ({ ...d, [field]: value, paymentAttemptId: '' }))
@@ -201,6 +217,60 @@ export function BookingWizard() {
   const hasServices = services.length > 0
   const selectedAppointmentType = services.find((t) => t.id === data.appointmentTypeId)
   const requiresDeposit = selectedAppointmentType?.deposit_required ?? false
+
+  // Server state wins over a browser draft.  In particular, ordinary
+  // availability must not be consulted first: a customer's own valid hold
+  // correctly makes that slot unavailable to everyone else.
+  useEffect(() => {
+    if (recoveryChecked || !urlGarageId || !garageSlug) return
+    let token: string | null = null
+    try { token = sessionStorage.getItem(recoveryStorageKey(urlGarageId)) } catch { /* optional UX */ }
+    if (!token) { setRecoveryChecked(true); return }
+    let cancelled = false
+    recoverDepositAttempt(garageSlug, token)
+      .then((attempt: RecoveredDepositAttempt) => {
+        if (cancelled) return
+        if (attempt.status === 'EXPIRED' || !attempt.appointment_type_id) {
+          clearRecoveryToken()
+          setErrors({ form: 'Your reservation expired before payment completed. Please choose another time.' })
+          setStep('time')
+          return
+        }
+        setData({
+          firstName: attempt.customer_first_name,
+          lastName: attempt.customer_last_name,
+          email: attempt.customer_email ?? '',
+          phone: attempt.customer_phone ?? '',
+          date: attempt.preferred_date,
+          time: attempt.preferred_time ?? '',
+          appointmentTypeId: attempt.appointment_type_id,
+          paymentAttemptId: '',
+        })
+        setAnswers(Object.fromEntries(attempt.answers.map((answer) => [answer.field_id, {
+          value: answer.value ?? '', values: answer.values,
+        }])))
+        setBookingReference(attempt.booking_reference)
+        if (attempt.status === 'PENDING' && attempt.payment_status === 'SUCCEEDED') {
+          clearRecoveryToken()
+          setDepositResult(attempt)
+          setSubmitted(true)
+        } else if (attempt.status === 'AWAITING_PAYMENT' && attempt.provider_data) {
+          setRecoveredIntent(attempt)
+          setStep('review')
+        } else {
+          clearRecoveryToken()
+          setErrors({ form: 'This payment attempt can no longer be resumed. Please choose another time.' })
+          setStep('time')
+        }
+      })
+      .catch(() => {
+        // An invalid/expired capability deliberately reveals nothing. Drop it
+        // and leave a normal fresh booking journey available.
+        clearRecoveryToken()
+      })
+      .finally(() => { if (!cancelled) setRecoveryChecked(true) })
+    return () => { cancelled = true }
+  }, [recoveryChecked, urlGarageId, garageSlug, clearRecoveryToken])
 
   // Two steps are conditional, for the same reason: the Service step only
   // exists when there is something to choose between, and the Deposit step
@@ -291,6 +361,7 @@ export function BookingWizard() {
   const handleDepositPaid = (result: DepositIntentCreated) => {
     setDepositResult(result)
     setBookingReference(result.booking_reference)
+    clearRecoveryToken()
     setStep('review')
   }
 
@@ -299,6 +370,8 @@ export function BookingWizard() {
   // customer back to pick a fresh slot rather than showing a dead-end error.
   const handleDepositSlotLost = () => {
     setDepositResult(null)
+    setRecoveredIntent(null)
+    clearRecoveryToken()
     setData((d) => ({ ...d, time: '', paymentAttemptId: '' }))
     refreshAvailability()
     setErrors({
@@ -516,6 +589,8 @@ export function BookingWizard() {
                   appointmentType={selectedAppointmentType}
                   onPaid={handleDepositPaid}
                   onSlotLost={handleDepositSlotLost}
+                  initialIntent={recoveredIntent}
+                  onRecoveryToken={persistRecoveryToken}
                 />
               ) : null
             }
