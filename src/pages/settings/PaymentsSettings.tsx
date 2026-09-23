@@ -66,6 +66,18 @@ export function PaymentsSettings() {
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <div><dt className="text-slate-500">Onboarding</dt><dd>{status.stripe_onboarding_complete ? 'Complete' : 'In progress'}</dd></div>
                   <div><dt className="text-slate-500">Payouts</dt><dd>{status.stripe_payouts_enabled ? 'Enabled' : 'Not enabled'}</dd></div>
+                  {status.apple_pay_status && (
+                    <div>
+                      <dt className="text-slate-500">Apple Pay</dt>
+                      <dd>
+                        {status.apple_pay_status === 'active'
+                          ? 'Active'
+                          : status.apple_pay_status === 'pending'
+                            ? 'Verifying with Stripe…'
+                            : status.apple_pay_status_details || 'Not available'}
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               )}
               <div className="mt-5 flex gap-3">
