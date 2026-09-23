@@ -91,6 +91,8 @@ export interface BookingRequestInput {
   preferred_employee_note?: string | null
   notes?: string | null
   captcha_token?: string
+  /** Opaque browser-generated idempotency token for a deposit attempt. */
+  payment_attempt_id?: string
 }
 
 export function getPublicGarages(): Promise<PublicGarage[]> {

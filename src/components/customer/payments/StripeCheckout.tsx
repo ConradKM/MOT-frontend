@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
+import {
+  Elements,
+  ExpressCheckoutElement,
+  PaymentElement,
+  useElements,
+  useStripe,
+} from '@stripe/react-stripe-js'
 import { loadStripe, type Stripe } from '@stripe/stripe-js'
 import { useDepositStatus } from '../../../api/queries'
 import type { PaymentCheckoutProps } from './types'
@@ -11,6 +17,7 @@ import type { PaymentCheckoutProps } from './types'
 export function StripeCheckout({ slug, intent, onPaid, onSlotLost }: PaymentCheckoutProps) {
   const clientSecret = (intent.provider_data?.client_secret as string | undefined) ?? null
   const publishableKey = (intent.provider_data?.publishable_key as string | undefined) ?? null
+  const connectedAccountId = (intent.provider_data?.stripe_account_id as string | undefined) ?? null
   const availableWallets = (intent.provider_data?.available_wallets as string[] | undefined) ?? []
   const stripePromiseRef = useRef<Promise<Stripe | null> | null>(null)
 
@@ -23,7 +30,10 @@ export function StripeCheckout({ slug, intent, onPaid, onSlotLost }: PaymentChec
   }
 
   if (!stripePromiseRef.current) {
-    stripePromiseRef.current = loadStripe(publishableKey)
+    stripePromiseRef.current = loadStripe(
+      publishableKey,
+      connectedAccountId ? { stripeAccount: connectedAccountId } : undefined,
+    )
   }
 
   return (
@@ -52,6 +62,7 @@ function StripePaymentForm({
   const elements = useElements()
   const [phase, setPhase] = useState<PaymentPhase>('ready')
   const [error, setError] = useState<string | null>(null)
+  const [expressAvailable, setExpressAvailable] = useState(false)
 
   // Poll the server's own record of what happened - never the browser's own
   // say-so - once Stripe has accepted the confirmation attempt. The webhook
@@ -73,20 +84,43 @@ function StripePaymentForm({
     }
   }, [phase, poll.data, intent, onPaid, onSlotLost])
 
-  const handlePay = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    if (!stripe || !elements) return
+  const confirmPayment = async () => {
+    if (!stripe || !elements) {
+      setPhase('error')
+      setError('Secure payment is still loading. Please wait a moment and try again.')
+      return
+    }
     setPhase('submitting')
     setError(null)
 
-    const { error: confirmError } = await stripe.confirmPayment({
-      elements,
-      redirect: 'if_required',
-    })
+    try {
+      // Stripe's current Payment Element flow requires submit() before
+      // confirmPayment(). It validates the mounted Element and collects any
+      // wallet data. Calling confirmPayment first can reject before Stripe
+      // attaches a payment method, leaving the PaymentIntent incomplete.
+      const submitResult = await elements.submit?.()
+      if (submitResult?.error) {
+        setPhase('error')
+        setError(submitResult.error.message ?? 'Please complete your payment details and try again.')
+        return
+      }
 
-    if (confirmError) {
+      const { error: confirmError } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+      })
+
+      if (confirmError) {
+        setPhase('error')
+        setError(confirmError.message ?? 'Payment failed. Please try again.')
+        return
+      }
+    } catch {
+      // Stripe.js can reject (rather than return `{error}`) for an invalid
+      // Elements/session context. Never leave a customer on Processing when
+      // no confirmation request reached Stripe.
       setPhase('error')
-      setError(confirmError.message ?? 'Payment failed. Please try again.')
+      setError('We could not start your payment. Please check your details and try again.')
       return
     }
     // Confirmed on Stripe's side - wait for our own webhook to confirm it
@@ -94,13 +128,34 @@ function StripePaymentForm({
     setPhase('confirming')
   }
 
+  const handlePay = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    await confirmPayment()
+  }
+
   return (
     <form onSubmit={handlePay} className="space-y-4">
+      {/* Stripe, rather than CoMaz, decides whether Apple Pay, Google Pay or
+          Link can be shown for this browser/device/account.  The element
+          itself reports that after it initialises; until then it occupies no
+          styled space, and the separator only appears when a real option is
+          available. */}
+      <ExpressCheckoutElement
+        onReady={(event) => setExpressAvailable(Boolean(event.availablePaymentMethods))}
+        onConfirm={() => void confirmPayment()}
+      />
+
+      {expressAvailable && (
+        <div className="flex items-center gap-3 text-xs text-slate-400" aria-hidden="true">
+          <span className="h-px flex-1 bg-slate-200" />
+          <span>or pay with card</span>
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
+      )}
       <PaymentElement />
 
-      {/* The Payment Element above already renders any wallet button itself
-          (it detects device/browser support live) - this is just a heads-up
-          for a device that doesn't happen to show one. */}
+      {/* Informational only: eligibility and button rendering come from
+          Stripe Elements, never from a CoMaz-made wallet button. */}
       {availableWallets.length > 0 && (
         <p className="text-xs text-slate-500">
           Apple Pay or Google Pay may also appear above if your device supports it.

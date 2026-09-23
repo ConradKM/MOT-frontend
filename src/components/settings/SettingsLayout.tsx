@@ -13,8 +13,8 @@ export const SECTIONS = [
   { slug: 'booking-workflow', label: 'Booking Workflow' },
   { slug: 'appointment-statuses', label: 'Appointment Statuses' },
   { slug: 'availability', label: 'Availability' },
-  { slug: 'mot-reminders', label: 'MOT Reminders' },
   { slug: 'communications-automation', label: 'Communications Automation' },
+  { slug: 'payments', label: 'Payments' },
 ]
 
 /** Wraps a settings subsection page with a mini nav for jumping between subsections. */

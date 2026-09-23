@@ -63,6 +63,7 @@ describe('Layout — garage chrome', () => {
       ['Customers', '/g1/customers'],
       ['Appointments', '/g1/appointments'],
       ['Requests', '/g1/booking-requests'],
+      ['Payments', '/g1/payments'],
       ['Settings', '/g1/settings'],
     ]) {
       expect(screen.getByRole('link', { name: new RegExp(`^${label}`) })).toHaveAttribute(
