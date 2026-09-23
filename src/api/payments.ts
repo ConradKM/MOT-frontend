@@ -6,6 +6,11 @@ export interface StripeConnectStatus {
   stripe_onboarding_complete: boolean
   stripe_charges_enabled: boolean
   stripe_payouts_enabled: boolean
+  /** Null until stripe_charges_enabled - see app/payments/connect.py::
+   * get_wallet_domain_status. Registering the domain doesn't mean Apple Pay
+   * is immediately usable; Stripe verifies it asynchronously. */
+  apple_pay_status: string | null
+  apple_pay_status_details: string | null
 }
 
 export function getStripeConnectStatus(): Promise<StripeConnectStatus> {
