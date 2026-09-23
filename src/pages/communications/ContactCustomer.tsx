@@ -284,8 +284,20 @@ export function ContactCustomer() {
   const selectedCustomer = pickedCustomer ?? linkedCustomer ?? null
 
   const callingEnabled = overview?.capabilities.outbound_calling_supported ?? false
-  const dialler = useTwilioDevice({ enabled: callingEnabled })
+  // The Device (and its WebRTC/audio pipeline) only registers while the Call
+  // tab is actually open, or - once a call is live - until it ends, never
+  // just because the business happens to have calling configured. `wasInCall`
+  // (rather than the `enabled` expression depending on `dialler.status` from
+  // this same hook call, which isn't available yet) only lags one render
+  // behind, which is fine: a call can only start while already on the Call
+  // tab, so it's always up to date before the user gets a chance to switch
+  // away mid-call.
+  const [wasInCall, setWasInCall] = useState(false)
+  const dialler = useTwilioDevice({ enabled: callingEnabled && (tab === 'call' || wasInCall) })
   const inCall = IN_CALL_STATUSES.includes(dialler.status)
+  useEffect(() => {
+    setWasInCall(inCall)
+  }, [inCall])
 
   const targetPhone = selectedCustomer?.phone ?? rawPhone ?? ''
   const targetName = selectedCustomer
