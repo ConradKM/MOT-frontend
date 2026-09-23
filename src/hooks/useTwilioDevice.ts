@@ -90,7 +90,27 @@ export function useTwilioDevice({ enabled }: { enabled: boolean }): TwilioDialer
   }, [])
 
   useEffect(() => {
-    if (!enabled || deviceRef.current) return
+    if (!enabled) {
+      // Not just "don't create one" - tear down a Device left over from
+      // before `enabled` flipped false (e.g. the caller left the dialler
+      // view), so its WebRTC/audio pipeline doesn't stay resident for the
+      // rest of the page's lifetime. Callers must keep `enabled` true for
+      // the duration of an actual call - see ContactCustomer.tsx.
+      if (deviceRef.current) {
+        try {
+          callRef.current?.disconnect()
+          deviceRef.current.destroy()
+        } catch {
+          /* best effort */
+        }
+        deviceRef.current = null
+        callRef.current = null
+      }
+      setStatus('initialising')
+      setActiveNumber(null)
+      return
+    }
+    if (deviceRef.current) return
     let cancelled = false
 
     ;(async () => {
