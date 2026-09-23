@@ -85,18 +85,31 @@ function StripePaymentForm({
   }, [phase, poll.data, intent, onPaid, onSlotLost])
 
   const confirmPayment = async () => {
-    if (!stripe || !elements) return
+    if (!stripe || !elements) {
+      setPhase('error')
+      setError('Secure payment is still loading. Please wait a moment and try again.')
+      return
+    }
     setPhase('submitting')
     setError(null)
 
-    const { error: confirmError } = await stripe.confirmPayment({
-      elements,
-      redirect: 'if_required',
-    })
+    try {
+      const { error: confirmError } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+      })
 
-    if (confirmError) {
+      if (confirmError) {
+        setPhase('error')
+        setError(confirmError.message ?? 'Payment failed. Please try again.')
+        return
+      }
+    } catch {
+      // Stripe.js can reject (rather than return `{error}`) for an invalid
+      // Elements/session context. Never leave a customer on Processing when
+      // no confirmation request reached Stripe.
       setPhase('error')
-      setError(confirmError.message ?? 'Payment failed. Please try again.')
+      setError('We could not start your payment. Please check your details and try again.')
       return
     }
     // Confirmed on Stripe's side - wait for our own webhook to confirm it
