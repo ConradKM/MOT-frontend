@@ -11,8 +11,8 @@ vi.mock('../../api/customers')
 vi.mock('../../api/vehicles')
 
 const CUSTOMERS = [
-  { id: 'c1', garage_id: 'g', first_name: 'Oliver', last_name: 'Bennett', email: 'oliver@example.com', phone: '+44 700 111', is_active: true, sms_opt_out: false, created_at: '', updated_at: '' },
-  { id: 'c2', garage_id: 'g', first_name: 'Nadia', last_name: 'Okafor', email: 'nadia@example.com', phone: '+44 700 222', is_active: true, sms_opt_out: false, created_at: '', updated_at: '' },
+  { id: 'c1', garage_id: 'g', first_name: 'Oliver', last_name: 'Bennett', email: 'oliver@example.com', phone: '+44 700 111', notes: null, is_active: true, sms_opt_out: false, created_at: '', updated_at: '' },
+  { id: 'c2', garage_id: 'g', first_name: 'Nadia', last_name: 'Okafor', email: 'nadia@example.com', phone: '+44 700 222', notes: null, is_active: true, sms_opt_out: false, created_at: '', updated_at: '' },
 ]
 const VEHICLES = [
   { id: 'v1', garage_id: 'g', customer_id: 'c1', registration_number: 'OB08AUD', make: 'Audi', model: 'A4', year: 2018, current_mileage: 40000, mot_expiry_date: '2026-08-12', is_active: true, created_at: '', updated_at: '' },

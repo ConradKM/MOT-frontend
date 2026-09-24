@@ -6,6 +6,7 @@ export interface CustomerInput {
   last_name: string
   email?: string | null
   phone?: string | null
+  notes?: string | null
 }
 
 export interface CustomerListParams {

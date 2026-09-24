@@ -85,6 +85,25 @@ export function CustomerDetail() {
 
       <div className="mt-8">
         <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Internal notes</h2>
+          <Link
+            to={`/${garageId}/customers/${customer.id}/edit`}
+            className="text-sm font-medium text-slate-900 hover:underline"
+          >
+            Edit notes
+          </Link>
+        </div>
+        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
+          {customer.notes ? (
+            <p className="whitespace-pre-wrap">{customer.notes}</p>
+          ) : (
+            <p className="text-slate-500">No internal notes on file.</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Vehicles</h2>
           <Link
             to={`/${garageId}/vehicles/new?customer_id=${customer.id}`}

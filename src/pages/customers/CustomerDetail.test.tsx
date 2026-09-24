@@ -76,6 +76,20 @@ describe('CustomerDetail — the customer', () => {
     renderDetail()
     expect(await screen.findByText('Archived')).toBeInTheDocument()
   })
+
+  it('shows staff-only notes', async () => {
+    serveCustomer(makeCustomer({ notes: 'Please call before any additional work.' }))
+    renderDetail()
+    expect(
+      await screen.findByText('Please call before any additional work.'),
+    ).toBeInTheDocument()
+  })
+
+  it('has a clear empty-notes state', async () => {
+    serveCustomer(makeCustomer({ notes: null }))
+    renderDetail()
+    expect(await screen.findByText('No internal notes on file.')).toBeInTheDocument()
+  })
 })
 
 describe('CustomerDetail — their vehicles', () => {

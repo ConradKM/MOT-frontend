@@ -32,6 +32,7 @@ describe('CustomerForm — creating', () => {
     expect(screen.getByRole('heading', { name: 'New customer' })).toBeInTheDocument()
     expect(screen.getByLabelText('First name')).toHaveValue('')
     expect(screen.getByLabelText('Email')).toHaveValue('')
+    expect(screen.getByLabelText('Internal notes')).toHaveValue('')
   })
 
   it('will not submit without the required name fields', async () => {
@@ -63,6 +64,7 @@ describe('CustomerForm — creating', () => {
     await fillRequired(user)
     await user.type(screen.getByLabelText('Email'), 'oliver@example.com')
     await user.type(screen.getByLabelText('Phone'), '07123456789')
+    await user.type(screen.getByLabelText('Internal notes'), 'Call before starting work.')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(await screen.findByRole('heading', { name: 'Customer detail' })).toBeInTheDocument()
@@ -71,6 +73,7 @@ describe('CustomerForm — creating', () => {
       last_name: 'Bennett',
       email: 'oliver@example.com',
       phone: '07123456789',
+      notes: 'Call before starting work.',
     })
   })
 
@@ -100,6 +103,7 @@ describe('CustomerForm — creating', () => {
 
     await waitFor(() => expect(body.email).toBeNull())
     expect(body.phone).toBeNull()
+    expect(body.notes).toBeNull()
   })
 
   it('prefills the phone when arriving from an unknown caller', async () => {
@@ -270,6 +274,30 @@ describe('CustomerForm — editing', () => {
     await waitFor(() => expect(screen.getByLabelText('First name')).toHaveValue('Nadia'))
     // A null phone must render as an empty box, not the string "null".
     expect(screen.getByLabelText('Phone')).toHaveValue('')
+  })
+
+  it('loads and clears existing internal notes', async () => {
+    let patchBody: Record<string, unknown> = {}
+    server.use(
+      http.get('*/api/customers/:id', () =>
+        HttpResponse.json(makeCustomer({ id: 'c1', notes: 'Prefers morning appointments.' })),
+      ),
+      http.patch('*/api/customers/:id', async ({ request }) => {
+        patchBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(makeCustomer({ id: 'c1', notes: null }))
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm('/g1/customers/c1/edit')
+    await waitFor(() =>
+      expect(screen.getByLabelText('Internal notes')).toHaveValue('Prefers morning appointments.'),
+    )
+
+    await user.clear(screen.getByLabelText('Internal notes'))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await screen.findByRole('heading', { name: 'Customer detail' })
+    expect(patchBody.notes).toBeNull()
   })
 
   it('saves an edit without announcing a creation', async () => {
