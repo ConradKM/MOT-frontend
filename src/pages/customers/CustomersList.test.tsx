@@ -31,7 +31,7 @@ function render() {
 afterEach(() => vi.clearAllMocks())
 
 describe('CustomersList — one row per customer', () => {
-  it('shows one row per customer with a vehicle count, not one row per vehicle', async () => {
+  it('shows one row per customer with compact vehicle registrations', async () => {
     vi.mocked(customersApi.listCustomers).mockResolvedValue(CUSTOMERS)
     vi.mocked(vehiclesApi.listVehicles).mockResolvedValue(VEHICLES)
     render()
@@ -39,10 +39,8 @@ describe('CustomersList — one row per customer', () => {
     const rows = await screen.findAllByRole('row')
     // header + Oliver (2 vehicles, one row) + Nadia (no vehicles, one row)
     expect(rows).toHaveLength(1 + 2)
-    expect(screen.getByText('2 vehicles')).toBeInTheDocument()
+    expect(screen.getByText('OB08AUD, OB11KWY')).toBeInTheDocument()
     expect(screen.getByText('No vehicles')).toBeInTheDocument()
-    // Individual registrations are a detail-page concern, not the main list.
-    expect(screen.queryByText('OB08AUD')).not.toBeInTheDocument()
   })
 
   it('shows the soonest (most urgent) MOT expiry for a multi-vehicle customer', async () => {
@@ -53,6 +51,31 @@ describe('CustomersList — one row per customer', () => {
     const row = (await screen.findByText('Oliver Bennett')).closest('tr')!
     // OB08AUD expires 2026-08-12, before OB11KWY's 2027-01-01.
     expect(within(row).getByText('12 Aug 2026')).toBeInTheDocument()
+  })
+
+  it('keeps a customer with many vehicles compact', async () => {
+    vi.mocked(customersApi.listCustomers).mockResolvedValue(CUSTOMERS)
+    vi.mocked(vehiclesApi.listVehicles).mockResolvedValue([
+      ...VEHICLES,
+      {
+        id: 'v3',
+        garage_id: 'g',
+        customer_id: 'c1',
+        registration_number: 'OB22NEW',
+        make: null,
+        model: null,
+        year: null,
+        current_mileage: null,
+        mot_expiry_date: null,
+        is_active: true,
+        created_at: '',
+        updated_at: '',
+      },
+    ])
+    render()
+
+    expect(await screen.findByText('OB08AUD, OB11KWY +1')).toBeInTheDocument()
+    expect(screen.queryByText('OB22NEW')).not.toBeInTheDocument()
   })
 
   it('searches across customer and vehicle fields, surfacing the customer row', async () => {
