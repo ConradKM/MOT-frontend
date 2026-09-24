@@ -95,8 +95,12 @@ export function AppointmentsCalendar() {
     if (id === null) return null
     return vehicles?.find((v) => v.id === id)?.registration_number ?? null
   }
-  const appointmentTypeName = (id: string) => {
-    return appointmentTypes?.find((t) => t.id === id)?.name ?? 'Unknown type'
+  const appointmentTypeName = (appointment: Appointment) => {
+    return (
+      appointment.appointment_type_name_at_booking ??
+      appointmentTypes?.find((t) => t.id === appointment.appointment_type_id)?.name ??
+      'Unknown type'
+    )
   }
 
   // Day view: one column per active employee (or just the filtered one), so
@@ -302,7 +306,7 @@ export function AppointmentsCalendar() {
                         <td className="px-4 py-2 text-slate-600">{customerName(a.customer_id)}</td>
                         <td className="px-4 py-2 text-slate-600">{vehicleReg(a.vehicle_id) ?? '—'}</td>
                         <td className="px-4 py-2 text-slate-600">
-                          {appointmentTypeName(a.appointment_type_id)}
+                          {appointmentTypeName(a)}
                         </td>
                         <td className="px-4 py-2">
                           <span

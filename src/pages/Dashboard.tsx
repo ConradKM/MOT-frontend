@@ -14,6 +14,7 @@ import { useGarageId } from '../hooks/useGarageId'
 import { formatTimeRange, todayIso } from '../lib/datetime'
 import { formatDurationMinutes } from '../lib/duration'
 import { statusBadgeClass, statusLabel } from '../lib/appointmentStatuses'
+import type { Appointment } from '../types'
 
 /** `/dashboard` — resolves the signed-in employee's own garage, then redirects to its
  * garage-scoped dashboard URL. Lets Login/Register and the nav link target a fixed path
@@ -80,7 +81,10 @@ export function Dashboard() {
     const c = customers?.find((c) => c.id === id)
     return c ? `${c.first_name} ${c.last_name}` : 'Unknown customer'
   }
-  const appointmentTypeName = (id: string) => appointmentTypes?.find((t) => t.id === id)?.name ?? '—'
+  const appointmentTypeName = (appointment: Appointment) =>
+    appointment.appointment_type_name_at_booking ??
+    appointmentTypes?.find((t) => t.id === appointment.appointment_type_id)?.name ??
+    '—'
 
   const sortedAppointments = [...(todaysAppointments ?? [])].sort((a, b) =>
     a.start_time.localeCompare(b.start_time),
@@ -155,7 +159,7 @@ export function Dashboard() {
                       </p>
                       <p className="truncate text-xs text-slate-500">
                         {formatTimeRange(a.start_time, a.end_time)} ·{' '}
-                        {appointmentTypeName(a.appointment_type_id)}
+                        {appointmentTypeName(a)}
                       </p>
                     </div>
                     <span

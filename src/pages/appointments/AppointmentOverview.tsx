@@ -92,7 +92,7 @@ export function AppointmentOverview() {
       <div className="mt-2 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {appointmentType?.name ?? 'Appointment'}
+            {appointment.appointment_type_name_at_booking ?? appointmentType?.name ?? 'Appointment'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">{formatDateTime(appointment.start_time)}</p>
         </div>

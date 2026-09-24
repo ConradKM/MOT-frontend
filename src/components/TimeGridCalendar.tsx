@@ -27,7 +27,7 @@ export interface CalendarColumn {
 interface Props {
   columns: CalendarColumn[]
   customerName: (id: string) => string
-  appointmentTypeName: (id: string) => string
+  appointmentTypeName: (appointment: Appointment) => string
 }
 
 const HOUR_HEIGHT = 56
@@ -149,7 +149,7 @@ export function TimeGridCalendar({ columns, customerName, appointmentTypeName }:
                     <p className="truncate font-medium">
                       {formatTime(a.start_time)} {customerName(a.customer_id)}
                     </p>
-                    <p className="truncate opacity-80">{appointmentTypeName(a.appointment_type_id)}</p>
+                    <p className="truncate opacity-80">{appointmentTypeName(a)}</p>
                   </Link>
                 )
               })}
