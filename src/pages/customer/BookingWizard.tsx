@@ -127,7 +127,7 @@ function singleServiceIn(
 
 export function BookingWizard() {
   const { garageId: urlGarageId } = useParams<{ garageId: string }>()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const {
     data: garage,
     isLoading: garageLoading,
@@ -221,10 +221,28 @@ export function BookingWizard() {
   // Server state wins over a browser draft.  In particular, ordinary
   // availability must not be consulted first: a customer's own valid hold
   // correctly makes that slot unavailable to everyone else.
+  //
+  // The token can also arrive via ?resume=<token> - the SMS deposit link a
+  // voice booking sends (app/ai_voice/tools.py::_create_deposit_booking)
+  // points straight at /book/<garageId>?resume=<token> rather than a
+  // separate resume page, so this is the only place that flow needs. It is
+  // persisted to sessionStorage exactly like a same-browser deposit attempt
+  // so a refresh keeps working, then stripped from the visible URL.
   useEffect(() => {
     if (recoveryChecked || !urlGarageId || !garageSlug) return
-    let token: string | null = null
-    try { token = sessionStorage.getItem(recoveryStorageKey(urlGarageId)) } catch { /* optional UX */ }
+    let token: string | null = searchParams.get('resume')
+    if (token) {
+      persistRecoveryToken(token)
+      setSearchParams(
+        (params) => {
+          params.delete('resume')
+          return params
+        },
+        { replace: true },
+      )
+    } else {
+      try { token = sessionStorage.getItem(recoveryStorageKey(urlGarageId)) } catch { /* optional UX */ }
+    }
     if (!token) { setRecoveryChecked(true); return }
     let cancelled = false
     recoverDepositAttempt(garageSlug, token)
@@ -270,7 +288,15 @@ export function BookingWizard() {
       })
       .finally(() => { if (!cancelled) setRecoveryChecked(true) })
     return () => { cancelled = true }
-  }, [recoveryChecked, urlGarageId, garageSlug, clearRecoveryToken])
+  }, [
+    recoveryChecked,
+    urlGarageId,
+    garageSlug,
+    clearRecoveryToken,
+    persistRecoveryToken,
+    searchParams,
+    setSearchParams,
+  ])
 
   // Two steps are conditional, for the same reason: the Service step only
   // exists when there is something to choose between, and the Deposit step

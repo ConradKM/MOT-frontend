@@ -166,6 +166,52 @@ describe('BookingWizard — deposit step', () => {
     expect(screen.getByTestId('payment-element')).toBeInTheDocument()
   })
 
+  it('recovers an attempt from a ?resume= link, e.g. the voice deposit SMS, with no prior sessionStorage', async () => {
+    vi.mocked(api.recoverDepositAttempt).mockResolvedValue({
+      booking_request_id: 'br-held',
+      booking_reference: 'BKHELD',
+      status: 'AWAITING_PAYMENT',
+      payment_status: 'REQUIRES_PAYMENT',
+      currency: 'GBP',
+      service_total: '100.00',
+      deposit_amount: '20.00',
+      remaining_balance: '80.00',
+      provider: 'stripe',
+      checkout_mode: 'EMBEDDED',
+      provider_data: { client_secret: 'pi_existing_secret', publishable_key: 'pk_test_123' },
+      hold_expires_at: '2026-09-10T09:15:00Z',
+      appointment_type_id: 'type-deposit',
+      appointment_type_name: 'Full Service',
+      preferred_date: TODAY,
+      preferred_time: '09:00',
+      requested_duration_minutes: 60,
+      customer_first_name: 'Alex',
+      customer_last_name: 'Turner',
+      customer_email: 'alex@example.com',
+      customer_phone: '07123456789',
+      vehicle_registration: null,
+      vehicle_make: null,
+      vehicle_model: null,
+      vehicle_year: null,
+      vehicle_mileage: null,
+      answers: [],
+    })
+
+    renderWithAppProviders(
+      <Routes>
+        <Route path="/book/:garageId" element={<BookingWizard />} />
+      </Routes>,
+      { route: '/book/test-garage?resume=sms-deposit-token' },
+    )
+
+    await screen.findByRole('heading', { name: 'Review' })
+    expect(api.recoverDepositAttempt).toHaveBeenCalledWith('test-garage', 'sms-deposit-token')
+    expect(sessionStorage.getItem('comaz:public-booking-recovery:test-garage')).toBe(
+      'sms-deposit-token',
+    )
+    expect(api.createDepositIntent).not.toHaveBeenCalled()
+  })
+
   it('shows a server-confirmed recovered payment as complete without asking to pay again', async () => {
     sessionStorage.setItem('comaz:public-booking-recovery:test-garage', 'opaque-recovery-token')
     vi.mocked(api.recoverDepositAttempt).mockResolvedValue({
