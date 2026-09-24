@@ -9,6 +9,7 @@ import {
   formatShortDate,
   mondayIndex,
   monthLabel,
+  monthGridDatesIso,
   startOfMonthIso,
 } from './datetime'
 
@@ -34,6 +35,18 @@ describe('datetime month helpers', () => {
 
   it('monthLabel is human readable', () => {
     expect(monthLabel('2026-09-01')).toMatch(/September 2026/)
+  })
+
+  it('builds complete Monday-to-Sunday month grids with leading and trailing days', () => {
+    const grid = monthGridDatesIso('2026-09-17')
+    expect(grid[0]).toBe('2026-08-31')
+    expect(grid.at(-1)).toBe('2026-10-04')
+    expect(grid).toHaveLength(35)
+
+    const february = monthGridDatesIso('2026-02-15')
+    expect(february[0]).toBe('2026-01-26')
+    expect(february.at(-1)).toBe('2026-03-01')
+    expect(february).toHaveLength(35)
   })
 })
 

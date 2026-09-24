@@ -12,10 +12,13 @@ import {
 } from '../../api/queries'
 import {
   addDaysIso,
+  addMonthsIso,
   formatDateShort,
   formatShortDate,
   formatTimeRange,
   localDateKey,
+  monthLabel,
+  monthGridDatesIso,
   todayIso,
   weekDatesIso,
 } from '../../lib/datetime'
@@ -26,12 +29,13 @@ import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { RichDropdown } from '../../components/rich/RichDropdown'
 import { TimeGridCalendar, type CalendarColumn } from '../../components/TimeGridCalendar'
+import { MonthCalendar } from '../../components/MonthCalendar'
 import { useGarageId } from '../../hooks/useGarageId'
 import type { Appointment } from '../../types'
 
-type Mode = 'day' | 'week' | 'list'
+type Mode = 'day' | 'week' | 'month' | 'list'
 
-const MODES: Mode[] = ['day', 'week', 'list']
+const MODES: Mode[] = ['day', 'week', 'month', 'list']
 
 export function AppointmentsCalendar() {
   const garageId = useGarageId()
@@ -49,6 +53,7 @@ export function AppointmentsCalendar() {
   const { showToast } = useToast()
 
   const weekDates = useMemo(() => weekDatesIso(date), [date])
+  const monthDates = useMemo(() => monthGridDatesIso(date), [date])
 
   const listParams =
     mode === 'day'
@@ -59,7 +64,13 @@ export function AppointmentsCalendar() {
             end_date: weekDates[6],
             employee_id: employeeId || undefined,
           }
-        : {
+        : mode === 'month'
+          ? {
+              start_date: monthDates[0],
+              end_date: monthDates[monthDates.length - 1],
+              employee_id: employeeId || undefined,
+            }
+          : {
             start_date: startDate,
             end_date: endDate,
             employee_id: employeeId || undefined,
@@ -182,6 +193,12 @@ export function AppointmentsCalendar() {
             Week
           </button>
           <button
+            onClick={() => setMode('month')}
+            className={`px-3 py-1.5 ${mode === 'month' ? 'bg-slate-900 text-white' : 'text-slate-600'}`}
+          >
+            Month
+          </button>
+          <button
             onClick={() => setMode('list')}
             className={`px-3 py-1.5 ${mode === 'list' ? 'bg-slate-900 text-white' : 'text-slate-600'}`}
           >
@@ -192,7 +209,11 @@ export function AppointmentsCalendar() {
         {mode !== 'list' ? (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setDate((d) => addDaysIso(d, mode === 'week' ? -7 : -1))}
+              onClick={() =>
+                setDate((d) =>
+                  mode === 'month' ? addMonthsIso(d, -1) : addDaysIso(d, mode === 'week' ? -7 : -1),
+                )
+              }
               className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
             >
               ← Prev
@@ -204,7 +225,11 @@ export function AppointmentsCalendar() {
               className="rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none"
             />
             <button
-              onClick={() => setDate((d) => addDaysIso(d, mode === 'week' ? 7 : 1))}
+              onClick={() =>
+                setDate((d) =>
+                  mode === 'month' ? addMonthsIso(d, 1) : addDaysIso(d, mode === 'week' ? 7 : 1),
+                )
+              }
               className="rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
             >
               Next →
@@ -215,6 +240,7 @@ export function AppointmentsCalendar() {
             >
               Today
             </button>
+            {mode === 'month' && <span className="text-sm font-medium text-slate-700">{monthLabel(date)}</span>}
           </div>
         ) : (
           <div className="flex items-center gap-2">
@@ -271,6 +297,21 @@ export function AppointmentsCalendar() {
             columns={weekColumns}
             customerName={customerName}
             appointmentTypeName={appointmentTypeName}
+          />
+        )}
+
+        {!isLoading && !isError && mode === 'month' && (
+          <MonthCalendar
+            dates={monthDates}
+            month={date}
+            today={todayIso()}
+            appointments={appointments ?? []}
+            customerName={customerName}
+            appointmentTypeName={appointmentTypeName}
+            onSelectDay={(selectedDate) => {
+              setDate(selectedDate)
+              setMode('day')
+            }}
           />
         )}
 
