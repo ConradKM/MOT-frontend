@@ -107,6 +107,18 @@ export function addMonthsIso(iso: string, delta: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-01`
 }
 
+/** Monday-to-Sunday dates covering every visible cell in a calendar month. */
+export function monthGridDatesIso(iso: string): string[] {
+  const first = startOfMonthIso(iso)
+  const gridStart = startOfWeekIso(first)
+  const nextMonth = addMonthsIso(first, 1)
+  const last = addDaysIso(nextMonth, -1)
+  const gridEnd = addDaysIso(last, 6 - mondayIndex(last))
+  const dates: string[] = []
+  for (let date = gridStart; date <= gridEnd; date = addDaysIso(date, 1)) dates.push(date)
+  return dates
+}
+
 /** Weekday of `iso` as 0 = Monday … 6 = Sunday. */
 export function mondayIndex(iso: string): number {
   return (new Date(`${iso}T00:00:00`).getDay() + 6) % 7
