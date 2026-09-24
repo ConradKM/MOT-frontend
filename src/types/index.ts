@@ -178,6 +178,10 @@ export interface Appointment {
   /** Snapshot of the appointment type's price when this was created - stays
    * accurate even if the type's price changes later. Decimal string or null. */
   price_at_booking: string | null
+  /** Snapshot of the service name when this appointment was created.  Unlike
+   * appointment_type_id, this remains historically accurate after a service
+   * is renamed or archived.  Older records may not have one yet. */
+  appointment_type_name_at_booking?: string | null
   created_at: string
   updated_at: string
 }

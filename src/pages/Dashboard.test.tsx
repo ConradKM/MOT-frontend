@@ -166,6 +166,27 @@ describe("Dashboard — today's appointments", () => {
     expect(link).toHaveTextContent('Full service')
   })
 
+  it('keeps the original service name after that service is renamed', async () => {
+    server.use(
+      http.get('*/api/appointments/', () =>
+        HttpResponse.json([
+          at('09:00', '10:30', {
+            id: 'a1',
+            appointment_type_name_at_booking: 'MOT test',
+          }),
+        ]),
+      ),
+      http.get('*/api/appointment-types/', () =>
+        HttpResponse.json([makeAppointmentType({ id: 'at1', name: 'Annual inspection' })]),
+      ),
+    )
+    renderDashboard()
+
+    const link = await screen.findByRole('link', { name: /Oliver Bennett/ })
+    expect(link).toHaveTextContent('MOT test')
+    expect(link).not.toHaveTextContent('Annual inspection')
+  })
+
   it('degrades gracefully when the customer or service cannot be resolved', async () => {
     // Both lists are separate queries; the diary must still render if one is
     // empty or slow.
