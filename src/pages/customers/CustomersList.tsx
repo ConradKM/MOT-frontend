@@ -27,6 +27,10 @@ function registrationSummary(vehicles: Vehicle[]): string {
   return remainder > 0 ? `${visible} +${remainder}` : visible
 }
 
+function normalizeRegistration(value: string): string {
+  return value.replace(/\s+/g, '').toLowerCase()
+}
+
 function matches(row: Row, q: string): boolean {
   if (!q) return true
   const c = row.customer
@@ -39,7 +43,15 @@ function matches(row: Row, q: string): boolean {
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
-  return haystack.includes(q)
+  if (haystack.includes(q)) return true
+
+  // Vehicle registrations are stored without spaces, while UK staff often
+  // enter them as displayed (for example "AB12 CDE"). Keep the list's
+  // client-side filter aligned with the tenant-scoped API search.
+  const normalizedRegistrationQuery = normalizeRegistration(q)
+  return row.vehicles.some((vehicle) =>
+    normalizeRegistration(vehicle.registration_number).includes(normalizedRegistrationQuery),
+  )
 }
 
 export function CustomersList() {

@@ -95,6 +95,10 @@ describe('CustomersList — one row per customer', () => {
     expect(screen.getByText('Oliver Bennett')).toBeInTheDocument()
 
     await user.clear(box)
+    await user.type(box, 'OB08 AUD') // displayed UK-style registration
+    expect(screen.getByText('Oliver Bennett')).toBeInTheDocument()
+
+    await user.clear(box)
     await user.type(box, 'nadia') // customer name
     const table = screen.getByRole('table')
     expect(within(table).getByText('Nadia Okafor')).toBeInTheDocument()
