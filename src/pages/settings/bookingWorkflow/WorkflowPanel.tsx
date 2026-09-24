@@ -20,6 +20,7 @@ import { useToast } from '../../../components/Toast'
 import { errorMessage } from '../../../lib/errors'
 import { Disclosure } from '../../../components/Disclosure'
 import { PresetPicker } from '../BookingWorkflowSettings'
+import { VehicleDetailsCard } from './VehicleDetailsCard'
 
 const inputClass =
   'w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none'
@@ -119,6 +120,8 @@ export function WorkflowPanel({
           want to ask.
         </p>
       )}
+
+      {scope === '' && <VehicleDetailsCard />}
 
       {scope === '' && defaultCount === 0 && <PresetPicker />}
 
