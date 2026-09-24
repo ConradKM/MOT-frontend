@@ -19,6 +19,14 @@ function nearestExpiry(vehicles: Vehicle[]): string | null {
   return dates.length > 0 ? dates.sort()[0] : null
 }
 
+function registrationSummary(vehicles: Vehicle[]): string {
+  if (vehicles.length === 0) return 'No vehicles'
+  const registrations = vehicles.map((vehicle) => vehicle.registration_number)
+  const visible = registrations.slice(0, 2).join(', ')
+  const remainder = registrations.length - 2
+  return remainder > 0 ? `${visible} +${remainder}` : visible
+}
+
 function matches(row: Row, q: string): boolean {
   if (!q) return true
   const c = row.customer
@@ -93,7 +101,7 @@ export function CustomersList() {
                 <th className="px-4 py-2 font-medium">Customer</th>
                 <th className="px-4 py-2 font-medium">Phone</th>
                 <th className="px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2 font-medium">Vehicles</th>
+                <th className="px-4 py-2 font-medium">Vehicle registrations</th>
                 <th className="px-4 py-2 font-medium">Next MOT expiry</th>
                 <th className="px-4 py-2 font-medium">Status</th>
               </tr>
@@ -117,9 +125,7 @@ export function CustomersList() {
                     <td className="px-4 py-2 text-slate-600">{customer.phone ?? '—'}</td>
                     <td className="px-4 py-2 text-slate-600">{customer.email ?? '—'}</td>
                     <td className="px-4 py-2 text-slate-600">
-                      {vehicles.length === 0
-                        ? 'No vehicles'
-                        : `${vehicles.length} vehicle${vehicles.length === 1 ? '' : 's'}`}
+                      {registrationSummary(vehicles)}
                     </td>
                     <td className="px-4 py-2 text-slate-600">
                       {expiry ? formatDateShort(expiry) : '—'}
