@@ -49,6 +49,8 @@ export interface Customer {
   last_name: string
   email: string | null
   phone: string | null
+  /** Persistent, staff-only information; never returned by the customer portal. */
+  notes: string | null
   /** False once archived (soft-deleted) - hidden from the main list but
    * still reachable by id. See api/customers.ts. */
   is_active: boolean

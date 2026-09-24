@@ -84,6 +84,7 @@ export function makeCustomer(patch: Partial<Customer> = {}): Customer {
     last_name: 'Bennett',
     email: 'oliver@example.com',
     phone: '07123456789',
+    notes: null,
     is_active: true,
     sms_opt_out: false,
     created_at: '',
