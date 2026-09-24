@@ -318,6 +318,29 @@ describe('AppointmentForm — editing', () => {
     expect(await screen.findByRole('option', { name: 'Handed back' })).toBeInTheDocument()
   })
 
+  it('clears a previous customer’s vehicle when reassigned to another customer', async () => {
+    serveLookups([EXISTING])
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.patch('*/api/appointments/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ ...EXISTING, customer_id: 'c1', vehicle_id: null })
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm('/g1/appointments/a1/edit')
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: /Vehicle/ })).toHaveTextContent('NA11DIA'),
+    )
+
+    await choose(user, 'Customer', /Oliver Bennett/)
+    expect(screen.getByRole('combobox', { name: /Vehicle/ })).toHaveTextContent('No vehicle')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('heading', { name: 'Diary' })).toBeInTheDocument()
+    expect(body).toMatchObject({ customer_id: 'c1', vehicle_id: null })
+  })
+
   it('saves the change without announcing a new booking', async () => {
     serveLookups([EXISTING])
     let body: Record<string, unknown> = {}

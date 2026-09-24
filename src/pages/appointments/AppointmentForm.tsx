@@ -87,6 +87,19 @@ export function AppointmentForm() {
 
   const submitting = createMutation.isPending || updateMutation.isPending
 
+  const handleCustomerChange = (nextCustomerId: string) => {
+    setCustomerId(nextCustomerId)
+    // Vehicle ownership is server-authoritative, but clearing an incompatible
+    // selection here keeps the form internally consistent when staff move an
+    // appointment to another customer.
+    if (
+      vehicleId &&
+      !vehicles?.some((vehicle) => vehicle.id === vehicleId && vehicle.customer_id === nextCustomerId)
+    ) {
+      setVehicleId('')
+    }
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setErrors({})
@@ -199,7 +212,7 @@ export function AppointmentForm() {
                 title: `${c.first_name} ${c.last_name}`,
               }))}
               value={customerId}
-              onChange={setCustomerId}
+              onChange={handleCustomerChange}
               placeholder="Select a customer…"
               searchable
             />
