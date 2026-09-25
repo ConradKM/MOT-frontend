@@ -16,6 +16,9 @@ export interface Garage {
    * set from Platform Admin, read-only here. Render the initials fallback on
    * null, never a broken-image icon. */
   logo_url: string | null
+  /** Owner-controlled; defaults false for every business. */
+  auto_accept_booking_requests: boolean
+  auto_accept_booking_requests_enabled: boolean
   created_at: string
   updated_at: string
 }

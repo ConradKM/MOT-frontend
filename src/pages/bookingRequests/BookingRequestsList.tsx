@@ -8,8 +8,10 @@ import {
   useApproveBookingRequest,
   useAppointmentTypes,
   useEmployees,
+  useGarage,
   useBookingRequests,
   useRejectBookingRequest,
+  useUpdateBookingRequestAutoAccept,
 } from '../../api/queries'
 import { useToast } from '../../components/Toast'
 import { errorMessage } from '../../lib/errors'
@@ -585,6 +587,8 @@ function ReviewRow({ request }: { request: BookingRequest }) {
 export function BookingRequestsList() {
   const [status, setStatus] = useState<BookingRequestStatus>('PENDING')
   const { data: requests, isLoading } = useBookingRequests(status)
+  const { data: garage } = useGarage()
+  const autoAccept = useUpdateBookingRequestAutoAccept()
 
   return (
     <div>
@@ -594,6 +598,22 @@ export function BookingRequestsList() {
         vehicle and appointment. Requests left unreviewed past their preferred time expire
         automatically.
       </p>
+
+      {garage?.auto_accept_booking_requests && (
+        <label className="mt-4 flex max-w-2xl items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={garage.auto_accept_booking_requests_enabled}
+            disabled={autoAccept.isPending}
+            onChange={(event) => autoAccept.mutate(event.target.checked)}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span>
+            <strong>Auto-accept available requests</strong><br />
+            Accepts only requests with remaining capacity and a conflict-free active employee. Others remain pending.
+          </span>
+        </label>
+      )}
 
       <div className="mt-6 flex gap-1">
         {STATUS_TABS.map((tab) => (
