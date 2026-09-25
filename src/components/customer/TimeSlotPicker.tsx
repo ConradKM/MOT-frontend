@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { useGarageDayAvailability } from '../../api/queries'
 import { formatLongDate } from '../../lib/datetime'
-import { SLOT_STATUS } from '../../lib/availability'
+import { SLOT_STATUS, BUCKET_STEP_THRESHOLD, groupIntoHourBuckets } from '../../lib/availability'
+import type { SlotBucket } from '../../lib/availability'
 
 interface Props {
   slug: string
@@ -22,6 +24,34 @@ export function TimeSlotPicker({
 }: Props) {
   const { data, isLoading, isError, refetch, isFetching } =
     useGarageDayAvailability(slug, date, appointmentTypeId)
+
+  // Which hour bucket is expanded to its 5-minute slots, or null while the
+  // customer is still choosing a bucket. Reset whenever a new day's slots
+  // arrive, except that a bucket already containing the current selection
+  // (e.g. stepping back to this screen) stays open.
+  const [openBucketStart, setOpenBucketStart] = useState<string | null>(null)
+
+  const useBuckets = (data?.slots.length ?? 0) > BUCKET_STEP_THRESHOLD
+  const buckets = useBuckets ? groupIntoHourBuckets(data!.slots) : []
+
+  useEffect(() => {
+    if (!data || !useBuckets) {
+      setOpenBucketStart(null)
+      return
+    }
+    const containing = groupIntoHourBuckets(data.slots).find((b) =>
+      b.slots.some((s) => s.start === selectedTime),
+    )
+    setOpenBucketStart(containing ? containing.bucketStart : null)
+    // Only re-derive when the underlying data changes or the customer's
+    // selection moves to a different bucket - not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, useBuckets, selectedTime])
+
+  const expandedBucket: SlotBucket | undefined = buckets.find(
+    (b) => b.bucketStart === openBucketStart,
+  )
+  const visibleSlots = useBuckets ? (expandedBucket?.slots ?? []) : (data?.slots ?? [])
 
   return (
     <div className="mt-4 rounded-lg border border-slate-200 p-4">
@@ -67,9 +97,55 @@ export function TimeSlotPicker({
         </p>
       )}
 
-      {data && data.slots.length > 0 && (
+      {useBuckets && !expandedBucket && buckets.length > 0 && (
+        <>
+          <p className="mt-3 text-xs text-slate-500">Choose a time window, then an exact time.</p>
+          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {buckets.map((bucket) => {
+              const meta = SLOT_STATUS[bucket.status]
+              return (
+                <li key={bucket.bucketStart}>
+                  <button
+                    type="button"
+                    aria-disabled={!meta.selectable}
+                    onClick={() => meta.selectable && setOpenBucketStart(bucket.bucketStart)}
+                    className={[
+                      'flex w-full min-h-11 flex-col items-center justify-center rounded-md border px-2 py-1.5 text-sm transition',
+                      meta.selectable
+                        ? 'cursor-pointer border-slate-300 hover:border-slate-500'
+                        : 'cursor-not-allowed border-slate-100 bg-slate-50',
+                    ].join(' ')}
+                  >
+                    <span className="font-semibold">
+                      {bucket.bucketStart}–{bucket.bucketEnd}
+                    </span>
+                    <span className={`text-[11px] leading-none ${meta.pill}`}>{meta.label}</span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </>
+      )}
+
+      {useBuckets && expandedBucket && (
+        <div className="mt-3 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setOpenBucketStart(null)}
+            className="text-xs font-medium text-slate-500 underline"
+          >
+            ← Back to time windows
+          </button>
+          <span className="text-xs text-slate-500">
+            {expandedBucket.bucketStart}–{expandedBucket.bucketEnd}
+          </span>
+        </div>
+      )}
+
+      {visibleSlots.length > 0 && (
         <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {data.slots.map((slot) => {
+          {visibleSlots.map((slot) => {
             const meta = SLOT_STATUS[slot.status]
             const isSelected = slot.start === selectedTime
             return (

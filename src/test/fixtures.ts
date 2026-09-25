@@ -23,6 +23,14 @@ import type {
   PublicAppointmentTypeGroup,
   PublicGarage,
 } from '../api/publicGarage'
+import type {
+  PublicQueueInfo,
+  PublicQueueStatus,
+  QueueDashboard,
+  QueueEntry,
+  QueueSettings,
+  ReservedWindow,
+} from '../api/queue'
 
 /**
  * Canonical API-shaped objects for tests. Every factory takes an override
@@ -84,6 +92,7 @@ export function makeCustomer(patch: Partial<Customer> = {}): Customer {
     last_name: 'Bennett',
     email: 'oliver@example.com',
     phone: '07123456789',
+    notes: null,
     is_active: true,
     sms_opt_out: false,
     created_at: '',
@@ -364,6 +373,123 @@ export function makeDayAvailability(
       { start: '09:30', status: 'limited', remaining: 1, capacity: 2 },
       { start: '10:00', status: 'booked', remaining: 0, capacity: 2 },
     ],
+    ...patch,
+  }
+}
+
+// --- Walk-in queue ------------------------------------------------------------
+
+export const QUEUE_TOKEN = 'tok_0123456789abcdefghij'
+export const QUEUE_NOW = '2099-09-14T10:00:00Z'
+
+export function makePublicQueueInfo(patch: Partial<PublicQueueInfo> = {}): PublicQueueInfo {
+  return {
+    garage_name: 'Bennett Motors',
+    is_open: true,
+    accepting_joins: true,
+    refusal_reason: null,
+    refusal_message: null,
+    waiting_count: 2,
+    estimated_start_at: '2099-09-14T10:40:00Z',
+    estimated_wait_minutes: 40,
+    opens_at: '2099-09-14T09:00:00Z',
+    closes_at: '2099-09-14T17:00:00Z',
+    ...patch,
+  }
+}
+
+export function makeQueueStatus(patch: Partial<PublicQueueStatus> = {}): PublicQueueStatus {
+  return {
+    garage_name: 'Bennett Motors',
+    queue_is_open: true,
+    ticket_number: 7,
+    status: 'WAITING',
+    end_reason: null,
+    customer_first_name: 'Sam',
+    position: 3,
+    people_ahead: 2,
+    estimated_start_at: '2099-09-14T10:40:00Z',
+    estimated_wait_minutes: 40,
+    fits_today: true,
+    called_at: null,
+    call_expires_at: null,
+    ...patch,
+  }
+}
+
+export function makeQueueEntry(patch: Partial<QueueEntry> = {}): QueueEntry {
+  return {
+    id: 'q1',
+    status: 'WAITING',
+    end_reason: null,
+    ticket_number: 1,
+    customer_first_name: 'Sam',
+    customer_last_name: 'Walker',
+    customer_phone: '+447123456789',
+    sms_opt_in: false,
+    vehicle_registration: 'WK12ABC',
+    notes: null,
+    appointment_type_id: null,
+    appointment_type_name: null,
+    service_minutes: 30,
+    joined_at: '2099-09-14T09:50:00Z',
+    called_at: null,
+    started_at: null,
+    ended_at: null,
+    appointment_id: null,
+    position: 1,
+    estimated_start_at: QUEUE_NOW,
+    estimated_wait_minutes: 0,
+    fits_today: true,
+    call_expires_at: null,
+    ...patch,
+  }
+}
+
+export function makeQueueDashboard(patch: Partial<QueueDashboard> = {}): QueueDashboard {
+  return {
+    now: QUEUE_NOW,
+    service_date: '2099-09-14',
+    is_open: true,
+    accepting_joins: true,
+    refusal_reason: null,
+    refusal_message: null,
+    capacity: 2,
+    opens_at: '2099-09-14T09:00:00Z',
+    closes_at: '2099-09-14T17:00:00Z',
+    no_show_timeout_minutes: 10,
+    average: { effective_minutes: 30, source: 'AUTO', auto_minutes: 30, auto_sample_size: 12 },
+    new_joiner_estimated_start_at: '2099-09-14T10:30:00Z',
+    new_joiner_fits_today: true,
+    entries: [],
+    appointments: [],
+    ...patch,
+  }
+}
+
+export function makeQueueSettings(patch: Partial<QueueSettings> = {}): QueueSettings {
+  return {
+    is_open: true,
+    average_mode: 'AUTO',
+    manual_average_minutes: null,
+    no_show_timeout_minutes: 10,
+    default_appointment_type_id: null,
+    average: { effective_minutes: 35, source: 'AUTO', auto_minutes: 35, auto_sample_size: 9 },
+    capacity: 2,
+    capacity_per_slot: 2,
+    ...patch,
+  }
+}
+
+export function makeReservedWindow(patch: Partial<ReservedWindow> = {}): ReservedWindow {
+  return {
+    id: 'rw1',
+    weekday: 0,
+    date: null,
+    starts_at: '09:00:00',
+    ends_at: '11:00:00',
+    reserved_capacity: 1,
+    note: null,
     ...patch,
   }
 }

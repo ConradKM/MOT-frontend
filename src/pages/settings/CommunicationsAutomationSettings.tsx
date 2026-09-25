@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useGarageId } from '../../hooks/useGarageId'
 import {
   useAutomationSettings,
+  useGarage,
   useMessageTemplates,
   usePreviewMessageTemplate,
   useResetMessageTemplate,
@@ -12,6 +13,7 @@ import {
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import type { AutomationSettings, MessageTemplate } from '../../api/communications'
+import { PhoneMenuPanel } from './PhoneMenuPanel'
 
 const TEMPLATE_LABELS: Record<string, string> = {
   booking_acknowledgement: 'Booking request received',
@@ -245,6 +247,7 @@ function TemplateEditor({ template }: { template: MessageTemplate }) {
 export function CommunicationsAutomationSettings() {
   const { data: settings, isLoading: settingsLoading } = useAutomationSettings()
   const { data: templatesData, isLoading: templatesLoading } = useMessageTemplates()
+  const { data: garage } = useGarage()
 
   if (settingsLoading || templatesLoading || !settings) {
     return (
@@ -263,6 +266,17 @@ export function CommunicationsAutomationSettings() {
 
       <div className="mt-6">
         <AutomationTogglesForm settings={settings} />
+      </div>
+
+      <h2 id="phone-menu" className="mt-10 text-lg font-semibold text-slate-900">
+        Phone menu
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">
+        What callers hear first, and where each keypad option takes them - for example 1 for the
+        booking assistant, 2 to speak to your team.
+      </p>
+      <div className="mt-4">
+        <PhoneMenuPanel businessName={garage?.name} />
       </div>
 
       <h2 className="mt-10 text-lg font-semibold text-slate-900">Message templates</h2>

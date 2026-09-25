@@ -175,9 +175,9 @@ const ContactCustomer = lazy(() =>
   import('./pages/communications/ContactCustomer').then((m) => ({ default: m.ContactCustomer })),
 )
 
-// The customer-facing booking wizard carries @stripe/stripe-js +
-// @stripe/react-stripe-js for its Deposit step - its own chunk for the same
-// reason, so a garage's staff dashboard never pays for Stripe's code.
+// The customer-facing booking wizard - its own chunk for the same reason.
+// Stripe is split further still: it only loads once the Deposit step's
+// checkout actually mounts (see components/customer/payments/PaymentCheckout.tsx).
 const BookingWizard = lazy(() =>
   import('./pages/customer/BookingWizard').then((m) => ({ default: m.BookingWizard })),
 )
@@ -187,6 +187,21 @@ const CustomerAccount = lazy(() =>
 const CustomerAppointmentDetail = lazy(() =>
   import('./pages/customer/CustomerAppointmentDetail').then((m) => ({
     default: m.CustomerAppointmentDetail,
+  })),
+)
+
+// Walk-in queue: the public join/status pages (what the queue QR code opens)
+// and the staff live queue.
+const QueueJoin = lazy(() => import('./pages/queue/QueueJoin').then((m) => ({ default: m.QueueJoin })))
+const QueueStatus = lazy(() =>
+  import('./pages/queue/QueueStatus').then((m) => ({ default: m.QueueStatus })),
+)
+const QueueDashboard = lazy(() =>
+  import('./pages/queue/QueueDashboard').then((m) => ({ default: m.QueueDashboard })),
+)
+const WalkInQueueSettings = lazy(() =>
+  import('./pages/settings/WalkInQueueSettings').then((m) => ({
+    default: m.WalkInQueueSettings,
   })),
 )
 
@@ -225,6 +240,10 @@ export default function App() {
           <Route path="/" element={<Navigate to="/book" replace />} />
           <Route path="/book" element={<BookingWizard />} />
           <Route path="/book/:garageId" element={<BookingWizard />} />
+          {/* Walk-in queue, entered via the business's queue link / QR code.
+              No account: the status page's token is in the URL fragment. */}
+          <Route path="/queue/:garageId" element={<QueueJoin />} />
+          <Route path="/queue/:garageId/status" element={<QueueStatus />} />
           <Route element={<CustomerProtectedRoute />}>
             <Route path="/customer/account" element={<CustomerAccount />} />
             <Route
@@ -252,6 +271,7 @@ export default function App() {
             <Route path="vehicles/:id/edit" element={<VehicleForm />} />
 
             <Route path="booking-requests" element={<BookingRequestsList />} />
+            <Route path="queue" element={<QueueDashboard />} />
             <Route path="payments" element={<PaymentsList />} />
             {/* Reminders moved into Settings; keep old bookmarks working. */}
             <Route path="reminders" element={<Navigate to="../settings/reminders" relative="path" replace />} />
@@ -308,6 +328,7 @@ export default function App() {
               <Route path="roles" element={<RolesList />} />
               <Route path="communications-automation" element={<CommunicationsAutomationSettings />} />
               <Route path="payments" element={<PaymentsSettings />} />
+              <Route path="walk-in-queue" element={<WalkInQueueSettings />} />
             </Route>
           </Route>
         </Route>

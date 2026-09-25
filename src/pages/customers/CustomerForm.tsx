@@ -23,6 +23,7 @@ export function CustomerForm() {
   // Prefilled when arriving from an unknown caller in Communications
   // ("Add customer") - only relevant for a brand new customer.
   const [phone, setPhone] = useState(() => (isEdit ? '' : (searchParams.get('phone') ?? '')))
+  const [notes, setNotes] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -32,6 +33,7 @@ export function CustomerForm() {
       setLastName(existing.last_name)
       setEmail(existing.email ?? '')
       setPhone(existing.phone ?? '')
+      setNotes(existing.notes ?? '')
     }
   }, [existing])
 
@@ -46,6 +48,7 @@ export function CustomerForm() {
       last_name: lastName,
       email: email || null,
       phone: phone || null,
+      notes: notes || null,
     }
     try {
       if (isEdit) {
@@ -128,6 +131,25 @@ export function CustomerForm() {
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
           />
           {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700" htmlFor="notes">
+            Internal notes
+          </label>
+          <textarea
+            id="notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={4}
+            maxLength={5000}
+            aria-describedby="notes_help"
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+          <p id="notes_help" className="mt-1 text-xs text-slate-500">
+            Visible to business staff only. This is not shared with the customer.
+          </p>
+          {errors.notes && <p className="mt-1 text-sm text-red-600">{errors.notes}</p>}
         </div>
 
         <div className="flex gap-3">

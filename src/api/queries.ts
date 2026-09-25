@@ -10,6 +10,7 @@ import * as bookingFlowApi from './bookingFlow'
 import * as groupsApi from './appointmentTypeGroups'
 import * as imagesApi from './images'
 import * as publicGarageApi from './publicGarage'
+import * as queueApi from './queue'
 import * as employeesApi from './employees'
 import * as feedbackApi from './feedback'
 import * as rolesApi from './roles'
@@ -41,6 +42,22 @@ export function useUpdateGarage() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: garageApi.updateGarage,
+    onSuccess: (garage) => qc.setQueryData(['garage'], garage),
+  })
+}
+
+export function useUpdateBookingRequestSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (enabled: boolean) => garageApi.updateBookingRequestSettings(enabled),
+    onSuccess: (garage) => qc.setQueryData(['garage'], garage),
+  })
+}
+
+export function useUpdateBookingRequestAutoAccept() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (enabled: boolean) => garageApi.updateBookingRequestAutoAccept(enabled),
     onSuccess: (garage) => qc.setQueryData(['garage'], garage),
   })
 }
@@ -1189,5 +1206,134 @@ export function useSimulateMessage() {
   return useMutation({
     mutationFn: (data: conversationSimulatorApi.SimulateMessageInput) =>
       conversationSimulatorApi.simulateMessage(data),
+  })
+}
+
+// Walk-in queue - public (no account). Position/ETA are recomputed on every
+// read server-side, so polling is the whole "live" mechanism - no sockets.
+export function usePublicQueue(slug: string | undefined) {
+  return useQuery({
+    queryKey: ['publicQueue', slug],
+    queryFn: () => queueApi.getPublicQueue(slug as string),
+    enabled: !!slug,
+    retry: false,
+    refetchInterval: 30_000,
+  })
+}
+
+export function useQueueStatus(slug: string | undefined, token: string | null) {
+  return useQuery({
+    queryKey: ['queueStatus', slug, token],
+    queryFn: () => queueApi.getQueueStatus(slug as string, token as string),
+    enabled: !!slug && !!token,
+    retry: false,
+    refetchInterval: 20_000,
+  })
+}
+
+export function useJoinQueue(slug: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: queueApi.QueueJoinInput) => queueApi.joinQueue(slug as string, data),
+    onSuccess: (joined) => {
+      qc.setQueryData(['queueStatus', slug, joined.token], joined)
+      qc.invalidateQueries({ queryKey: ['publicQueue', slug] })
+    },
+  })
+}
+
+export function useLeaveQueue(slug: string | undefined, token: string | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => queueApi.leaveQueue(slug as string, token as string),
+    onSuccess: (status) => qc.setQueryData(['queueStatus', slug, token], status),
+  })
+}
+
+// Walk-in queue - staff
+export function useQueueDashboard() {
+  return useQuery({
+    queryKey: ['queueDashboard'],
+    queryFn: queueApi.getQueueDashboard,
+    refetchInterval: 15_000,
+  })
+}
+
+export function useSetQueueOpen() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (open: boolean) => (open ? queueApi.openQueue() : queueApi.closeQueue()),
+    onSuccess: (dashboard) => {
+      qc.setQueryData(['queueDashboard'], dashboard)
+      qc.invalidateQueries({ queryKey: ['queueSettings'] })
+    },
+  })
+}
+
+export function useCallNext() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: queueApi.callNext,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['queueDashboard'] }),
+  })
+}
+
+export function useQueueEntryAction() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, action }: { id: string; action: queueApi.QueueEntryAction }) =>
+      queueApi.queueEntryAction(id, action),
+    onSuccess: (_entry, { action }) => {
+      qc.invalidateQueries({ queryKey: ['queueDashboard'] })
+      // Check-in creates an appointment; completing it changes its status.
+      if (action === 'start' || action === 'complete') {
+        qc.invalidateQueries({ queryKey: ['appointments'] })
+      }
+    },
+  })
+}
+
+export function useReorderQueue() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (entryIds: string[]) => queueApi.reorderQueue(entryIds),
+    onSuccess: (dashboard) => qc.setQueryData(['queueDashboard'], dashboard),
+    // A 409 means the list was stale - refetch so the next attempt is current.
+    onError: () => qc.invalidateQueries({ queryKey: ['queueDashboard'] }),
+  })
+}
+
+export function useQueueSettings() {
+  return useQuery({ queryKey: ['queueSettings'], queryFn: queueApi.getQueueSettings })
+}
+
+export function useUpdateQueueSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: queueApi.QueueSettingsInput) => queueApi.updateQueueSettings(data),
+    onSuccess: (settings) => {
+      qc.setQueryData(['queueSettings'], settings)
+      qc.invalidateQueries({ queryKey: ['queueDashboard'] })
+    },
+  })
+}
+
+export function useReservedWindows() {
+  return useQuery({ queryKey: ['reservedWindows'], queryFn: queueApi.listReservedWindows })
+}
+
+export function useAddReservedWindow() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: queueApi.ReservedWindowInput) => queueApi.addReservedWindow(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reservedWindows'] }),
+  })
+}
+
+export function useDeleteReservedWindow() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => queueApi.deleteReservedWindow(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reservedWindows'] }),
   })
 }

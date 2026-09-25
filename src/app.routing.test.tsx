@@ -130,6 +130,7 @@ describe('settings routes', () => {
     ['/g1/settings/roles', 'Roles'],
     ['/g1/settings/communications-automation', 'Communications automation'],
     ['/g1/settings/payments', 'Payments'],
+    ['/g1/settings/walk-in-queue', 'Walk-in Queue'],
   ])('renders %s inside the settings sidebar', async (route, heading) => {
     signInAsStaff()
     renderApp(route)

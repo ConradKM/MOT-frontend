@@ -7,6 +7,8 @@ import {
   useApplyBookingFlowPreset,
   useBookingFlowPresets,
   useBookingFlowSections,
+  useGarage,
+  useUpdateBookingRequestSettings,
 } from '../../api/queries'
 import { GroupsPanel } from './bookingWorkflow/GroupsPanel'
 import { WorkflowPanel } from './bookingWorkflow/WorkflowPanel'
@@ -34,6 +36,8 @@ export function BookingWorkflowSettings() {
   const groups = useAppointmentTypeGroups()
   const services = useAppointmentTypes()
   const sections = useBookingFlowSections()
+  const garage = useGarage()
+  const autoAccept = useUpdateBookingRequestSettings()
 
   const forbidden = [groups.error, services.error, sections.error].some(
     (e) => isApiError(e) && e.code === 403,
@@ -71,6 +75,23 @@ export function BookingWorkflowSettings() {
       </div>
 
       <div className="mt-6">
+        <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">Booking request approval</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            When enabled, a request is accepted only if its requested slot still has capacity and an active employee can be assigned without a clash. Otherwise it stays pending for staff review.
+          </p>
+          <label className="mt-3 flex items-start gap-3 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={garage.data?.auto_accept_booking_requests ?? false}
+              disabled={garage.isLoading || autoAccept.isPending}
+              onChange={(event) => autoAccept.mutate(event.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span><strong>Auto-accept available booking requests</strong><br />Existing bookings and deposit/payment holds are not changed.</span>
+          </label>
+          {autoAccept.isError && <p className="mt-2 text-sm text-red-600">{errorMessage(autoAccept.error)}</p>}
+        </section>
         {tab === 'groups' && (
           <GroupsPanel
             groups={groups.data ?? []}

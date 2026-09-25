@@ -1,5 +1,11 @@
-import { StripeCheckout } from './StripeCheckout'
+import { lazy, Suspense } from 'react'
 import type { PaymentCheckoutProps } from './types'
+
+// Split out so @stripe/react-stripe-js + the Stripe loader only download when
+// a deposit is actually due, not with every visit to the booking wizard.
+const StripeCheckout = lazy(() =>
+  import('./StripeCheckout').then((m) => ({ default: m.StripeCheckout })),
+)
 
 /** Picks the right provider-specific checkout component for this deposit
  * session - the only place in the wizard that branches on `provider`/
@@ -11,7 +17,11 @@ export function PaymentCheckout(props: PaymentCheckoutProps) {
   const { provider, checkout_mode: checkoutMode } = props.intent
 
   if (provider === 'stripe' && checkoutMode === 'EMBEDDED') {
-    return <StripeCheckout {...props} />
+    return (
+      <Suspense fallback={<p className="text-sm text-slate-500">Loading secure checkout…</p>}>
+        <StripeCheckout {...props} />
+      </Suspense>
+    )
   }
 
   // A provider this build of the frontend doesn't have a component for yet

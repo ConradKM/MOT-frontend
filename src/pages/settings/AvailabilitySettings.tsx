@@ -107,10 +107,16 @@ function SlotRulesForm({
           <input
             type="number"
             min={5}
+            max={240}
             value={form.slot_interval_minutes}
             onChange={(e) => set('slot_interval_minutes', e.target.value)}
             className={inputClass}
           />
+          <span className="mt-1 block text-xs text-slate-500">
+            How often a bookable start time appears. Shorter (e.g. 5 minutes) packs the
+            calendar more tightly and shows customers a "choose a window, then a time"
+            picker; 30–60 works well if you'd rather keep a simple flat list.
+          </span>
         </label>
         <label className="block text-sm text-slate-700">
           Default appointment length (minutes)

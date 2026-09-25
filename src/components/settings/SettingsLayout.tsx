@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   CircleDot,
   Clock,
+  ListOrdered,
   CreditCard,
   MessageSquare,
   ShieldCheck,
@@ -58,6 +59,7 @@ export const SECTIONS: SettingsSection[] = [
     items: [
       { slug: 'communications-automation', label: 'Communications Automation', icon: MessageSquare },
       { slug: 'payments', label: 'Payments', icon: CreditCard },
+      { slug: 'walk-in-queue', label: 'Walk-in Queue', icon: ListOrdered },
     ],
   },
 ]

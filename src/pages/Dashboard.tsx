@@ -8,12 +8,15 @@ import {
   useCapacitySummary,
   useCustomers,
   useGarage,
+  useQueueDashboard,
 } from '../api/queries'
 import type { CapacityLevel } from '../api/garageCapacity'
+import type { QueueDashboard } from '../api/queue'
 import { useGarageId } from '../hooks/useGarageId'
 import { formatTimeRange, todayIso } from '../lib/datetime'
 import { formatDurationMinutes } from '../lib/duration'
 import { statusBadgeClass, statusLabel } from '../lib/appointmentStatuses'
+import type { Appointment } from '../types'
 
 /** `/dashboard` — resolves the signed-in employee's own garage, then redirects to its
  * garage-scoped dashboard URL. Lets Login/Register and the nav link target a fixed path
@@ -66,6 +69,39 @@ function CapacityCard({
   )
 }
 
+/** The walk-in queue's entry point. Deliberately here rather than in the
+ * header nav: the staff header is a single non-wrapping row, and another
+ * item pushes its minimum width past a 1280px laptop (see
+ * e2e/responsive.spec.ts). */
+function WalkInQueueRow({
+  garageId,
+  queue,
+}: {
+  garageId: string
+  queue: QueueDashboard | undefined
+}) {
+  const waiting = queue?.entries.filter((e) => e.status === 'WAITING').length ?? 0
+  const called = queue?.entries.filter((e) => e.status === 'CALLED').length ?? 0
+  return (
+    <Link
+      to={`/${garageId}/queue`}
+      className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm hover:border-slate-300"
+    >
+      <span className="text-sm">
+        <span className="font-semibold text-slate-900">Walk-in queue</span>
+        <span className="ml-2 text-slate-500">
+          {queue === undefined
+            ? '—'
+            : `${queue.is_open ? 'Open' : 'Closed'} · ${waiting} waiting${
+                called ? ` · ${called} called` : ''
+              }`}
+        </span>
+      </span>
+      <span className="text-sm font-medium text-slate-900">Open live queue →</span>
+    </Link>
+  )
+}
+
 export function Dashboard() {
   const garageId = useGarageId()
   const { data: garage } = useGarage()
@@ -75,12 +111,16 @@ export function Dashboard() {
   const { data: appointmentTypes } = useAppointmentTypes()
   const { data: pendingRequests } = useBookingRequests('PENDING')
   const { data: statusConfig } = useAppointmentStatuses()
+  const { data: queue } = useQueueDashboard()
 
   const customerName = (id: string) => {
     const c = customers?.find((c) => c.id === id)
     return c ? `${c.first_name} ${c.last_name}` : 'Unknown customer'
   }
-  const appointmentTypeName = (id: string) => appointmentTypes?.find((t) => t.id === id)?.name ?? '—'
+  const appointmentTypeName = (appointment: Appointment) =>
+    appointment.appointment_type_name_at_booking ??
+    appointmentTypes?.find((t) => t.id === appointment.appointment_type_id)?.name ??
+    '—'
 
   const sortedAppointments = [...(todaysAppointments ?? [])].sort((a, b) =>
     a.start_time.localeCompare(b.start_time),
@@ -121,6 +161,8 @@ export function Dashboard() {
         </Link>
       </div>
 
+      <WalkInQueueRow garageId={garageId} queue={queue} />
+
       {(pendingRequests?.length ?? 0) > 0 && (
         <div className="mt-6 rounded-lg border border-violet-200 bg-violet-50 p-5">
           <p className="text-sm font-medium text-violet-800">
@@ -155,7 +197,7 @@ export function Dashboard() {
                       </p>
                       <p className="truncate text-xs text-slate-500">
                         {formatTimeRange(a.start_time, a.end_time)} ·{' '}
-                        {appointmentTypeName(a.appointment_type_id)}
+                        {appointmentTypeName(a)}
                       </p>
                     </div>
                     <span

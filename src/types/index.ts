@@ -16,6 +16,9 @@ export interface Garage {
    * set from Platform Admin, read-only here. Render the initials fallback on
    * null, never a broken-image icon. */
   logo_url: string | null
+  /** Owner-controlled; defaults false for every business. */
+  auto_accept_booking_requests: boolean
+  auto_accept_booking_requests_enabled: boolean
   created_at: string
   updated_at: string
 }
@@ -49,6 +52,8 @@ export interface Customer {
   last_name: string
   email: string | null
   phone: string | null
+  /** Persistent, staff-only information; never returned by the customer portal. */
+  notes: string | null
   /** False once archived (soft-deleted) - hidden from the main list but
    * still reachable by id. See api/customers.ts. */
   is_active: boolean
@@ -178,6 +183,10 @@ export interface Appointment {
   /** Snapshot of the appointment type's price when this was created - stays
    * accurate even if the type's price changes later. Decimal string or null. */
   price_at_booking: string | null
+  /** Snapshot of the service name when this appointment was created.  Unlike
+   * appointment_type_id, this remains historically accurate after a service
+   * is renamed or archived.  Older records may not have one yet. */
+  appointment_type_name_at_booking?: string | null
   created_at: string
   updated_at: string
 }
