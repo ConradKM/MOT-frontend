@@ -9,6 +9,8 @@ import {
   makeCustomer,
   makeGarage,
   makeGarageStatus,
+  makeQueueDashboard,
+  makeQueueEntry,
 } from '../test/fixtures'
 import { renderWithAppProviders, signInAsStaff } from '../test/utils'
 import { Dashboard } from './Dashboard'
@@ -218,5 +220,37 @@ describe("Dashboard — today's appointments", () => {
     const { container } = renderDashboard()
     await screen.findByRole('heading', { name: /welcome/i })
     await expectNoA11yViolations(container)
+  })
+})
+
+describe('Dashboard — walk-in queue', () => {
+  it('shows whether the queue is open and how many are waiting, linking to it', async () => {
+    server.use(
+      http.get('*/api/queue', () =>
+        HttpResponse.json(
+          makeQueueDashboard({
+            is_open: true,
+            entries: [
+              makeQueueEntry({ id: 'a' }),
+              makeQueueEntry({ id: 'b' }),
+              makeQueueEntry({ id: 'c', status: 'CALLED' }),
+              makeQueueEntry({ id: 'd', status: 'DONE' }),
+            ],
+          }),
+        ),
+      ),
+    )
+    renderDashboard()
+    const row = await screen.findByRole('link', { name: /Walk-in queue/ })
+    expect(row).toHaveAttribute('href', '/g1/queue')
+    expect(await within(row).findByText('Open · 2 waiting · 1 called')).toBeInTheDocument()
+  })
+
+  it('shows a closed queue', async () => {
+    server.use(
+      http.get('*/api/queue', () => HttpResponse.json(makeQueueDashboard({ is_open: false }))),
+    )
+    renderDashboard()
+    expect(await screen.findByText('Closed · 0 waiting')).toBeInTheDocument()
   })
 })

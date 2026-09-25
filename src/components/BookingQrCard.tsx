@@ -2,6 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { bookingUrl } from '../lib/bookingUrl'
 
+interface BookingQrCardProps {
+  garageId: string
+  /** Defaults to the business's booking link ({@link bookingUrl}). Pass
+   * another stable public URL - e.g. the walk-in queue's `queueUrl` - to get
+   * the same QR / copy / download card for it. */
+  url?: string
+  title?: string
+  description?: string
+  /** Download filename stem: `<stem>.png` / `<stem>.svg`. */
+  filenameStem?: string
+  /** Accessible name of the QR image. */
+  qrLabel?: string
+}
+
 /**
  * The business's public booking link + a QR code for it, with copy / download.
  *
@@ -10,8 +24,15 @@ import { bookingUrl } from '../lib/bookingUrl'
  * as inline SVG; "Download SVG" serialises that node, "Download PNG" rasterises
  * it through a canvas on click.
  */
-export function BookingQrCard({ garageId }: { garageId: string }) {
-  const url = bookingUrl(garageId)
+export function BookingQrCard({
+  garageId,
+  url: urlOverride,
+  title = 'Public booking link',
+  description = 'Share this link or print the QR code so customers can book with you directly. It stays the same for the life of your business.',
+  filenameStem = 'booking-qr',
+  qrLabel = 'Booking link QR code',
+}: BookingQrCardProps) {
+  const url = urlOverride ?? bookingUrl(garageId)
   const [svg, setSvg] = useState<string | null>(null)
   const [note, setNote] = useState<string | null>(null)
   const svgWrapRef = useRef<HTMLDivElement>(null)
@@ -53,7 +74,7 @@ export function BookingQrCard({ garageId }: { garageId: string }) {
 
   const downloadSvg = () => {
     if (!svg) return
-    download(new Blob([svg], { type: 'image/svg+xml' }), 'booking-qr.svg')
+    download(new Blob([svg], { type: 'image/svg+xml' }), `${filenameStem}.svg`)
   }
 
   const downloadPng = () => {
@@ -72,7 +93,7 @@ export function BookingQrCard({ garageId }: { garageId: string }) {
       ctx.fillRect(0, 0, size, size)
       ctx.drawImage(img, 0, 0, size, size)
       canvas.toBlob((blob) => {
-        if (blob) download(blob, 'booking-qr.png')
+        if (blob) download(blob, `${filenameStem}.png`)
       }, 'image/png')
     }
     img.onerror = () => flash('PNG render failed — use Download SVG instead')
@@ -81,25 +102,22 @@ export function BookingQrCard({ garageId }: { garageId: string }) {
 
   return (
     <section className="mt-8">
-      <h2 className="text-sm font-semibold text-slate-900">Public booking link</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        Share this link or print the QR code so customers can book with you directly. It
-        stays the same for the life of your business.
-      </p>
+      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+      <p className="mt-1 text-sm text-slate-500">{description}</p>
 
       <div className="mt-4 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
         {svg ? (
           <div
             ref={svgWrapRef}
             className="flex h-40 w-40 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full"
-            aria-label="Booking link QR code"
+            aria-label={qrLabel}
             dangerouslySetInnerHTML={{ __html: svg }}
           />
         ) : (
           <div
             ref={svgWrapRef}
             className="flex h-40 w-40 shrink-0 items-center justify-center"
-            aria-label="Booking link QR code"
+            aria-label={qrLabel}
           >
             <span className="text-xs text-slate-400">Generating…</span>
           </div>

@@ -314,3 +314,23 @@ export const DAY_AVAILABILITY = {
     { start: '10:00', status: 'booked', remaining: 0, capacity: 2 },
   ],
 }
+
+/** The staff walk-in queue - closed and empty by default (see queue.spec.ts
+ * for the live journey). The Dashboard reads it for its queue row. */
+export const QUEUE_DASHBOARD = {
+  now: '2099-09-14T10:00:00Z',
+  service_date: '2099-09-14',
+  is_open: false,
+  accepting_joins: false,
+  refusal_reason: 'queue_closed',
+  refusal_message: "The walk-in queue isn't open right now.",
+  capacity: 2,
+  opens_at: '2099-09-14T08:00:00Z',
+  closes_at: '2099-09-14T16:00:00Z',
+  no_show_timeout_minutes: 10,
+  average: { effective_minutes: 60, source: 'DEFAULT', auto_minutes: null, auto_sample_size: 0 },
+  new_joiner_estimated_start_at: null,
+  new_joiner_fits_today: false,
+  entries: [],
+  appointments: [],
+}

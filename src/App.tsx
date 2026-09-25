@@ -193,6 +193,21 @@ const CustomerAppointmentDetail = lazy(() =>
   })),
 )
 
+// Walk-in queue: the public join/status pages (what the queue QR code opens)
+// and the staff live queue.
+const QueueJoin = lazy(() => import('./pages/queue/QueueJoin').then((m) => ({ default: m.QueueJoin })))
+const QueueStatus = lazy(() =>
+  import('./pages/queue/QueueStatus').then((m) => ({ default: m.QueueStatus })),
+)
+const QueueDashboard = lazy(() =>
+  import('./pages/queue/QueueDashboard').then((m) => ({ default: m.QueueDashboard })),
+)
+const WalkInQueueSettings = lazy(() =>
+  import('./pages/settings/WalkInQueueSettings').then((m) => ({
+    default: m.WalkInQueueSettings,
+  })),
+)
+
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })))
 const DashboardRedirect = lazy(() =>
   import('./pages/Dashboard').then((m) => ({ default: m.DashboardRedirect })),
@@ -228,6 +243,10 @@ export default function App() {
           <Route path="/" element={<Navigate to="/book" replace />} />
           <Route path="/book" element={<BookingWizard />} />
           <Route path="/book/:garageId" element={<BookingWizard />} />
+          {/* Walk-in queue, entered via the business's queue link / QR code.
+              No account: the status page's token is in the URL fragment. */}
+          <Route path="/queue/:garageId" element={<QueueJoin />} />
+          <Route path="/queue/:garageId/status" element={<QueueStatus />} />
           <Route element={<CustomerProtectedRoute />}>
             <Route path="/customer/account" element={<CustomerAccount />} />
             <Route
@@ -255,6 +274,7 @@ export default function App() {
             <Route path="vehicles/:id/edit" element={<VehicleForm />} />
 
             <Route path="booking-requests" element={<BookingRequestsList />} />
+            <Route path="queue" element={<QueueDashboard />} />
             <Route path="payments" element={<PaymentsList />} />
             <Route path="reminders" element={<RemindersLayout />}>
               <Route index element={<AppointmentRemindersSettings />} />
@@ -299,6 +319,7 @@ export default function App() {
             <Route path="settings/booking-workflow" element={<BookingWorkflowSettings />} />
             <Route path="settings/appointment-statuses" element={<AppointmentStatusesList />} />
             <Route path="settings/availability" element={<AvailabilitySettings />} />
+            <Route path="settings/walk-in-queue" element={<WalkInQueueSettings />} />
             <Route
               path="settings/communications-automation"
               element={<CommunicationsAutomationSettings />}

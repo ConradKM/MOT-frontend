@@ -13,6 +13,7 @@ export const SECTIONS = [
   { slug: 'booking-workflow', label: 'Booking Workflow' },
   { slug: 'appointment-statuses', label: 'Appointment Statuses' },
   { slug: 'availability', label: 'Availability' },
+  { slug: 'walk-in-queue', label: 'Walk-in Queue' },
   { slug: 'communications-automation', label: 'Communications Automation' },
   { slug: 'payments', label: 'Payments' },
 ]

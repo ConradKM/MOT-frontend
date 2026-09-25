@@ -11,6 +11,7 @@ import {
   FLOW_SECTIONS,
   GARAGE,
   PUBLIC_GARAGE,
+  QUEUE_DASHBOARD,
   VEHICLES,
   jwt,
 } from './data'
@@ -79,6 +80,7 @@ function defaults(): Stub[] {
     { match: (u) => u.pathname === '/api/booking-requests/', handler: (r) => json(r, []) },
     { match: (u) => u.pathname === '/api/mot-reminders/', handler: (r) => json(r, []) },
     { match: (u) => u.pathname === '/api/communications/unread-count', handler: (r) => json(r, { whatsapp_unread: 0 }) },
+    { match: (u) => u.pathname === '/api/queue', handler: (r) => json(r, QUEUE_DASHBOARD) },
 
     // public booking
     { match: (u) => /^\/api\/public\/garages\/[^/]+$/.test(u.pathname), handler: (r) => json(r, PUBLIC_GARAGE) },

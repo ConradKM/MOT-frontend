@@ -29,6 +29,7 @@ import {
 } from '../../api/publicGarage'
 import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 import { Captcha, captchaEnabled } from '../../components/Captcha'
+import { isPlausibleUkMobile } from '../../lib/phone'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { DepositStep } from '../../components/customer/DepositStep'
 
@@ -91,16 +92,6 @@ const STEP_LABELS: Record<StepKey, string> = {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-// A light client-side sanity check only - the server (app/phone.py) does the
-// real, authoritative parsing/normalisation to E.164. This just gives fast
-// feedback without making the customer type "+44" themselves: 07…, +447…
-// and 00447… are all accepted, spaces/dashes/brackets are ignored.
-const UK_MOBILE_RE = /^(?:\+44|0044|0)7\d{9}$/
-
-function isPlausibleUkMobile(value: string): boolean {
-  return UK_MOBILE_RE.test(value.replace(/[\s\-()]/g, ''))
-}
 
 function validateYourDetails(d: WizardData): FieldErrors {
   const errors: FieldErrors = {}
