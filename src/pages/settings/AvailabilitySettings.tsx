@@ -15,7 +15,6 @@ import type {
 } from '../../api/garageSchedule'
 import { errorMessage, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { formatLongDate, todayIso } from '../../lib/datetime'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -40,14 +39,12 @@ export function AvailabilitySettings() {
 
   if (isLoading || !data) {
     return (
-      <SettingsLayout>
-        <p className="text-sm text-slate-500">Loading…</p>
-      </SettingsLayout>
+      <p className="text-sm text-slate-500">Loading…</p>
     )
   }
 
   return (
-    <SettingsLayout>
+    <>
       <h1 className="text-2xl font-semibold text-slate-900">Availability</h1>
       <p className="mt-1 text-sm text-slate-500">
         Controls the public booking calendar customers see for your business.
@@ -58,7 +55,7 @@ export function AvailabilitySettings() {
         <OpeningHoursForm openingHours={data.opening_hours} />
         <ExceptionsSection exceptions={data.exceptions} />
       </div>
-    </SettingsLayout>
+    </>
   )
 }
 

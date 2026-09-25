@@ -57,6 +57,43 @@ export const handlers = [
   http.get('*/api/booking-flow/presets', () => HttpResponse.json({ presets: [] })),
   http.get('*/api/booking-requests/', () => HttpResponse.json([])),
   http.get('*/api/mot-reminders/', () => HttpResponse.json([])),
+  http.get('*/api/mot-reminders/settings', () =>
+    HttpResponse.json({
+      id: 's1',
+      stage1_enabled: true,
+      stage1_days_before: 30,
+      stage2_enabled: true,
+      stage2_days_before: 7,
+      stage3_enabled: true,
+      stage3_days_before: 1,
+    }),
+  ),
+  http.get('*/api/garage/schedule', () =>
+    HttpResponse.json({
+      settings: {
+        id: 'sch1',
+        slot_interval_minutes: 30,
+        default_appointment_minutes: 60,
+        min_lead_time_hours: 2,
+        max_advance_days: 60,
+        capacity_per_slot: null,
+        limited_threshold_ratio: 0.5,
+      },
+      opening_hours: [],
+      exceptions: [],
+    }),
+  ),
+  http.get('*/api/communications/automation-settings', () =>
+    HttpResponse.json({
+      booking_ack_enabled: true,
+      booking_confirmation_enabled: true,
+      reminder_enabled: true,
+      reminder_hours_before: 24,
+      missed_call_ack_enabled: false,
+      conversation_automation_enabled: false,
+    }),
+  ),
+  http.get('*/api/communications/templates', () => HttpResponse.json({ items: [] })),
   http.get('*/api/communications/unread-count', () =>
     HttpResponse.json({ whatsapp_unread: 0 }),
   ),

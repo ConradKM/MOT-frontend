@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useMOTReminderSettings, useUpdateMOTReminderSettings } from '../../api/queries'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import type { MOTReminderSettings } from '../../api/motReminders'
 
 const STAGES = [
@@ -38,9 +37,7 @@ export function MotReminderSettings() {
 
   if (isLoading || !data || Object.keys(form).length === 0) {
     return (
-      <SettingsLayout>
-        <p className="text-sm text-slate-500">Loading…</p>
-      </SettingsLayout>
+      <p className="text-sm text-slate-500">Loading…</p>
     )
   }
 
@@ -84,68 +81,66 @@ export function MotReminderSettings() {
   }
 
   return (
-    <SettingsLayout>
-      <div className="max-w-lg">
-        <h1 className="text-2xl font-semibold text-slate-900">MOT reminders</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Automatically remind customers before their MOT expires. Reminders stop
-          automatically when the vehicle has an active MOT booking.
+    <div className="max-w-lg">
+      <h1 className="text-2xl font-semibold text-slate-900">MOT reminders</h1>
+      <p className="mt-1 text-sm text-slate-500">
+        Automatically remind customers before their MOT expires. Reminders stop
+        automatically when the vehicle has an active MOT booking.
+      </p>
+
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        {error && (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        )}
+
+        {STAGES.map((s) => {
+          const stage = form[s.key]
+          return (
+            <div
+              key={s.key}
+              className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-3"
+            >
+              <input
+                id={`${s.key}-enabled`}
+                type="checkbox"
+                checked={stage.enabled}
+                onChange={(e) => setStage(s.key, { enabled: e.target.checked })}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              <label
+                htmlFor={`${s.key}-enabled`}
+                className="w-32 text-sm font-medium text-slate-700"
+              >
+                {s.label}
+              </label>
+              <input
+                aria-label={`${s.label} days before expiry`}
+                type="number"
+                min={1}
+                max={365}
+                value={stage.days}
+                disabled={!stage.enabled}
+                onChange={(e) => setStage(s.key, { days: e.target.value })}
+                className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
+              />
+              <span className="text-sm text-slate-500">days before MOT expiry</span>
+            </div>
+          )
+        })}
+
+        <p className="text-xs text-slate-400">
+          Stages are shown furthest-out first. A customer can receive up to three
+          automatic reminders per MOT cycle.
         </p>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-          )}
-
-          {STAGES.map((s) => {
-            const stage = form[s.key]
-            return (
-              <div
-                key={s.key}
-                className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-3"
-              >
-                <input
-                  id={`${s.key}-enabled`}
-                  type="checkbox"
-                  checked={stage.enabled}
-                  onChange={(e) => setStage(s.key, { enabled: e.target.checked })}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
-                <label
-                  htmlFor={`${s.key}-enabled`}
-                  className="w-32 text-sm font-medium text-slate-700"
-                >
-                  {s.label}
-                </label>
-                <input
-                  aria-label={`${s.label} days before expiry`}
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={stage.days}
-                  disabled={!stage.enabled}
-                  onChange={(e) => setStage(s.key, { days: e.target.value })}
-                  className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
-                />
-                <span className="text-sm text-slate-500">days before MOT expiry</span>
-              </div>
-            )
-          })}
-
-          <p className="text-xs text-slate-400">
-            Stages are shown furthest-out first. A customer can receive up to three
-            automatic reminders per MOT cycle.
-          </p>
-
-          <button
-            type="submit"
-            disabled={update.isPending}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-          >
-            {update.isPending ? 'Saving…' : 'Save reminder settings'}
-          </button>
-        </form>
-      </div>
-    </SettingsLayout>
+        <button
+          type="submit"
+          disabled={update.isPending}
+          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+        >
+          {update.isPending ? 'Saving…' : 'Save reminder settings'}
+        </button>
+      </form>
+    </div>
   )
 }

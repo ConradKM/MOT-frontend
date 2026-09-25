@@ -10,7 +10,8 @@ import { MotRemindersList } from '../motReminders/MotRemindersList'
 export function CustomerSaleReminders() {
   return (
     <div>
-      <p className="mb-6 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+      <h1 className="text-2xl font-semibold text-slate-900">Customer &amp; sale reminders</h1>
+      <p className="mt-4 mb-6 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
         Reminders tied to a customer or a due date, rather than a specific booked appointment.
         Right now the only one supported is MOT expiry, for automotive businesses - other kinds
         (service due, renewals, follow-ups) will appear here as they're added.

@@ -95,12 +95,13 @@ export function MotRemindersList() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">MOT reminders</h1>
+      {/* h2: only ever rendered beneath CustomerSaleReminders' own page title. */}
+      <h2 className="text-lg font-semibold text-slate-900">MOT reminders</h2>
       <p className="mt-1 text-sm text-slate-500">
         Upcoming MOT expiries for {garage?.name ?? 'your business'} and the state of each
         reminder. Automatic reminders follow your{' '}
         <Link
-          to={`/${garageId}/settings/mot-reminders`}
+          to={`/${garageId}/settings/reminders/mot`}
           className="font-medium text-slate-700 underline hover:text-slate-900"
         >
           reminder schedule

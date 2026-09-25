@@ -30,10 +30,10 @@ function render() {
   return renderWithProviders(
     <ToastProvider>
       <Routes>
-        <Route path="/:garageId/reminders" element={<AppointmentRemindersSettings />} />
+        <Route path="/:garageId/settings/reminders" element={<AppointmentRemindersSettings />} />
       </Routes>
     </ToastProvider>,
-    { route: '/g/reminders' },
+    { route: '/g/settings/reminders' },
   )
 }
 

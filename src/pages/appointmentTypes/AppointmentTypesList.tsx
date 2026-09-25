@@ -9,7 +9,6 @@ import {
   useUpdateAppointmentType,
 } from '../../api/queries'
 import type { AppointmentTypeInput } from '../../api/appointmentTypes'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { Disclosure } from '../../components/Disclosure'
 import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
@@ -439,7 +438,7 @@ export function AppointmentTypesList() {
   )
 
   return (
-    <SettingsLayout>
+    <>
       <h1 className="text-2xl font-semibold text-slate-900">Appointment Types</h1>
       <p className="mt-1 text-sm text-slate-500">
         The services your business offers. Each type can have one checklist that staff work
@@ -494,6 +493,6 @@ export function AppointmentTypesList() {
           <AddAppointmentTypeForm />
         </Disclosure>
       </div>
-    </SettingsLayout>
+    </>
   )
 }

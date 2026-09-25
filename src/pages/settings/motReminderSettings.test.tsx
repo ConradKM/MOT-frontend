@@ -22,12 +22,12 @@ function render() {
     <ToastProvider>
       <Routes>
         <Route
-          path="/:garageId/settings/mot-reminders"
+          path="/:garageId/settings/reminders/mot"
           element={<MotReminderSettings />}
         />
       </Routes>
     </ToastProvider>,
-    { route: '/g/settings/mot-reminders' },
+    { route: '/g/settings/reminders/mot' },
   )
 }
 

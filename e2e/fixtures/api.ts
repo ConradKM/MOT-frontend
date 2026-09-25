@@ -76,8 +76,19 @@ function defaults(): Stub[] {
     { match: (u) => u.pathname === '/api/booking-flow/presets', handler: (r) => json(r, FLOW_PRESETS) },
     { match: (u) => u.pathname === '/api/appointments/', handler: (r) => json(r, []) },
     { match: (u) => u.pathname === '/api/employees/', handler: (r) => json(r, []) },
+    { match: (u) => u.pathname === '/api/roles/', handler: (r) => json(r, []) },
     { match: (u) => u.pathname === '/api/booking-requests/', handler: (r) => json(r, []) },
     { match: (u) => u.pathname === '/api/mot-reminders/', handler: (r) => json(r, []) },
+    {
+      match: (u) => u.pathname === '/api/mot-reminders/settings',
+      handler: (r) =>
+        json(r, {
+          id: 's1',
+          stage1_enabled: true, stage1_days_before: 30,
+          stage2_enabled: true, stage2_days_before: 7,
+          stage3_enabled: true, stage3_days_before: 1,
+        }),
+    },
     { match: (u) => u.pathname === '/api/communications/unread-count', handler: (r) => json(r, { whatsapp_unread: 0 }) },
 
     // public booking

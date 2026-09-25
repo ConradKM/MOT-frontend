@@ -5,7 +5,6 @@ import {
   useDeleteAppointmentStatus,
   useUpdateAppointmentStatus,
 } from '../../api/queries'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { Disclosure } from '../../components/Disclosure'
 import { useToast } from '../../components/Toast'
 import { errorMessage, isApiError } from '../../lib/errors'
@@ -187,7 +186,7 @@ export function AppointmentStatusesList() {
   }
 
   return (
-    <SettingsLayout>
+    <>
       <h1 className="text-2xl font-semibold text-slate-900">Appointment Statuses</h1>
       <p className="mt-1 text-sm text-slate-500">
         The labels and colours used for appointment statuses across the app. The seven built-in
@@ -259,6 +258,6 @@ export function AppointmentStatusesList() {
           <AddStatusForm />
         </Disclosure>
       </div>
-    </SettingsLayout>
+    </>
   )
 }

@@ -15,12 +15,33 @@ test.describe('staff navigation', () => {
       ['Customers', 'Customers', '/g1/customers'],
       ['Appointments', 'Appointments', '/g1/appointments'],
       ['Requests', 'Booking requests', '/g1/booking-requests'],
-      ['Settings', 'Settings', '/g1/settings'],
+      // Bare /settings lands on its first section (GitHub-style), not a hub.
+      ['Settings', 'Business details', '/g1/settings/garage-details'],
     ] as const) {
       await page.getByRole('link', { name: link, exact: true }).click()
       await expect(page).toHaveURL(new RegExp(`${url}$`))
       await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible()
     }
+  })
+
+  test('moves between grouped settings sections through the sidebar', async ({ page }) => {
+    await page.goto('/g1/settings')
+    await expect(page).toHaveURL(/\/g1\/settings\/garage-details$/)
+    const sidebar = page.getByRole('navigation', { name: 'Settings' })
+    await expect(sidebar.getByRole('heading', { name: 'Reminders' })).toBeVisible()
+
+    await sidebar.getByRole('link', { name: 'MOT Reminders' }).click()
+    await expect(page).toHaveURL(/\/g1\/settings\/reminders\/mot$/)
+    await expect(page.getByRole('heading', { name: 'MOT reminders', level: 1 })).toBeVisible()
+    await expect(sidebar.getByRole('link', { name: 'MOT Reminders' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    await sidebar.getByRole('link', { name: 'Roles' }).click()
+    await expect(page).toHaveURL(/\/g1\/settings\/roles$/)
+    await expect(page.getByRole('heading', { name: 'Roles', level: 1 })).toBeVisible()
+    await expect(sidebar).toBeVisible()
   })
 
   test('marks the current section in the nav', async ({ page }) => {

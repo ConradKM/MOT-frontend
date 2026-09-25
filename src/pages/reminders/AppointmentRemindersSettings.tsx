@@ -258,12 +258,19 @@ function AppointmentRemindersForm({ settings }: { settings: AppointmentReminderS
 export function AppointmentRemindersSettings() {
   const { data: settings, isLoading, isError } = useAppointmentReminderSettings()
 
-  if (isLoading || !settings) {
-    return <p className="text-sm text-slate-500">Loading…</p>
-  }
-  if (isError) {
-    return <p className="text-sm text-red-600">Failed to load appointment reminder settings.</p>
-  }
-
-  return <AppointmentRemindersForm settings={settings} />
+  return (
+    <>
+      <h1 className="text-2xl font-semibold text-slate-900">Appointment reminders</h1>
+      <p className="mt-1 mb-6 text-sm text-slate-500">
+        Automatic messages sent to customers before a booked appointment.
+      </p>
+      {isLoading || !settings ? (
+        <p className="text-sm text-slate-500">Loading…</p>
+      ) : isError ? (
+        <p className="text-sm text-red-600">Failed to load appointment reminder settings.</p>
+      ) : (
+        <AppointmentRemindersForm settings={settings} />
+      )}
+    </>
+  )
 }
