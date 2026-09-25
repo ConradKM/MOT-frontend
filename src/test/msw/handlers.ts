@@ -9,7 +9,13 @@ import {
   makeEmployee,
   makeGarage,
   makeJwt,
+  makePublicQueueInfo,
+  makeQueueDashboard,
+  makeQueueEntry,
+  makeQueueSettings,
+  makeQueueStatus,
   makeVehicle,
+  QUEUE_TOKEN,
 } from '../fixtures'
 
 /**
@@ -76,4 +82,24 @@ export const handlers = [
   http.post('*/api/public/:slug/booking-requests', () =>
     HttpResponse.json({ id: 'br1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' }, { status: 201 }),
   ),
+
+  // --- walk-in queue -------------------------------------------------------
+  http.get('*/api/public/:slug/queue', () => HttpResponse.json(makePublicQueueInfo())),
+  http.post('*/api/public/:slug/queue/join', () =>
+    HttpResponse.json(
+      { ...makeQueueStatus({ position: 3, people_ahead: 2 }), token: QUEUE_TOKEN },
+      { status: 201 },
+    ),
+  ),
+  http.post('*/api/public/:slug/queue/status', () => HttpResponse.json(makeQueueStatus())),
+  http.post('*/api/public/:slug/queue/cancel', () =>
+    HttpResponse.json(
+      makeQueueStatus({ status: 'CANCELLED', end_reason: 'CUSTOMER_CANCELLED', position: null }),
+    ),
+  ),
+  http.get('*/api/queue', () => HttpResponse.json(makeQueueDashboard())),
+  http.post('*/api/queue/call-next', () => HttpResponse.json(makeQueueEntry({ status: 'CALLED' }))),
+  http.post('*/api/queue/entries/:id/:action', () => HttpResponse.json(makeQueueEntry())),
+  http.get('*/api/queue/settings', () => HttpResponse.json(makeQueueSettings())),
+  http.get('*/api/queue/reserved-windows', () => HttpResponse.json([])),
 ]

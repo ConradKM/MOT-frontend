@@ -64,6 +64,12 @@ export const SETTINGS_PAGES: SettingsPage[] = [
     slug: 'settings/availability',
   },
   {
+    title: 'Walk-in Queue',
+    description:
+      'Wait estimates, no-show timeout, time kept free for walk-ins, and your queue QR code.',
+    slug: 'settings/walk-in-queue',
+  },
+  {
     title: 'Communications Automation',
     description: 'Automated WhatsApp assistant, message wording, and reminder timing.',
     slug: 'settings/communications-automation',

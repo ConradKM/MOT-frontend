@@ -8,8 +8,10 @@ import {
   useCapacitySummary,
   useCustomers,
   useGarage,
+  useQueueDashboard,
 } from '../api/queries'
 import type { CapacityLevel } from '../api/garageCapacity'
+import type { QueueDashboard } from '../api/queue'
 import { useGarageId } from '../hooks/useGarageId'
 import { formatTimeRange, todayIso } from '../lib/datetime'
 import { formatDurationMinutes } from '../lib/duration'
@@ -67,6 +69,39 @@ function CapacityCard({
   )
 }
 
+/** The walk-in queue's entry point. Deliberately here rather than in the
+ * header nav: the staff header is a single non-wrapping row, and another
+ * item pushes its minimum width past a 1280px laptop (see
+ * e2e/responsive.spec.ts). */
+function WalkInQueueRow({
+  garageId,
+  queue,
+}: {
+  garageId: string
+  queue: QueueDashboard | undefined
+}) {
+  const waiting = queue?.entries.filter((e) => e.status === 'WAITING').length ?? 0
+  const called = queue?.entries.filter((e) => e.status === 'CALLED').length ?? 0
+  return (
+    <Link
+      to={`/${garageId}/queue`}
+      className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm hover:border-slate-300"
+    >
+      <span className="text-sm">
+        <span className="font-semibold text-slate-900">Walk-in queue</span>
+        <span className="ml-2 text-slate-500">
+          {queue === undefined
+            ? '—'
+            : `${queue.is_open ? 'Open' : 'Closed'} · ${waiting} waiting${
+                called ? ` · ${called} called` : ''
+              }`}
+        </span>
+      </span>
+      <span className="text-sm font-medium text-slate-900">Open live queue →</span>
+    </Link>
+  )
+}
+
 export function Dashboard() {
   const garageId = useGarageId()
   const { data: garage } = useGarage()
@@ -76,6 +111,7 @@ export function Dashboard() {
   const { data: appointmentTypes } = useAppointmentTypes()
   const { data: pendingRequests } = useBookingRequests('PENDING')
   const { data: statusConfig } = useAppointmentStatuses()
+  const { data: queue } = useQueueDashboard()
 
   const customerName = (id: string) => {
     const c = customers?.find((c) => c.id === id)
@@ -124,6 +160,8 @@ export function Dashboard() {
           <p className="mt-auto pt-3 text-sm font-medium text-slate-900">Manage appointments →</p>
         </Link>
       </div>
+
+      <WalkInQueueRow garageId={garageId} queue={queue} />
 
       {(pendingRequests?.length ?? 0) > 0 && (
         <div className="mt-6 rounded-lg border border-violet-200 bg-violet-50 p-5">
