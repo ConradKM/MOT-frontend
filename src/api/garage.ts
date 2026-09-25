@@ -18,3 +18,10 @@ export type GarageDetailsPatch = Partial<
 export function updateGarage(patch: GarageDetailsPatch): Promise<Garage> {
   return apiFetch<Garage>('/api/garage', { method: 'PATCH', body: patch })
 }
+
+export function updateBookingRequestSettings(auto_accept_booking_requests: boolean): Promise<Garage> {
+  return apiFetch<Garage>('/api/garage/booking-request-settings', {
+    method: 'PUT',
+    body: { auto_accept_booking_requests },
+  })
+}

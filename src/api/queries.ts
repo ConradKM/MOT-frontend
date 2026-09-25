@@ -45,6 +45,14 @@ export function useUpdateGarage() {
   })
 }
 
+export function useUpdateBookingRequestSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (enabled: boolean) => garageApi.updateBookingRequestSettings(enabled),
+    onSuccess: (garage) => qc.setQueryData(['garage'], garage),
+  })
+}
+
 export function useCapacitySummary() {
   return useQuery({
     queryKey: ['garageCapacitySummary'],
