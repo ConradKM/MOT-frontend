@@ -38,7 +38,7 @@ vi.mock('@stripe/react-stripe-js', () => ({
   useElements: () => ({}),
 }))
 
-vi.mock('@stripe/stripe-js', () => ({
+vi.mock('@stripe/stripe-js/pure', () => ({
   loadStripe: (...args: unknown[]) => loadStripeMock(...args),
 }))
 
@@ -163,7 +163,7 @@ describe('BookingWizard — deposit step', () => {
     await screen.findByRole('heading', { name: 'Review' })
     expect(api.recoverDepositAttempt).toHaveBeenCalledWith('test-garage', 'opaque-recovery-token')
     expect(api.createDepositIntent).not.toHaveBeenCalled()
-    expect(screen.getByTestId('payment-element')).toBeInTheDocument()
+    expect(await screen.findByTestId('payment-element')).toBeInTheDocument()
   })
 
   it('recovers an attempt from a ?resume= link, e.g. the voice deposit SMS, with no prior sessionStorage', async () => {
@@ -329,7 +329,7 @@ describe('BookingWizard — deposit step', () => {
 
     await fillDetailsAndReachDeposit(user)
 
-    expect(screen.getByTestId('express-checkout-element')).toBeInTheDocument()
+    expect(await screen.findByTestId('express-checkout-element')).toBeInTheDocument()
     expect(screen.getByTestId('payment-element')).toBeInTheDocument()
     expect(loadStripeMock).toHaveBeenCalledWith('pk_test_123', {
       stripeAccount: 'acct_connected_123',

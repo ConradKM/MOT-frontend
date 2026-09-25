@@ -13,7 +13,7 @@ vi.mock('@stripe/react-stripe-js', () => ({
   useStripe: () => ({ confirmPayment }),
   useElements: () => ({ submit: submitElements }),
 }))
-vi.mock('@stripe/stripe-js', () => ({ loadStripe: () => Promise.resolve({}) }))
+vi.mock('@stripe/stripe-js/pure', () => ({ loadStripe: () => Promise.resolve({}) }))
 vi.mock('../../../api/queries', () => ({ useDepositStatus: () => ({ data: undefined }) }))
 
 import { StripeCheckout } from './StripeCheckout'

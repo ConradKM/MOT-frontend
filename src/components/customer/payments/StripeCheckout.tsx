@@ -6,7 +6,14 @@ import {
   useElements,
   useStripe,
 } from '@stripe/react-stripe-js'
-import { loadStripe, type Stripe } from '@stripe/stripe-js'
+// `/pure`, not the package root: importing '@stripe/stripe-js' injects
+// Stripe.js (and its hidden js.stripe.com / m.stripe.network fraud-signal
+// iframes, each its own browser process) the moment this module is
+// evaluated - i.e. on the booking wizard's first step, long before a
+// deposit is due, and it then lingers on every page for the tab's life.
+// The pure entry point only loads it when loadStripe() is actually called.
+import { loadStripe } from '@stripe/stripe-js/pure'
+import type { Stripe } from '@stripe/stripe-js'
 import { useDepositStatus } from '../../../api/queries'
 import type { PaymentCheckoutProps } from './types'
 
