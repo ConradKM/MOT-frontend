@@ -103,6 +103,53 @@ describe('staff protected routes', () => {
   })
 })
 
+describe('settings routes', () => {
+  it('sends bare /settings to the first section, with the sidebar', async () => {
+    signInAsStaff()
+    renderApp('/g1/settings')
+    expect(
+      await screen.findByRole('heading', { name: 'Business details', level: 1 }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Business Details' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  it.each([
+    ['/g1/settings/garage-details', 'Business details'],
+    ['/g1/settings/availability', 'Availability'],
+    ['/g1/settings/appointment-types', 'Appointment Types'],
+    ['/g1/settings/appointment-statuses', 'Appointment Statuses'],
+    ['/g1/settings/booking-workflow', 'Booking Workflow'],
+    ['/g1/settings/reminders', 'Appointment reminders'],
+    ['/g1/settings/reminders/customer', 'Customer & sale reminders'],
+    ['/g1/settings/employees', 'Employees'],
+    ['/g1/settings/roles', 'Roles'],
+    ['/g1/settings/communications-automation', 'Communications automation'],
+    ['/g1/settings/payments', 'Payments'],
+    ['/g1/settings/walk-in-queue', 'Walk-in Queue'],
+  ])('renders %s inside the settings sidebar', async (route, heading) => {
+    signInAsStaff()
+    renderApp(route)
+    expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeInTheDocument()
+    const nav = screen.getByRole('navigation', { name: 'Settings' })
+    // Exactly one sidebar item is lit - the Reminders group's index must not
+    // stay active on its sibling pages.
+    expect(nav.querySelectorAll('[aria-current="page"]')).toHaveLength(1)
+  })
+
+  it('groups related sections under a header', async () => {
+    signInAsStaff()
+    renderApp('/g1/settings/roles')
+    await screen.findByRole('heading', { name: 'Roles', level: 1 })
+    for (const group of ['Appointments', 'Reminders', 'Access', 'Operations']) {
+      expect(screen.getByRole('heading', { name: group, level: 2 })).toBeInTheDocument()
+    }
+  })
+})
+
 describe('customer portal routes', () => {
   it('redirects a signed-out visitor away from the account hub', async () => {
     renderApp('/customer/account')

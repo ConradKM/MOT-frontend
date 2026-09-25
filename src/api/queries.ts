@@ -4,7 +4,6 @@ import * as conversationSimulatorApi from './conversationSimulator'
 import * as garageApi from './garage'
 import * as garageCapacityApi from './garageCapacity'
 import * as garageScheduleApi from './garageSchedule'
-import * as motRemindersApi from './motReminders'
 import * as appointmentRemindersApi from './appointmentReminders'
 import * as bookingFlowApi from './bookingFlow'
 import * as groupsApi from './appointmentTypeGroups'
@@ -67,48 +66,6 @@ export function useCapacitySummary() {
     queryKey: ['garageCapacitySummary'],
     queryFn: garageCapacityApi.getCapacitySummary,
     staleTime: 30_000,
-  })
-}
-
-export function useMOTReminders() {
-  return useQuery({
-    queryKey: ['motReminders'],
-    queryFn: motRemindersApi.listMOTReminders,
-  })
-}
-
-export function useMOTReminderSettings() {
-  return useQuery({
-    queryKey: ['motReminderSettings'],
-    queryFn: motRemindersApi.getMOTReminderSettings,
-  })
-}
-
-export function useUpdateMOTReminderSettings() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: motRemindersApi.updateMOTReminderSettings,
-    onSuccess: (settings) => {
-      qc.setQueryData(['motReminderSettings'], settings)
-      qc.invalidateQueries({ queryKey: ['motReminders'] })
-    },
-  })
-}
-
-export function useSendManualReminder() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: ({
-      vehicleId,
-      acknowledgeBooking,
-    }: {
-      vehicleId: string
-      acknowledgeBooking?: boolean
-    }) =>
-      motRemindersApi.sendManualReminder(vehicleId, {
-        acknowledge_booking: acknowledgeBooking,
-      }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['motReminders'] }),
   })
 }
 

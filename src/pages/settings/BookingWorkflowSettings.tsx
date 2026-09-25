@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { useToast } from '../../components/Toast'
 import { errorMessage, isApiError } from '../../lib/errors'
 import {
@@ -45,75 +44,73 @@ export function BookingWorkflowSettings() {
   )
 
   return (
-    <SettingsLayout>
-      <div className="max-w-3xl">
-        <h1 className="text-xl font-semibold text-slate-900">Booking Workflow</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          What customers can book, how it's presented, and what you ask them.
+    <div className="max-w-3xl">
+      <h1 className="text-xl font-semibold text-slate-900">Booking Workflow</h1>
+      <p className="mt-1 text-sm text-slate-500">
+        What customers can book, how it's presented, and what you ask them.
+      </p>
+
+      {forbidden && (
+        <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Only an owner can change the booking workflow.
         </p>
+      )}
 
-        {forbidden && (
-          <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            Only an owner can change the booking workflow.
-          </p>
-        )}
-
-        <div className="mt-6 flex gap-1 border-b border-slate-200">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              aria-current={tab === t.key ? 'page' : undefined}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-                tab === t.key
-                  ? 'border-slate-900 text-slate-900'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-6">
-          <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
-            <h2 className="text-sm font-semibold text-slate-900">Booking request approval</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              When enabled, a request is accepted only if its requested slot still has capacity and an active employee can be assigned without a clash. Otherwise it stays pending for staff review.
-            </p>
-            <label className="mt-3 flex items-start gap-3 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={garage.data?.auto_accept_booking_requests ?? false}
-                disabled={garage.isLoading || autoAccept.isPending}
-                onChange={(event) => autoAccept.mutate(event.target.checked)}
-                className="mt-0.5 h-4 w-4"
-              />
-              <span><strong>Auto-accept available booking requests</strong><br />Existing bookings and deposit/payment holds are not changed.</span>
-            </label>
-            {autoAccept.isError && <p className="mt-2 text-sm text-red-600">{errorMessage(autoAccept.error)}</p>}
-          </section>
-          {tab === 'groups' && (
-            <GroupsPanel
-              groups={groups.data ?? []}
-              services={services.data ?? []}
-              loading={groups.isLoading || services.isLoading}
-            />
-          )}
-          {tab === 'workflow' && (
-            <WorkflowPanel
-              sections={sections.data ?? []}
-              services={services.data ?? []}
-              loading={sections.isLoading}
-            />
-          )}
-          {tab === 'links' && (
-            <ShareLinksPanel groups={groups.data ?? []} services={services.data ?? []} />
-          )}
-        </div>
+      <div className="mt-6 flex gap-1 border-b border-slate-200">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            aria-current={tab === t.key ? 'page' : undefined}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
+              tab === t.key
+                ? 'border-slate-900 text-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-    </SettingsLayout>
+
+      <div className="mt-6">
+        <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+          <h2 className="text-sm font-semibold text-slate-900">Booking request approval</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            When enabled, a request is accepted only if its requested slot still has capacity and an active employee can be assigned without a clash. Otherwise it stays pending for staff review.
+          </p>
+          <label className="mt-3 flex items-start gap-3 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={garage.data?.auto_accept_booking_requests ?? false}
+              disabled={garage.isLoading || autoAccept.isPending}
+              onChange={(event) => autoAccept.mutate(event.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <span><strong>Auto-accept available booking requests</strong><br />Existing bookings and deposit/payment holds are not changed.</span>
+          </label>
+          {autoAccept.isError && <p className="mt-2 text-sm text-red-600">{errorMessage(autoAccept.error)}</p>}
+        </section>
+        {tab === 'groups' && (
+          <GroupsPanel
+            groups={groups.data ?? []}
+            services={services.data ?? []}
+            loading={groups.isLoading || services.isLoading}
+          />
+        )}
+        {tab === 'workflow' && (
+          <WorkflowPanel
+            sections={sections.data ?? []}
+            services={services.data ?? []}
+            loading={sections.isLoading}
+          />
+        )}
+        {tab === 'links' && (
+          <ShareLinksPanel groups={groups.data ?? []} services={services.data ?? []} />
+        )}
+      </div>
+    </div>
   )
 }
 

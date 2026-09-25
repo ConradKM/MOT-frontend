@@ -7,7 +7,6 @@ import {
 } from '../../api/queries'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { Disclosure } from '../../components/Disclosure'
 import { employeeDisplayName } from '../../lib/employees'
 import type { Employee, Role } from '../../types'
@@ -356,7 +355,7 @@ export function EmployeesList() {
   const hasMore = (employees ?? []).length > visibleCount
 
   return (
-    <SettingsLayout>
+    <>
       <h1 className="text-2xl font-semibold text-slate-900">Employees</h1>
       <p className="mt-1 text-sm text-slate-500">Everyone with an account at your business.</p>
 
@@ -454,6 +453,6 @@ export function EmployeesList() {
           <AddEmployeeForm roles={roles ?? []} />
         </Disclosure>
       </div>
-    </SettingsLayout>
+    </>
   )
 }

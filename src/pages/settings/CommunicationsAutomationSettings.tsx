@@ -12,7 +12,6 @@ import {
 } from '../../api/queries'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import type { AutomationSettings, MessageTemplate } from '../../api/communications'
 import { PhoneMenuPanel } from './PhoneMenuPanel'
 
@@ -110,9 +109,9 @@ function AutomationTogglesForm({ settings }: { settings: AutomationSettings }) {
         onChange={(v) => setForm((f) => ({ ...f, missed_call_ack_enabled: v }))}
       />
       <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
-        Looking for appointment reminders? They've moved to their own{' '}
-        <Link to={`/${garageId}/reminders`} className="font-medium text-slate-700 underline">
-          Reminders
+        Looking for appointment reminders? They have their own{' '}
+        <Link to={`/${garageId}/settings/reminders`} className="font-medium text-slate-700 underline">
+          Appointment Reminders
         </Link>{' '}
         page, with support for multiple timings and channels.
       </p>
@@ -252,48 +251,44 @@ export function CommunicationsAutomationSettings() {
 
   if (settingsLoading || templatesLoading || !settings) {
     return (
-      <SettingsLayout>
-        <p className="text-sm text-slate-500">Loading…</p>
-      </SettingsLayout>
+      <p className="text-sm text-slate-500">Loading…</p>
     )
   }
 
   return (
-    <SettingsLayout>
-      <div className="max-w-2xl">
-        <h1 className="text-2xl font-semibold text-slate-900">Communications automation</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Choose which automated messages your business sends, and customise their wording. This
-          never touches your phone/WhatsApp connection details, which stay with the CoMaz OS
-          team.
-        </p>
+    <div className="max-w-2xl">
+      <h1 className="text-2xl font-semibold text-slate-900">Communications automation</h1>
+      <p className="mt-1 text-sm text-slate-500">
+        Choose which automated messages your business sends, and customise their wording. This
+        never touches your phone/WhatsApp connection details, which stay with the CoMaz OS
+        team.
+      </p>
 
-        <div className="mt-6">
-          <AutomationTogglesForm settings={settings} />
-        </div>
-
-        <h2 id="phone-menu" className="mt-10 text-lg font-semibold text-slate-900">
-          Phone menu
-        </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          What callers hear first, and where each keypad option takes them - for example 1 for the
-          booking assistant, 2 to speak to your team.
-        </p>
-        <div className="mt-4">
-          <PhoneMenuPanel businessName={garage?.name} />
-        </div>
-
-        <h2 className="mt-10 text-lg font-semibold text-slate-900">Message templates</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          The exact wording sent for each automated message. Leave any of these as they are to
-          use CoMaz OS's default wording.
-        </p>
-        <div className="mt-4 space-y-4">
-          {(templatesData?.items ?? []).map((template) => (
-            <TemplateEditor key={template.key} template={template} />
-          ))}
-        </div>
+      <div className="mt-6">
+        <AutomationTogglesForm settings={settings} />
       </div>
-    </SettingsLayout>
+
+      <h2 id="phone-menu" className="mt-10 text-lg font-semibold text-slate-900">
+        Phone menu
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">
+        What callers hear first, and where each keypad option takes them - for example 1 for the
+        booking assistant, 2 to speak to your team.
+      </p>
+      <div className="mt-4">
+        <PhoneMenuPanel businessName={garage?.name} />
+      </div>
+
+      <h2 className="mt-10 text-lg font-semibold text-slate-900">Message templates</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        The exact wording sent for each automated message. Leave any of these as they are to
+        use CoMaz OS's default wording.
+      </p>
+      <div className="mt-4 space-y-4">
+        {(templatesData?.items ?? []).map((template) => (
+          <TemplateEditor key={template.key} template={template} />
+        ))}
+      </div>
+    </div>
   )
 }

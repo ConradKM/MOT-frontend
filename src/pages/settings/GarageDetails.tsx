@@ -2,7 +2,6 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useGarage, useUpdateGarage } from '../../api/queries'
 import type { GarageDetailsPatch } from '../../api/garage'
 import { BookingQrCard } from '../../components/BookingQrCard'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import type { Garage } from '../../types'
 
@@ -85,73 +84,71 @@ export function GarageDetails() {
   }
 
   return (
-    <SettingsLayout>
-      <div className="max-w-xl">
-        <h1 className="text-2xl font-semibold text-slate-900">Business details</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          The business information we hold for you. It is used across the app and for
-          customer communications. Only the business owner can change it.
-        </p>
+    <div className="max-w-xl">
+      <h1 className="text-2xl font-semibold text-slate-900">Business details</h1>
+      <p className="mt-1 text-sm text-slate-500">
+        The business information we hold for you. It is used across the app and for
+        customer communications. Only the business owner can change it.
+      </p>
 
-        {isLoading && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
-        {isError && (
-          <p className="mt-6 text-sm text-red-600">Failed to load business details.</p>
-        )}
+      {isLoading && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
+      {isError && (
+        <p className="mt-6 text-sm text-red-600">Failed to load business details.</p>
+      )}
 
-        {garage && form && (
-          <>
-            <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-              {error && (
-                <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
-              )}
-              {saved && (
-                <p
-                  className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
-                  role="status"
-                >
-                  Business details saved.
-                </p>
-              )}
-
-              {FIELDS.map(({ key, label, type, required }) => (
-                <div key={key}>
-                  <label
-                    className="block text-sm font-medium text-slate-700"
-                    htmlFor={`garage-${key}`}
-                  >
-                    {label}
-                    {required && <span className="text-red-500"> *</span>}
-                  </label>
-                  <input
-                    id={`garage-${key}`}
-                    type={type ?? 'text'}
-                    value={form[key]}
-                    required={required}
-                    onChange={(e) => set(key, e.target.value)}
-                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-                  />
-                  {errs[key] && <p className="mt-1 text-sm text-red-600">{errs[key]}</p>}
-                </div>
-              ))}
-
-              <button
-                type="submit"
-                disabled={update.isPending}
-                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+      {garage && form && (
+        <>
+          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            {error && (
+              <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+            )}
+            {saved && (
+              <p
+                className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+                role="status"
               >
-                {update.isPending ? 'Saving…' : 'Save changes'}
-              </button>
-            </form>
+                Business details saved.
+              </p>
+            )}
 
-            <p className="mt-3 text-xs text-slate-400">
-              The public booking slug and system settings are managed by the platform
-              administrator and can't be changed here.
-            </p>
+            {FIELDS.map(({ key, label, type, required }) => (
+              <div key={key}>
+                <label
+                  className="block text-sm font-medium text-slate-700"
+                  htmlFor={`garage-${key}`}
+                >
+                  {label}
+                  {required && <span className="text-red-500"> *</span>}
+                </label>
+                <input
+                  id={`garage-${key}`}
+                  type={type ?? 'text'}
+                  value={form[key]}
+                  required={required}
+                  onChange={(e) => set(key, e.target.value)}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                />
+                {errs[key] && <p className="mt-1 text-sm text-red-600">{errs[key]}</p>}
+              </div>
+            ))}
 
-            <BookingQrCard garageId={garage.id} />
-          </>
-        )}
-      </div>
-    </SettingsLayout>
+            <button
+              type="submit"
+              disabled={update.isPending}
+              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            >
+              {update.isPending ? 'Saving…' : 'Save changes'}
+            </button>
+          </form>
+
+          <p className="mt-3 text-xs text-slate-400">
+            The public booking slug and system settings are managed by the platform
+            administrator and can't be changed here.
+          </p>
+
+          <BookingQrCard garageId={garage.id} />
+        </>
+      )}
+    </div>
   )
 }

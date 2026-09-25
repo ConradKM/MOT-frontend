@@ -5,7 +5,7 @@ import { Layout } from './components/Layout'
 import { CommunicationsLayout } from './components/communications/CommunicationsLayout'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
-import { RemindersLayout } from './pages/reminders/RemindersLayout'
+import { SettingsLayout } from './components/settings/SettingsLayout'
 
 // Every leaf page is loaded on demand, not bundled into the initial JS chunk.
 // Without this, opening any one page - even a plain settings screen - pulled
@@ -86,9 +86,6 @@ const ChecklistTemplateViewer = lazy(() =>
   })),
 )
 
-const SettingsHub = lazy(() =>
-  import('./pages/settings/SettingsHub').then((m) => ({ default: m.SettingsHub })),
-)
 const AvailabilitySettings = lazy(() =>
   import('./pages/settings/AvailabilitySettings').then((m) => ({
     default: m.AvailabilitySettings,
@@ -98,9 +95,6 @@ const BookingWorkflowSettings = lazy(() =>
   import('./pages/settings/BookingWorkflowSettings').then((m) => ({
     default: m.BookingWorkflowSettings,
   })),
-)
-const MotReminderSettings = lazy(() =>
-  import('./pages/settings/MotReminderSettings').then((m) => ({ default: m.MotReminderSettings })),
 )
 const GarageDetails = lazy(() =>
   import('./pages/settings/GarageDetails').then((m) => ({ default: m.GarageDetails })),
@@ -276,10 +270,6 @@ export default function App() {
             <Route path="booking-requests" element={<BookingRequestsList />} />
             <Route path="queue" element={<QueueDashboard />} />
             <Route path="payments" element={<PaymentsList />} />
-            <Route path="reminders" element={<RemindersLayout />}>
-              <Route index element={<AppointmentRemindersSettings />} />
-              <Route path="customer" element={<CustomerSaleReminders />} />
-            </Route>
             <Route path="feedback" element={<FeedbackPage />} />
 
             <Route path="communications" element={<CommunicationsLayout />}>
@@ -310,21 +300,25 @@ export default function App() {
               element={<ChecklistTemplateBuilder />}
             />
 
-            <Route path="settings" element={<SettingsHub />} />
-            <Route path="settings/garage-details" element={<GarageDetails />} />
-            <Route path="settings/mot-reminders" element={<MotReminderSettings />} />
-            <Route path="settings/employees" element={<EmployeesList />} />
-            <Route path="settings/roles" element={<RolesList />} />
-            <Route path="settings/appointment-types" element={<AppointmentTypesList />} />
-            <Route path="settings/booking-workflow" element={<BookingWorkflowSettings />} />
-            <Route path="settings/appointment-statuses" element={<AppointmentStatusesList />} />
-            <Route path="settings/availability" element={<AvailabilitySettings />} />
-            <Route path="settings/walk-in-queue" element={<WalkInQueueSettings />} />
-            <Route
-              path="settings/communications-automation"
-              element={<CommunicationsAutomationSettings />}
-            />
-            <Route path="settings/payments" element={<PaymentsSettings />} />
+            {/* Every settings page nests here, so SettingsLayout's sidebar is
+                applied by routing - a page can't be added without it. */}
+            <Route path="settings" element={<SettingsLayout />}>
+              <Route index element={<Navigate to="garage-details" replace />} />
+              <Route path="garage-details" element={<GarageDetails />} />
+              <Route path="availability" element={<AvailabilitySettings />} />
+              <Route path="appointment-types" element={<AppointmentTypesList />} />
+              <Route path="appointment-statuses" element={<AppointmentStatusesList />} />
+              <Route path="booking-workflow" element={<BookingWorkflowSettings />} />
+              <Route path="reminders">
+                <Route index element={<AppointmentRemindersSettings />} />
+                <Route path="customer" element={<CustomerSaleReminders />} />
+              </Route>
+              <Route path="employees" element={<EmployeesList />} />
+              <Route path="roles" element={<RolesList />} />
+              <Route path="communications-automation" element={<CommunicationsAutomationSettings />} />
+              <Route path="payments" element={<PaymentsSettings />} />
+              <Route path="walk-in-queue" element={<WalkInQueueSettings />} />
+            </Route>
           </Route>
         </Route>
 

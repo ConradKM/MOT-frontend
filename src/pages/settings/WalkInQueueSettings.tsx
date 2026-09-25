@@ -10,7 +10,6 @@ import {
 } from '../../api/queries'
 import type { AverageMode, QueueSettings, ReservedWindow } from '../../api/queue'
 import { BookingQrCard } from '../../components/BookingQrCard'
-import { SettingsLayout } from '../../components/settings/SettingsLayout'
 import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
 import { queueUrl } from '../../lib/bookingUrl'
@@ -35,7 +34,7 @@ export function WalkInQueueSettings() {
   const { data, isLoading } = useQueueSettings()
 
   return (
-    <SettingsLayout>
+    <>
       <h1 className="text-2xl font-semibold text-slate-900">Walk-in Queue</h1>
       <p className="mt-1 text-sm text-slate-500">
         How walk-in waits are estimated, and time you keep free for walk-ins. Open and close the
@@ -63,7 +62,7 @@ export function WalkInQueueSettings() {
         filenameStem="walk-in-queue-qr"
         qrLabel="Walk-in queue QR code"
       />
-    </SettingsLayout>
+    </>
   )
 }
 
