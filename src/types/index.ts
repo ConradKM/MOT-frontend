@@ -18,6 +18,7 @@ export interface Garage {
   logo_url: string | null
   /** Owner-controlled; defaults false for every business. */
   auto_accept_booking_requests: boolean
+  auto_accept_booking_requests_enabled: boolean
   created_at: string
   updated_at: string
 }
