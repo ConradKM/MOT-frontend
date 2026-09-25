@@ -178,9 +178,9 @@ const ContactCustomer = lazy(() =>
   import('./pages/communications/ContactCustomer').then((m) => ({ default: m.ContactCustomer })),
 )
 
-// The customer-facing booking wizard carries @stripe/stripe-js +
-// @stripe/react-stripe-js for its Deposit step - its own chunk for the same
-// reason, so a garage's staff dashboard never pays for Stripe's code.
+// The customer-facing booking wizard - its own chunk for the same reason.
+// Stripe is split further still: it only loads once the Deposit step's
+// checkout actually mounts (see components/customer/payments/PaymentCheckout.tsx).
 const BookingWizard = lazy(() =>
   import('./pages/customer/BookingWizard').then((m) => ({ default: m.BookingWizard })),
 )
