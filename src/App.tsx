@@ -96,9 +96,6 @@ const BookingWorkflowSettings = lazy(() =>
     default: m.BookingWorkflowSettings,
   })),
 )
-const MotReminderSettings = lazy(() =>
-  import('./pages/settings/MotReminderSettings').then((m) => ({ default: m.MotReminderSettings })),
-)
 const GarageDetails = lazy(() =>
   import('./pages/settings/GarageDetails').then((m) => ({ default: m.GarageDetails })),
 )
@@ -273,12 +270,6 @@ export default function App() {
             <Route path="booking-requests" element={<BookingRequestsList />} />
             <Route path="queue" element={<QueueDashboard />} />
             <Route path="payments" element={<PaymentsList />} />
-            {/* Reminders moved into Settings; keep old bookmarks working. */}
-            <Route path="reminders" element={<Navigate to="../settings/reminders" relative="path" replace />} />
-            <Route
-              path="reminders/customer"
-              element={<Navigate to="../../settings/reminders/customer" relative="path" replace />}
-            />
             <Route path="feedback" element={<FeedbackPage />} />
 
             <Route path="communications" element={<CommunicationsLayout />}>
@@ -321,9 +312,7 @@ export default function App() {
               <Route path="reminders">
                 <Route index element={<AppointmentRemindersSettings />} />
                 <Route path="customer" element={<CustomerSaleReminders />} />
-                <Route path="mot" element={<MotReminderSettings />} />
               </Route>
-              <Route path="mot-reminders" element={<Navigate to="../reminders/mot" relative="path" replace />} />
               <Route path="employees" element={<EmployeesList />} />
               <Route path="roles" element={<RolesList />} />
               <Route path="communications-automation" element={<CommunicationsAutomationSettings />} />

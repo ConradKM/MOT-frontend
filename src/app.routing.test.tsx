@@ -125,7 +125,6 @@ describe('settings routes', () => {
     ['/g1/settings/booking-workflow', 'Booking Workflow'],
     ['/g1/settings/reminders', 'Appointment reminders'],
     ['/g1/settings/reminders/customer', 'Customer & sale reminders'],
-    ['/g1/settings/reminders/mot', 'MOT reminders'],
     ['/g1/settings/employees', 'Employees'],
     ['/g1/settings/roles', 'Roles'],
     ['/g1/settings/communications-automation', 'Communications automation'],
@@ -148,17 +147,6 @@ describe('settings routes', () => {
     for (const group of ['Appointments', 'Reminders', 'Access', 'Operations']) {
       expect(screen.getByRole('heading', { name: group, level: 2 })).toBeInTheDocument()
     }
-  })
-
-  it.each([
-    ['/g1/reminders', 'Appointment reminders'],
-    ['/g1/reminders/customer', 'Customer & sale reminders'],
-    ['/g1/settings/mot-reminders', 'MOT reminders'],
-  ])('redirects the old %s bookmark into settings', async (route, heading) => {
-    signInAsStaff()
-    renderApp(route)
-    expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: 'Settings' })).toBeInTheDocument()
   })
 })
 

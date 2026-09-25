@@ -62,18 +62,6 @@ export const handlers = [
   http.get('*/api/booking-flow/sections', () => HttpResponse.json([])),
   http.get('*/api/booking-flow/presets', () => HttpResponse.json({ presets: [] })),
   http.get('*/api/booking-requests/', () => HttpResponse.json([])),
-  http.get('*/api/mot-reminders/', () => HttpResponse.json([])),
-  http.get('*/api/mot-reminders/settings', () =>
-    HttpResponse.json({
-      id: 's1',
-      stage1_enabled: true,
-      stage1_days_before: 30,
-      stage2_enabled: true,
-      stage2_days_before: 7,
-      stage3_enabled: true,
-      stage3_days_before: 1,
-    }),
-  ),
   http.get('*/api/garage/schedule', () =>
     HttpResponse.json({
       settings: {

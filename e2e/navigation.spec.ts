@@ -30,10 +30,12 @@ test.describe('staff navigation', () => {
     const sidebar = page.getByRole('navigation', { name: 'Settings' })
     await expect(sidebar.getByRole('heading', { name: 'Reminders' })).toBeVisible()
 
-    await sidebar.getByRole('link', { name: 'MOT Reminders' }).click()
-    await expect(page).toHaveURL(/\/g1\/settings\/reminders\/mot$/)
-    await expect(page.getByRole('heading', { name: 'MOT reminders', level: 1 })).toBeVisible()
-    await expect(sidebar.getByRole('link', { name: 'MOT Reminders' })).toHaveAttribute(
+    await sidebar.getByRole('link', { name: 'Customer & Sale Reminders' }).click()
+    await expect(page).toHaveURL(/\/g1\/settings\/reminders\/customer$/)
+    await expect(
+      page.getByRole('heading', { name: 'Customer & sale reminders', level: 1 }),
+    ).toBeVisible()
+    await expect(sidebar.getByRole('link', { name: 'Customer & Sale Reminders' })).toHaveAttribute(
       'aria-current',
       'page',
     )

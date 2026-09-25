@@ -2,8 +2,6 @@ import {
   Bell,
   BellRing,
   Building2,
-  Car,
-  ChevronLeft,
   CircleDot,
   Clock,
   ListOrdered,
@@ -15,7 +13,7 @@ import {
   Workflow,
   type LucideIcon,
 } from 'lucide-react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
 import { useGarageId } from '../../hooks/useGarageId'
 
 export interface SettingsSection {
@@ -44,7 +42,6 @@ export const SECTIONS: SettingsSection[] = [
     items: [
       { slug: 'reminders', label: 'Appointment Reminders', icon: BellRing },
       { slug: 'reminders/customer', label: 'Customer & Sale Reminders', icon: Bell },
-      { slug: 'reminders/mot', label: 'MOT Reminders', icon: Car },
     ],
   },
   {
@@ -75,13 +72,6 @@ export function SettingsLayout() {
         aria-label="Settings"
         className="flex shrink-0 flex-row items-center gap-1 overflow-x-auto sm:w-52 sm:flex-col sm:items-stretch"
       >
-        <Link
-          to={`/${garageId}/dashboard`}
-          className="mb-2 flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[13px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-        >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          Back
-        </Link>
         {SECTIONS.map((section, i) => (
           <div
             key={section.group ?? section.items[0].slug}
