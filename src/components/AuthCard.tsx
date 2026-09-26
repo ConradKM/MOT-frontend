@@ -15,7 +15,7 @@ export function AuthCard({ children }: { children: ReactNode }) {
         </div>
         <div className="flex flex-1 flex-col items-center justify-center px-4 py-12">
           <img src={logo} alt="" className="mb-6 h-16 w-auto md:hidden" />
-          <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="w-full max-w-sm rounded-lg bg-white shadow-card p-8">
             {children}
           </div>
         </div>

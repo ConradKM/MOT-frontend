@@ -47,7 +47,7 @@ export function SignIn() {
 
   return (
     <AuthCard>
-      <h1 className="text-xl font-semibold text-slate-900">Sign in</h1>
+      <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">Sign in</h1>
 
       <div
         role="tablist"

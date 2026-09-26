@@ -101,7 +101,7 @@ export function FeedbackPage() {
     return (
       <div className="mx-auto max-w-xl py-16 text-center">
         <CircleCheck className="mx-auto h-12 w-12 text-emerald-500" />
-        <h1 className="mt-4 text-2xl font-semibold text-slate-900">Thank you for your feedback!</h1>
+        <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-slate-900">Thank you for your feedback!</h1>
         <p className="mt-2 text-sm text-slate-500">
           We&rsquo;ve received your feedback and appreciate you taking the time to help us improve.
         </p>
@@ -119,7 +119,7 @@ export function FeedbackPage() {
     <div className="max-w-2xl">
       <div className="flex items-center gap-2">
         <MessageSquareText className="h-6 w-6 text-slate-900" />
-        <h1 className="text-2xl font-semibold text-slate-900">Send us your feedback</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Send us your feedback</h1>
       </div>
       <p className="mt-1 text-sm text-slate-500">
         Help us improve your experience. Tell us what&rsquo;s working, what isn&rsquo;t, or what

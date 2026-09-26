@@ -91,7 +91,7 @@ export function AppointmentOverview() {
 
       <div className="mt-2 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
             {appointment.appointment_type_name_at_booking ?? appointmentType?.name ?? 'Appointment'}
           </h1>
           <p className="mt-1 text-sm text-slate-500">{formatDateTime(appointment.start_time)}</p>
@@ -103,7 +103,7 @@ export function AppointmentOverview() {
         </span>
       </div>
 
-      <div className="mt-6 space-y-4 rounded-lg border border-slate-200 bg-white p-5">
+      <div className="mt-6 space-y-4 rounded-lg bg-white shadow-card p-5">
         <div>
           <p className="text-xs font-medium uppercase text-slate-400">Customer</p>
           <p className="mt-0.5 text-sm text-slate-900">
@@ -142,7 +142,7 @@ export function AppointmentOverview() {
         )}
       </div>
 
-      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5">
+      <div className="mt-6 rounded-lg bg-white shadow-card p-5">
         <p className="text-sm font-medium text-slate-700">Change status</p>
         <div className="mt-2 max-w-xs">
           <RichDropdown

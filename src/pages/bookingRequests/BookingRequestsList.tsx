@@ -592,7 +592,7 @@ export function BookingRequestsList() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Booking requests</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Booking requests</h1>
       <p className="mt-1 text-sm text-slate-500">
         Requests submitted through your public booking page. Approving one creates the customer,
         vehicle and appointment. Requests left unreviewed past their preferred time expire
@@ -600,7 +600,7 @@ export function BookingRequestsList() {
       </p>
 
       {garage?.auto_accept_booking_requests && (
-        <label className="mt-4 flex max-w-2xl items-start gap-3 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        <label className="mt-4 flex max-w-2xl items-start gap-3 rounded-lg bg-white shadow-card p-4 text-sm text-slate-700">
           <input
             type="checkbox"
             checked={garage.auto_accept_booking_requests_enabled}
@@ -631,7 +631,7 @@ export function BookingRequestsList() {
         ))}
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="mt-4 overflow-hidden rounded-lg bg-white shadow-card">
         {isLoading ? (
           <p className="px-4 py-3 text-sm text-slate-500">Loading…</p>
         ) : requests && requests.length > 0 ? (

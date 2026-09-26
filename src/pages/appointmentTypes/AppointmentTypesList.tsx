@@ -439,7 +439,7 @@ export function AppointmentTypesList() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold text-slate-900">Appointment Types</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointment Types</h1>
       <p className="mt-1 text-sm text-slate-500">
         The services your business offers. Each type can have one checklist that staff work
         through, and appears in the public booking form while it's <strong>ACTIVE</strong>.
@@ -452,7 +452,7 @@ export function AppointmentTypesList() {
         .
       </p>
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow-card">
         {isLoading ? (
           <p className="px-4 py-3 text-sm text-slate-500">Loading…</p>
         ) : types && types.length > 0 ? (

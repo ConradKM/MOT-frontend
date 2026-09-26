@@ -534,13 +534,13 @@ export function BookingWizard() {
         <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
         <div>
           <p className="text-sm font-medium text-slate-500">Book an appointment</p>
-          <h1 className="text-xl font-semibold text-slate-900">{garage.name}</h1>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">{garage.name}</h1>
         </div>
       </div>
 
       <WizardStepper steps={wizardSteps} currentStep={currentStepNumber} />
 
-      <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
+      <div className="mt-8 rounded-lg bg-white shadow-card p-6">
         {showSlotBanner && (
           <SelectedSlotBanner
             date={data.date}
@@ -759,7 +759,7 @@ function DateTimeStep({
 }) {
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">Pick a date &amp; time</h2>
+      <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Pick a date &amp; time</h2>
       {selectedService && (
         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-slate-600">
           <span>
@@ -827,7 +827,7 @@ function DetailsStep({
       {/* Built in and non-removable: without these there is no account to
           attach the booking to and no way to confirm it. */}
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">Your details</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Your details</h2>
         <div className="mt-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Field label="First name" required error={errors.firstName}>
@@ -935,7 +935,7 @@ function ReviewStep({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">Review</h2>
+      <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Review</h2>
       <p className="mt-1 text-sm text-slate-500">
         {depositResult
           ? 'Your deposit is paid. Here is a summary of your booking.'
@@ -1064,7 +1064,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 function GarageNotice({ title, body }: { title: string; body: string }) {
   return (
     <div className="mx-auto max-w-lg text-center">
-      <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
       <p className="mt-2 text-slate-600">{body}</p>
     </div>
   )
@@ -1090,7 +1090,7 @@ function ConfirmationScreen({
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600">
         ✓
       </div>
-      <h1 className="mt-4 text-2xl font-semibold text-slate-900">Request received</h1>
+      <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-slate-900">Request received</h1>
       <p className="mt-2 text-slate-600">
         Thanks, {firstName}. We've sent your request for {date ? formatLongDate(date) : ''} at {time}.
         The business will review it and be in touch at {email} to confirm.

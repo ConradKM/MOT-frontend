@@ -100,7 +100,7 @@ export function BookingSection({
 }) {
   return (
     <section>
-      <h2 className="text-lg font-semibold text-slate-900">{section.title}</h2>
+      <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">{section.title}</h2>
       {section.description && (
         <p className="mt-1 text-sm text-slate-500">{section.description}</p>
       )}

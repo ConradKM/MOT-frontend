@@ -30,7 +30,7 @@ export function VehiclesList() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Vehicles</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Vehicles</h1>
         <Link
           to={`/${garageId}/vehicles/new`}
           className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
@@ -84,7 +84,7 @@ export function VehiclesList() {
         )}
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="mt-4 overflow-hidden rounded-lg bg-white shadow-card">
         {isLoading && <p className="p-4 text-sm text-slate-500">Loading…</p>}
         {isError && <p className="p-4 text-sm text-red-600">Failed to load vehicles.</p>}
         {vehicles && vehicles.length === 0 && (

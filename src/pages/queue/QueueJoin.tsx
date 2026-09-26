@@ -44,8 +44,8 @@ function validate(form: Form): Errors {
 
 export function QueueNotice({ title, body }: { title: string; body: string }) {
   return (
-    <div className="mx-auto max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center">
-      <h1 className="text-lg font-semibold text-slate-900">{title}</h1>
+    <div className="mx-auto max-w-md rounded-lg bg-white shadow-card p-6 text-center">
+      <h1 className="font-display text-lg font-semibold tracking-tight text-slate-900">{title}</h1>
       <p className="mt-2 text-sm text-slate-500">{body}</p>
     </div>
   )
@@ -128,7 +128,7 @@ export function QueueJoin() {
         <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
         <div>
           <p className="text-sm font-medium text-slate-500">Walk-in queue</p>
-          <h1 className="text-xl font-semibold text-slate-900">{garage.name}</h1>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">{garage.name}</h1>
         </div>
       </div>
 
@@ -141,7 +141,7 @@ export function QueueJoin() {
         </p>
       )}
 
-      <div className="rounded-lg border border-slate-200 bg-white p-6">
+      <div className="rounded-lg bg-white shadow-card p-6">
         {!queue ? (
           <p className="text-sm text-slate-500">Checking the queue…</p>
         ) : !accepting ? (

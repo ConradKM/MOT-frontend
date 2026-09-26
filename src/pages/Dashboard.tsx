@@ -85,7 +85,7 @@ function WalkInQueueRow({
   return (
     <Link
       to={`/${garageId}/queue`}
-      className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-5 py-4 shadow-sm hover:border-slate-300"
+      className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white shadow-card px-5 py-4 transition-shadow hover:shadow-card-hover"
     >
       <span className="text-sm">
         <span className="font-semibold text-slate-900">Walk-in queue</span>
@@ -130,7 +130,7 @@ export function Dashboard() {
     <div>
       <div className="flex items-center gap-3">
         <BusinessBrandMark name={garage?.name ?? '?'} logoUrl={garage?.logo_url ?? null} />
-        <h1 className="text-2xl font-semibold text-slate-900">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
           {garage?.name ?? 'Welcome'}
         </h1>
       </div>
@@ -153,7 +153,7 @@ export function Dashboard() {
         />
         <Link
           to={`/${garageId}/appointments`}
-          className="flex flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-slate-300"
+          className="flex flex-col rounded-lg bg-white shadow-card p-5 transition-shadow hover:shadow-card-hover"
         >
           <p className="text-sm font-semibold text-slate-900">Edit appointments</p>
           <p className="mt-1 text-sm text-slate-500">View, add or modify appointments.</p>
@@ -179,8 +179,8 @@ export function Dashboard() {
       )}
 
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-slate-900">Today's appointments</h2>
-        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Today's appointments</h2>
+        <div className="mt-3 overflow-hidden rounded-lg bg-white shadow-card">
           {sortedAppointments.length === 0 ? (
             <p className="px-4 py-3 text-sm text-slate-500">Nothing booked for today.</p>
           ) : (

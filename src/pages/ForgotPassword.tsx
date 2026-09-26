@@ -26,7 +26,7 @@ export function ForgotPassword() {
 
   return (
     <AuthCard>
-      <h1 className="text-xl font-semibold text-slate-900">Forgot password</h1>
+      <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">Forgot password</h1>
 
       {sent ? (
         <>

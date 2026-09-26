@@ -1,5 +1,59 @@
 @import "tailwindcss";
 
+/* Design tokens - shared with the marketing site (comaz-frontpage).
+ *
+ * Monochrome on purpose: the whole app already speaks Tailwind's `slate`
+ * scale, so rather than rewrite every class we re-point that scale at a
+ * neutral ink/graphite/paper ramp. Class names (and the tests that assert
+ * them) stay the same; only the rendered values change. Semantic colours
+ * (red errors, amber warnings, emerald success) are left untouched.
+ *
+ * Radii step up a notch (inputs/buttons 8px, cards 12px) and `shadow-sm` /
+ * `shadow-card` become the soft ring-plus-drop used instead of card borders. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-slate-50: #f4f4f4;
+  --color-slate-100: #ececec;
+  --color-slate-200: #e5e7eb;
+  --color-slate-300: #d4d4d4;
+  --color-slate-400: #898989;
+  --color-slate-500: #6b7280;
+  --color-slate-600: #4f4f4f;
+  --color-slate-700: #383838;
+  --color-slate-800: #242424;
+  --color-slate-900: #101010;
+  --color-slate-950: #080808;
+
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  --shadow-card:
+    rgba(19, 19, 22, 0.7) 0px 1px 5px -4px, rgba(34, 42, 53, 0.08) 0px 0px 0px 1px,
+    rgba(34, 42, 53, 0.05) 0px 4px 8px 0px;
+  --shadow-card-hover:
+    rgba(19, 19, 22, 0.7) 0px 1px 5px -4px, rgba(34, 42, 53, 0.12) 0px 0px 0px 1px,
+    rgba(34, 42, 53, 0.08) 0px 8px 20px 0px;
+  --shadow-sm: var(--shadow-card);
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+    letter-spacing: -0.011em;
+  }
+
+  /* Many fields don't set a background and used to sit on a near-white page;
+   * on the greyer paper background they'd look disabled, so default them to
+   * white. Any explicit bg-* utility still wins. */
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+  select,
+  textarea {
+    background-color: var(--color-white);
+  }
+}
+
 /* Step transitions for the booking wizard.
  *
  * Deliberately minimal: a short fade with a 4px rise, on step changes only.

@@ -57,7 +57,7 @@ export function CustomerAccount() {
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
             Hi {customer.first_name}
           </h1>
           <p className="mt-1 text-sm text-slate-500">{customer.garage_name}</p>
@@ -73,7 +73,7 @@ export function CustomerAccount() {
 
       {pendingRequests.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-slate-900">Pending requests</h2>
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Pending requests</h2>
           <p className="mt-1 text-sm text-slate-500">
             Awaiting review by {customer.garage_name}.
           </p>
@@ -86,8 +86,8 @@ export function CustomerAccount() {
       )}
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">Your details</h2>
-        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-slate-200 bg-white p-4 text-sm">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Your details</h2>
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-white shadow-card p-4 text-sm">
           <dt className="text-slate-500">Name</dt>
           <dd className="text-right text-slate-800">
             {customer.first_name} {customer.last_name}
@@ -101,7 +101,7 @@ export function CustomerAccount() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">Your vehicles</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Your vehicles</h2>
         {vehicles.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500">No vehicles on file.</p>
         ) : (
@@ -114,12 +114,12 @@ export function CustomerAccount() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">Upcoming appointments</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Upcoming appointments</h2>
         <AppointmentList appointments={upcoming} emptyText="Nothing booked in." />
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-slate-900">Past appointments</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Past appointments</h2>
         <AppointmentList appointments={past} emptyText="No past appointments." />
       </section>
     </div>
@@ -165,7 +165,7 @@ function CreateAccountForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-3 rounded-lg border border-slate-200 bg-white p-4"
+      className="mt-3 rounded-lg bg-white shadow-card p-4"
     >
       <h3 className="text-sm font-semibold text-slate-900">Create an account</h3>
       <p className="mt-1 text-xs text-slate-500">
@@ -249,7 +249,7 @@ function VehicleRow({ vehicle }: { vehicle: CustomerVehicle }) {
   const description = [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ')
 
   return (
-    <details className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <details className="overflow-hidden rounded-lg bg-white shadow-card">
       <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-900">
@@ -318,7 +318,7 @@ function AppointmentRow({ appointment }: { appointment: CustomerAppointmentSumma
 
   return (
     <details
-      className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+      className="overflow-hidden rounded-lg bg-white shadow-card"
       onToggle={(e) => setExpanded(e.currentTarget.open)}
     >
       <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">

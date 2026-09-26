@@ -76,7 +76,7 @@ export function QueueDashboard() {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Walk-in queue</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Walk-in queue</h1>
           <p className="mt-1 text-sm text-slate-500">
             {data.is_open ? (
               <span className="font-medium text-emerald-700">Open</span>
@@ -257,7 +257,7 @@ export function QueueDashboard() {
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-lg bg-white shadow-card p-4">
       <dt className="text-xs text-slate-500">{label}</dt>
       <dd className="mt-1 text-xl font-semibold text-slate-900">{value}</dd>
       {hint && <dd className="text-xs text-slate-500">{hint}</dd>}
@@ -302,7 +302,7 @@ function EntryRow({
   const name = [entry.customer_first_name, entry.customer_last_name].filter(Boolean).join(' ')
   return (
     <li
-      className="rounded-lg border border-slate-200 bg-white p-3"
+      className="rounded-lg bg-white shadow-card p-3"
       aria-label={`Ticket ${entry.ticket_number}, ${name}`}
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">

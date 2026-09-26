@@ -83,7 +83,7 @@ export function CustomersList() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Customers</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Customers</h1>
         <Link
           to={`/${garageId}/customers/new`}
           className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
@@ -100,7 +100,7 @@ export function CustomersList() {
         className="mt-4 w-full max-w-md rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
       />
 
-      <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="mt-4 overflow-x-auto rounded-lg bg-white shadow-card">
         {isLoading && <p className="p-4 text-sm text-slate-500">Loading…</p>}
         {isError && <p className="p-4 text-sm text-red-600">Failed to load customers.</p>}
         {!isLoading && !isError && filtered.length === 0 && (

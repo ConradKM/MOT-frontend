@@ -84,11 +84,11 @@ export function QueueStatus() {
         <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
         <div>
           <p className="text-sm font-medium text-slate-500">Walk-in queue</p>
-          <h1 className="text-xl font-semibold text-slate-900">{garage.name}</h1>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">{garage.name}</h1>
         </div>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-6">
+      <div className="rounded-lg bg-white shadow-card p-6">
         {isLoading || !status ? (
           error ? (
             <p className="text-sm text-red-600" role="alert">

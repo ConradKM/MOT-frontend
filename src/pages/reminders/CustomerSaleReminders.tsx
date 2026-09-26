@@ -5,7 +5,7 @@
 export function CustomerSaleReminders() {
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">Customer &amp; sale reminders</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Customer &amp; sale reminders</h1>
       <p className="mt-1 text-sm text-slate-500">
         Reminders tied to a customer or a due date, rather than a specific booked appointment.
       </p>

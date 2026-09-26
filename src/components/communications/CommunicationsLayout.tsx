@@ -27,7 +27,7 @@ export function CommunicationsLayout() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Communications</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Communications</h1>
       </div>
       <p className="mt-1 text-sm text-slate-500">
         Calls and WhatsApp messages with your customers, in one place.

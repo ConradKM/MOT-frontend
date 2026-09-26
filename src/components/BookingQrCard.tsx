@@ -105,7 +105,7 @@ export function BookingQrCard({
       <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
       <p className="mt-1 text-sm text-slate-500">{description}</p>
 
-      <div className="mt-4 flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:flex-row sm:items-center">
+      <div className="mt-4 flex flex-col gap-4 rounded-lg bg-white shadow-card p-4 sm:flex-row sm:items-center">
         {svg ? (
           <div
             ref={svgWrapRef}

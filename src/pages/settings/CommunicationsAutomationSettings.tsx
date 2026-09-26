@@ -257,7 +257,7 @@ export function CommunicationsAutomationSettings() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-semibold text-slate-900">Communications automation</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Communications automation</h1>
       <p className="mt-1 text-sm text-slate-500">
         Choose which automated messages your business sends, and customise their wording. This
         never touches your phone/WhatsApp connection details, which stay with the CoMaz OS
@@ -279,7 +279,7 @@ export function CommunicationsAutomationSettings() {
         <PhoneMenuPanel businessName={garage?.name} />
       </div>
 
-      <h2 className="mt-10 text-lg font-semibold text-slate-900">Message templates</h2>
+      <h2 className="mt-10 font-display text-lg font-semibold tracking-tight text-slate-900">Message templates</h2>
       <p className="mt-1 text-sm text-slate-500">
         The exact wording sent for each automated message. Leave any of these as they are to
         use CoMaz OS's default wording.
