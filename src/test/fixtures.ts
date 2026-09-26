@@ -394,6 +394,12 @@ export function makePublicQueueInfo(patch: Partial<PublicQueueInfo> = {}): Publi
     estimated_wait_minutes: 40,
     opens_at: '2099-09-14T09:00:00Z',
     closes_at: '2099-09-14T17:00:00Z',
+    join_fields: {
+      name: { enabled: true, required: true },
+      phone: { enabled: true, required: true },
+      email: { enabled: false, required: false },
+      vehicle_registration: { enabled: true, required: false },
+    },
     ...patch,
   }
 }
