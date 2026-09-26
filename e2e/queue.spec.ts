@@ -83,6 +83,12 @@ test('a walk-in joins, sees their place, and is told when they are called', asyn
           estimated_wait_minutes: 30,
           opens_at: '2099-09-14T08:00:00Z',
           closes_at: '2099-09-14T16:00:00Z',
+          join_fields: {
+            name: { enabled: true, required: true },
+            phone: { enabled: true, required: true },
+            email: { enabled: false, required: false },
+            vehicle_registration: { enabled: false, required: false },
+          },
         }),
     },
     {
