@@ -19,7 +19,7 @@ Established by reading the source, not assumed:
 | Auth | JWT access/refresh in `localStorage` under separate staff (`mot_*`) and customer (`mot_customer_*`) keys; `apiFetch` silently refreshes once on a 401 and retries, else calls `onAuthFailure` |
 | Forms | No form library. Hand-rolled `useState` forms, HTML5 `required`/`minLength`, plus manual validators (the booking wizard has the richest: email regex, UK-mobile regex, year/mileage bounds) |
 | Error handling | `ApiError` carries `code`/`status`/`fieldErrors`; `src/lib/errors.ts` maps a 422 body to per-field messages and everything else to one form-level message |
-| Responsive | Purely CSS (Tailwind `sm:`/`lg:` grid reflow). **No JS breakpoint logic** — no `matchMedia`, no mobile drawer, no conditional rendering by width |
+| Responsive | Purely CSS (Tailwind `sm:`/`lg:` grid reflow). **No JS breakpoint logic** — no `matchMedia`, no conditional rendering by width. The staff header's phone menu (`Layout.tsx`) is a plain open/closed `useState` whose button is shown only below `sm:` by CSS |
 | Accessibility | Deliberate in places: `role="dialog"`/`aria-modal`/`aria-label` on modals, a full combobox implementation in `RichDropdown`, `aria-expanded` on `Disclosure`, `aria-pressed` on the wizard's service picker, labelled inputs |
 | Third-party | Optional CAPTCHA (Turnstile/reCAPTCHA/hCaptcha) loaded by `src/components/Captcha.tsx`; disabled when env vars are unset |
 | Existing tests | Vitest 3 + jsdom + Testing Library; 17 files / 86 tests, all passing. Convention: module-level `vi.mock('../../api/<resource>')` |
@@ -199,9 +199,10 @@ design decision:
    with no `role="row"` between them. `src/components/customer/AvailabilityCalendar.tsx`.
 3. **Fixed** — the customer filter on the vehicles list was a `<select>` with no
    label of any kind. `src/pages/vehicles/VehiclesList.tsx`.
-4. **Documented, not changed** — the staff shell needs ~835px and scrolls
-   sideways below that; there is no mobile navigation anywhere in the codebase.
-   Pinned by `e2e/responsive.spec.ts`.
+4. **Fixed** — the staff shell used to need ~1080px and scrolled sideways
+   below that. It now has a phone menu below `sm:`, and from `sm:` up its
+   inline nav scrolls within itself rather than the page. Pinned by
+   `e2e/responsive.spec.ts`.
 5. **Documented, not changed** — `text-slate-400` muted text (footer,
    "(optional)" markers, field hints) is ~2.9:1 on white, below WCAG AA's
    4.5:1. Pinned by `e2e/a11y.spec.ts`.

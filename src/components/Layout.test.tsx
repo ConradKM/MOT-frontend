@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { server } from '../test/msw/server'
@@ -8,6 +8,7 @@ import { renderWithAppProviders, signInAsStaff } from '../test/utils'
 import { makeGarage } from '../test/fixtures'
 import { Layout } from './Layout'
 import { getAccessToken } from '../api/tokens'
+import { expectNoA11yViolations } from '../test/a11y'
 
 function renderLayout(route = '/g1/customers') {
   return renderWithAppProviders(
@@ -63,6 +64,7 @@ describe('Layout — garage chrome', () => {
       ['Customers', '/g1/customers'],
       ['Appointments', '/g1/appointments'],
       ['Requests', '/g1/booking-requests'],
+      ['Queue', '/g1/queue'],
       ['Payments', '/g1/payments'],
       ['Settings', '/g1/settings'],
     ]) {
@@ -141,5 +143,111 @@ describe('Layout — logout', () => {
 
     await user.click(screen.getByRole('button', { name: /log out/i }))
     await waitFor(() => expect(getAccessToken()).toBeNull())
+  })
+})
+
+describe('Layout — phone menu', () => {
+  // jsdom applies no CSS, so both the inline nav and the menu button are in
+  // the DOM here; which one is visible at which width is pinned in
+  // e2e/responsive.spec.ts. These tests cover the panel's behaviour.
+  async function openMenu() {
+    const user = userEvent.setup()
+    await screen.findByText('Bennett Motors')
+    const button = screen.getByRole('button', { name: 'Menu' })
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    await user.click(button)
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+    return { user, button, panel: screen.getByRole('navigation', { name: 'Main menu' }) }
+  }
+
+  it('is closed until the menu button is pressed', async () => {
+    signInAsStaff()
+    renderLayout()
+    await screen.findByText('Bennett Motors')
+    expect(screen.queryByRole('navigation', { name: 'Main menu' })).not.toBeInTheDocument()
+  })
+
+  it('lists every section, plus Need Help and Log out', async () => {
+    signInAsStaff()
+    renderLayout()
+    const { panel } = await openMenu()
+
+    for (const [label, path] of [
+      ['Dashboard', '/g1/dashboard'],
+      ['Customers', '/g1/customers'],
+      ['Appointments', '/g1/appointments'],
+      ['Requests', '/g1/booking-requests'],
+      ['Queue', '/g1/queue'],
+      ['Payments', '/g1/payments'],
+      ['Communications', '/g1/communications'],
+      ['Settings', '/g1/settings'],
+    ]) {
+      expect(within(panel).getByRole('link', { name: label })).toHaveAttribute('href', path)
+    }
+    expect(within(panel).getByRole('link', { name: 'Customers' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    const panelRoot = document.getElementById('staff-nav-menu')!
+    expect(within(panelRoot).getByRole('button', { name: 'Need Help?' })).toBeInTheDocument()
+    expect(within(panelRoot).getByRole('button', { name: 'Log out' })).toBeInTheDocument()
+  })
+
+  it('closes on Escape', async () => {
+    signInAsStaff()
+    renderLayout()
+    const { user, button } = await openMenu()
+    await user.keyboard('{Escape}')
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('navigation', { name: 'Main menu' })).not.toBeInTheDocument()
+  })
+
+  it('closes on a click outside it', async () => {
+    signInAsStaff()
+    renderLayout()
+    const { user, button } = await openMenu()
+    await user.click(screen.getByRole('heading', { name: 'Customers page' }))
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('stays open on a click inside it', async () => {
+    signInAsStaff()
+    renderLayout()
+    const { user, button } = await openMenu()
+    await user.click(document.getElementById('staff-nav-menu')!)
+    expect(button).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('toggles closed from the menu button', async () => {
+    signInAsStaff()
+    renderLayout()
+    const { user, button } = await openMenu()
+    await user.click(button)
+    expect(button).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('closes once the user navigates from it', async () => {
+    signInAsStaff()
+    renderLayout()
+    const { user, panel } = await openMenu()
+    await user.click(within(panel).getByRole('link', { name: 'Dashboard' }))
+    expect(await screen.findByRole('heading', { name: 'Dashboard page' })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Main menu' })).not.toBeInTheDocument()
+  })
+
+  it('logs out from the panel', async () => {
+    signInAsStaff()
+    renderLayout()
+    await openMenu()
+    const panelRoot = document.getElementById('staff-nav-menu')!
+    await userEvent.click(within(panelRoot).getByRole('button', { name: 'Log out' }))
+    await waitFor(() => expect(getAccessToken()).toBeNull())
+  })
+
+  it('has no detectable accessibility violations when open', async () => {
+    signInAsStaff()
+    const { container } = renderLayout()
+    await openMenu()
+    await expectNoA11yViolations(container)
   })
 })
