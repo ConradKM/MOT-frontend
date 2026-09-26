@@ -1,19 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom'
-import {
-  CalendarDays,
-  CreditCard,
-  Inbox,
-  LayoutDashboard,
-  ListOrdered,
-  LogOut,
-  Menu,
-  MessageSquare,
-  Settings,
-  UserRound,
-  X,
-  type LucideIcon,
-} from 'lucide-react'
+import { LogOut, Menu, X } from 'lucide-react'
 import { BusinessBrandMark } from './BusinessBrandMark'
 import { Footer } from './Footer'
 import { ImpersonationBanner } from './ImpersonationBanner'
@@ -69,20 +56,15 @@ export function Layout() {
     return <Navigate to={`/${garage.id}/${rest}${location.search}`} replace />
   }
 
-  const navItems: { to: string; label: string; icon: LucideIcon; end?: boolean; badge?: number }[] = [
-    { to: `/${garageId}/dashboard`, label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: `/${garageId}/customers`, label: 'Customers', icon: UserRound },
-    { to: `/${garageId}/appointments`, label: 'Appointments', icon: CalendarDays },
-    { to: `/${garageId}/booking-requests`, label: 'Requests', icon: Inbox },
-    { to: `/${garageId}/queue`, label: 'Queue', icon: ListOrdered },
-    { to: `/${garageId}/payments`, label: 'Payments', icon: CreditCard },
-    {
-      to: `/${garageId}/communications`,
-      label: 'Communications',
-      icon: MessageSquare,
-      badge: unread?.whatsapp_unread,
-    },
-    { to: `/${garageId}/settings`, label: 'Settings', icon: Settings },
+  const navItems: { to: string; label: string; end?: boolean; badge?: number }[] = [
+    { to: `/${garageId}/dashboard`, label: 'Dashboard', end: true },
+    { to: `/${garageId}/customers`, label: 'Customers' },
+    { to: `/${garageId}/appointments`, label: 'Appointments' },
+    { to: `/${garageId}/booking-requests`, label: 'Requests' },
+    { to: `/${garageId}/queue`, label: 'Queue' },
+    { to: `/${garageId}/payments`, label: 'Payments' },
+    { to: `/${garageId}/communications`, label: 'Communications', badge: unread?.whatsapp_unread },
+    { to: `/${garageId}/settings`, label: 'Settings' },
   ]
 
   // One set of links, rendered twice: inline from `sm:` up, and in the phone
@@ -102,7 +84,6 @@ export function Layout() {
           }`
         }
       >
-        <item.icon className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
         {item.label}
         {!!item.badge && (
           <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-violet-600 px-1 text-xs font-semibold text-white">
@@ -116,7 +97,7 @@ export function Layout() {
     <button
       type="button"
       onClick={logout}
-      className={`${NAV_ITEM_CLASS} text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
+      className={`${NAV_ITEM_CLASS} cursor-pointer text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
     >
       <LogOut className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
       Log out
@@ -151,7 +132,10 @@ export function Layout() {
           {/* Every section stays inline from `sm:` up. If the row is still too
               wide at the narrow end, it scrolls sideways within itself rather
               than pushing the whole page into a horizontal scroll. */}
-          <nav aria-label="Main" className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto sm:flex">
+          <nav
+            aria-label="Main"
+            className="hidden min-w-0 flex-1 items-center justify-center-safe gap-0.5 overflow-x-auto sm:flex"
+          >
             {renderNavLinks()}
           </nav>
           <div className="hidden shrink-0 items-center gap-0.5 sm:flex">
@@ -165,7 +149,7 @@ export function Layout() {
             aria-label="Menu"
             aria-expanded={menuOpen}
             aria-controls={menuOpen ? MENU_PANEL_ID : undefined}
-            className="ml-auto shrink-0 rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:hidden"
+            className="ml-auto shrink-0 cursor-pointer rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:hidden"
           >
             {menuOpen ? (
               <X className="h-5 w-5" aria-hidden="true" />
