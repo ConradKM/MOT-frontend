@@ -185,7 +185,7 @@ export function QueueJoin() {
             <form onSubmit={submit} noValidate className="mt-6 space-y-4">
               {queue.join_fields.name.enabled && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="block text-sm text-slate-700">
-                  Name{queue.join_fields.name.required ? '' : ' (optional)'}
+                  First name{queue.join_fields.name.required ? '' : ' (optional)'}
                   <input
                     value={form.firstName}
                     onChange={(e) => set('firstName', e.target.value)}
