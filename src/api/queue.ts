@@ -37,6 +37,7 @@ export interface PublicQueueInfo {
   estimated_wait_minutes: number | null
   opens_at: string | null
   closes_at: string | null
+  join_fields: Record<'name' | 'phone' | 'email' | 'vehicle_registration', { enabled: boolean; required: boolean }>
 }
 
 export interface PublicQueueStatus {
@@ -63,10 +64,11 @@ export interface QueueJoined extends PublicQueueStatus {
 }
 
 export interface QueueJoinInput {
-  customer_first_name: string
+  customer_first_name?: string | null
   customer_last_name?: string | null
   /** UK mobile, any normal format - normalised server-side. */
-  customer_phone: string
+  customer_phone?: string | null
+  customer_email?: string | null
   sms_opt_in: boolean
   vehicle_registration?: string | null
   appointment_type_id?: string | null
@@ -185,6 +187,14 @@ export interface QueueSettings {
   capacity: number
   /** The schedule setting behind `capacity`; null = employee count. */
   capacity_per_slot: number | null
+  collect_name: boolean
+  name_required: boolean
+  collect_phone: boolean
+  phone_required: boolean
+  collect_email: boolean
+  email_required: boolean
+  collect_vehicle_registration: boolean
+  vehicle_registration_required: boolean
 }
 
 export type QueueSettingsInput = Partial<
@@ -195,6 +205,8 @@ export type QueueSettingsInput = Partial<
     | 'manual_average_minutes'
     | 'no_show_timeout_minutes'
     | 'default_appointment_type_id'
+    | 'collect_name' | 'name_required' | 'collect_phone' | 'phone_required'
+    | 'collect_email' | 'email_required' | 'collect_vehicle_registration' | 'vehicle_registration_required'
   >
 >
 
