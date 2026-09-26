@@ -9,6 +9,8 @@ import {
   makeEmployee,
   makeGarage,
   makeJwt,
+  makeLoyaltyProgram,
+  makeLoyaltyProgress,
   makePublicQueueInfo,
   makeQueueDashboard,
   makeQueueEntry,
@@ -127,4 +129,10 @@ export const handlers = [
   http.post('*/api/queue/entries/:id/:action', () => HttpResponse.json(makeQueueEntry())),
   http.get('*/api/queue/settings', () => HttpResponse.json(makeQueueSettings())),
   http.get('*/api/queue/reserved-windows', () => HttpResponse.json([])),
+
+  // --- loyalty -------------------------------------------------------------
+  http.get('*/api/loyalty/program', () => HttpResponse.json(makeLoyaltyProgram())),
+  http.patch('*/api/loyalty/program', () => HttpResponse.json(makeLoyaltyProgram({ enabled: true }))),
+  http.get('*/api/loyalty/customers/:id/progress', () => HttpResponse.json(makeLoyaltyProgress())),
+  http.get('*/api/loyalty/customers/:id/history', () => HttpResponse.json([])),
 ]
