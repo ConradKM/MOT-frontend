@@ -31,6 +31,7 @@ import type {
   QueueSettings,
   ReservedWindow,
 } from '../api/queue'
+import type { LoyaltyLedgerEntry, LoyaltyProgram, LoyaltyProgress, LoyaltyReward } from '../api/loyalty'
 
 /**
  * Canonical API-shaped objects for tests. Every factory takes an override
@@ -490,6 +491,74 @@ export function makeReservedWindow(patch: Partial<ReservedWindow> = {}): Reserve
     ends_at: '11:00:00',
     reserved_capacity: 1,
     note: null,
+    ...patch,
+  }
+}
+
+export function makeLoyaltyProgram(patch: Partial<LoyaltyProgram> = {}): LoyaltyProgram {
+  return {
+    id: 'lp1',
+    garage_id: GARAGE_ID,
+    enabled: false,
+    name: 'Loyalty programme',
+    description: null,
+    program_type: 'VISIT',
+    earn_per_visit: 1,
+    threshold: 5,
+    reward_type: 'FIXED_DISCOUNT',
+    reward_value_minor: 1000,
+    currency: 'GBP',
+    qualifying_appointment_type_ids: null,
+    min_spend_minor: null,
+    created_at: '2026-01-01T09:00:00Z',
+    updated_at: '2026-01-01T09:00:00Z',
+    ...patch,
+  }
+}
+
+export function makeLoyaltyReward(patch: Partial<LoyaltyReward> = {}): LoyaltyReward {
+  return {
+    id: 'lr1',
+    cycle_number: 1,
+    status: 'AVAILABLE',
+    reward_type: 'FIXED_DISCOUNT',
+    reward_value_minor: 1000,
+    currency: 'GBP',
+    created_at: '2026-01-05T09:00:00Z',
+    redeemed_at: null,
+    ...patch,
+  }
+}
+
+export function makeLoyaltyProgress(patch: Partial<LoyaltyProgress> = {}): LoyaltyProgress {
+  return {
+    enabled: true,
+    program_name: 'Regular Customer Reward',
+    description: null,
+    current_units: 3,
+    target: 5,
+    remaining: 2,
+    lifetime_units: 3,
+    reward_available: false,
+    reward_type: 'FIXED_DISCOUNT',
+    reward_value_minor: 1000,
+    currency: 'GBP',
+    available_rewards: [],
+    ...patch,
+  }
+}
+
+export function makeLoyaltyLedgerEntry(
+  patch: Partial<LoyaltyLedgerEntry> = {},
+): LoyaltyLedgerEntry {
+  return {
+    id: 'le1',
+    entry_type: 'EARN',
+    units: 1,
+    source_type: 'APPOINTMENT',
+    source_id: 'a1',
+    reason: null,
+    created_at: '2026-01-05T09:00:00Z',
     ...patch,
   }
 }

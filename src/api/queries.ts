@@ -9,6 +9,7 @@ import * as bookingFlowApi from './bookingFlow'
 import * as groupsApi from './appointmentTypeGroups'
 import * as imagesApi from './images'
 import * as publicGarageApi from './publicGarage'
+import * as loyaltyApi from './loyalty'
 import * as queueApi from './queue'
 import * as employeesApi from './employees'
 import * as feedbackApi from './feedback'
@@ -1292,5 +1293,58 @@ export function useDeleteReservedWindow() {
   return useMutation({
     mutationFn: (id: string) => queueApi.deleteReservedWindow(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reservedWindows'] }),
+  })
+}
+
+// Loyalty
+
+export function useLoyaltyProgram() {
+  return useQuery({ queryKey: ['loyaltyProgram'], queryFn: loyaltyApi.getLoyaltyProgram })
+}
+
+export function useUpdateLoyaltyProgram() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: loyaltyApi.LoyaltyProgramInput) => loyaltyApi.updateLoyaltyProgram(data),
+    onSuccess: (program) => qc.setQueryData(['loyaltyProgram'], program),
+  })
+}
+
+export function useCustomerLoyaltyProgress(customerId: string | undefined) {
+  return useQuery({
+    queryKey: ['loyaltyProgress', customerId],
+    queryFn: () => loyaltyApi.getCustomerLoyaltyProgress(customerId as string),
+    enabled: !!customerId,
+  })
+}
+
+export function useCustomerLoyaltyHistory(customerId: string | undefined) {
+  return useQuery({
+    queryKey: ['loyaltyHistory', customerId],
+    queryFn: () => loyaltyApi.getCustomerLoyaltyHistory(customerId as string),
+    enabled: !!customerId,
+  })
+}
+
+export function useAdjustCustomerLoyalty(customerId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { delta: number; reason: string }) =>
+      loyaltyApi.adjustCustomerLoyalty(customerId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['loyaltyProgress', customerId] })
+      qc.invalidateQueries({ queryKey: ['loyaltyHistory', customerId] })
+    },
+  })
+}
+
+export function useRedeemLoyaltyReward(customerId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (rewardId: string) => loyaltyApi.redeemLoyaltyReward(customerId, rewardId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['loyaltyProgress', customerId] })
+      qc.invalidateQueries({ queryKey: ['loyaltyHistory', customerId] })
+    },
   })
 }

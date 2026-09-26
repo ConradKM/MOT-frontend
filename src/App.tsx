@@ -201,6 +201,9 @@ const WalkInQueueSettings = lazy(() =>
     default: m.WalkInQueueSettings,
   })),
 )
+const LoyaltySettings = lazy(() =>
+  import('./pages/settings/LoyaltySettings').then((m) => ({ default: m.LoyaltySettings })),
+)
 
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })))
 const DashboardRedirect = lazy(() =>
@@ -318,6 +321,7 @@ export default function App() {
               <Route path="communications-automation" element={<CommunicationsAutomationSettings />} />
               <Route path="payments" element={<PaymentsSettings />} />
               <Route path="walk-in-queue" element={<WalkInQueueSettings />} />
+              <Route path="loyalty" element={<LoyaltySettings />} />
             </Route>
           </Route>
         </Route>
