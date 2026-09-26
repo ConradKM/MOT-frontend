@@ -149,7 +149,7 @@ export function Layout() {
             aria-label="Menu"
             aria-expanded={menuOpen}
             aria-controls={menuOpen ? MENU_PANEL_ID : undefined}
-            className="ml-auto shrink-0 rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:hidden"
+            className="ml-auto shrink-0 cursor-pointer rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:hidden"
           >
             {menuOpen ? (
               <X className="h-5 w-5" aria-hidden="true" />
