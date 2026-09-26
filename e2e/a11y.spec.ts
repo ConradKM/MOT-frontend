@@ -93,6 +93,19 @@ test.describe('staff pages', () => {
   }
 })
 
+test.describe('staff phone menu', () => {
+  test('the open phone menu has no detectable accessibility violations', async ({ page }) => {
+    await signInAsStaff(page)
+    await stubApi(page)
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.goto('/g1/dashboard')
+    await page.getByRole('button', { name: 'Menu' }).click()
+    await expect(page.getByRole('navigation', { name: 'Main menu' })).toBeVisible()
+    const results = await scan(page)
+    expect(describeViolations(results).join('\n\n')).toBe('')
+  })
+})
+
 test.describe('keyboard operation', () => {
   test('the booking wizard’s calendar is navigable with the arrow keys', async ({ page }) => {
     await stubApi(page)

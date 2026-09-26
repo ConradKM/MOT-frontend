@@ -13,6 +13,17 @@ const VIEWPORTS = {
   desktop: { width: 1280, height: 800 },
 } as const
 
+const NAV_LABELS = [
+  'Dashboard',
+  'Customers',
+  'Appointments',
+  'Requests',
+  'Queue',
+  'Payments',
+  'Communications',
+  'Settings',
+]
+
 /** True if the page scrolls sideways — the classic mobile-layout failure. */
 async function overflowsHorizontally(page: Page): Promise<boolean> {
   return page.evaluate(
@@ -48,17 +59,23 @@ for (const [name, size] of Object.entries(VIEWPORTS)) {
       await signInAsStaff(page)
       await stubApi(page)
       await page.goto('/g1/dashboard')
+      await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
+      expect(await overflowsHorizontally(page)).toBe(false)
 
-      // The staff shell has no mobile treatment (see the known-limitation test
-      // below), so at narrow widths these are reachable only after a sideways
-      // scroll. That they remain present and clickable is what is asserted here.
-      for (const label of ['Dashboard', 'Customers', 'Appointments', 'Settings']) {
-        const link = page.getByRole('link', { name: label, exact: true })
+      // Below `sm:` the sections live behind the menu button; from `sm:` up
+      // they are all inline (scrolling within the nav row if it's too narrow).
+      const phone = size.width < 640
+      await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible({ visible: phone })
+      if (phone) await page.getByRole('button', { name: 'Menu' }).click()
+      const nav = page.getByRole('navigation', { name: phone ? 'Main menu' : 'Main' })
+
+      for (const label of NAV_LABELS) {
+        const link = nav.getByRole('link', { name: label, exact: true })
+        await link.scrollIntoViewIfNeeded()
         await expect(link).toBeVisible()
-        // Visible is not enough: it must also be clickable at this width.
         await expect(link).toBeEnabled()
       }
-      await page.getByRole('link', { name: 'Customers', exact: true }).click()
+      await nav.getByRole('link', { name: 'Customers', exact: true }).click()
       await expect(page).toHaveURL(/\/g1\/customers$/)
     })
 
@@ -75,45 +92,60 @@ for (const [name, size] of Object.entries(VIEWPORTS)) {
   })
 }
 
-test.describe('known limitation: the staff shell has no narrow-viewport layout', () => {
+test.describe('staff shell navigation across widths', () => {
   /**
-   * The staff header renders the business's own brand mark and name, its six
-   * nav items, the "Need Help?" menu and Log out in one non-wrapping row, so
-   * the whole page scrolls sideways below roughly 1080px (was ~897px before
-   * "Need Help?" was added alongside Log out, and ~785px before that, before
-   * the header started showing the business's own name alongside its logo).
-   * There is no hamburger/drawer anywhere in the codebase. The two widths
-   * below are picked with a wide safety margin either side of that boundary
-   * so a few px of font-rendering difference between platforms doesn't flip
-   * the result.
-   *
-   * This is documented rather than silently fixed: giving the staff app a
-   * mobile navigation is a product/design change, not a test change. The
-   * assertions below pin the current boundary, so a fix (or a regression that
-   * pushes the minimum wider) shows up here and gets deliberately updated.
+   * Below `sm:` (640px) the header is just the business name and a menu
+   * button; from `sm:` up every section is inline. Between `sm:` and ~1280px
+   * the inline row is wider than its slot, so it scrolls sideways *within
+   * itself* — the page as a whole must never scroll sideways at any width.
    */
-  test('the staff app lays out cleanly at desktop width', async ({ page }) => {
+  test('the page never scrolls sideways, from phone to desktop', async ({ page }) => {
+    await signInAsStaff(page)
+    await stubApi(page)
+    await page.setViewportSize({ width: 320, height: 800 })
+    await page.goto('/g1/dashboard')
+    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
+
+    for (const width of [320, 375, 639, 640, 700, 768, 1024, 1280]) {
+      await page.setViewportSize({ width, height: 800 })
+      await expect.poll(() => overflowsHorizontally(page), { message: `at ${width}px` }).toBe(false)
+    }
+  })
+
+  test('at desktop width every section fits inline without scrolling the nav', async ({ page }) => {
     await signInAsStaff(page)
     await stubApi(page)
     await page.setViewportSize(VIEWPORTS.desktop)
     await page.goto('/g1/dashboard')
-    await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
-    expect(await overflowsHorizontally(page)).toBe(false)
+    const nav = page.getByRole('navigation', { name: 'Main' })
+    await expect(nav.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
+    const scrolls = await nav.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
+    expect(scrolls).toBe(false)
   })
 
-  test('the staff app still needs roughly 1080px, and no more', async ({ page }) => {
+  test('on a phone the menu opens, navigates, and closes itself', async ({ page }) => {
     await signInAsStaff(page)
     await stubApi(page)
-
-    await page.setViewportSize({ width: 1150, height: 800 })
+    await page.setViewportSize(VIEWPORTS.mobile)
     await page.goto('/g1/dashboard')
     await expect(page.getByRole('heading', { name: 'Bennett Motors' })).toBeVisible()
+
+    // The inline nav and header actions are hidden by CSS at this width.
+    await expect(page.getByRole('navigation', { name: 'Main', exact: true })).toBeHidden()
+    const button = page.getByRole('button', { name: 'Menu' })
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
+
+    await button.click()
+    await expect(button).toHaveAttribute('aria-expanded', 'true')
+    const panel = page.locator('#staff-nav-menu')
+    await expect(panel.getByRole('button', { name: 'Need Help?' })).toBeVisible()
+    await expect(panel.getByRole('button', { name: 'Log out' })).toBeVisible()
     expect(await overflowsHorizontally(page)).toBe(false)
 
-    // Portrait tablet and below currently overflow. Change this expectation
-    // (and the describe title) as part of adding a real mobile navigation.
-    await page.setViewportSize({ width: 700, height: 1024 })
-    await expect.poll(() => overflowsHorizontally(page)).toBe(true)
+    await panel.getByRole('link', { name: 'Queue', exact: true }).click()
+    await expect(page).toHaveURL(/\/g1\/queue$/)
+    await expect(panel).toBeHidden()
+    await expect(button).toHaveAttribute('aria-expanded', 'false')
   })
 })
 
