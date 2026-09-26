@@ -132,7 +132,10 @@ export function Layout() {
           {/* Every section stays inline from `sm:` up. If the row is still too
               wide at the narrow end, it scrolls sideways within itself rather
               than pushing the whole page into a horizontal scroll. */}
-          <nav aria-label="Main" className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto sm:flex">
+          <nav
+            aria-label="Main"
+            className="hidden min-w-0 flex-1 items-center justify-center-safe gap-0.5 overflow-x-auto sm:flex"
+          >
             {renderNavLinks()}
           </nav>
           <div className="hidden shrink-0 items-center gap-0.5 sm:flex">
