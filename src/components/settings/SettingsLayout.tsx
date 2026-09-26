@@ -4,6 +4,7 @@ import {
   Building2,
   CircleDot,
   Clock,
+  Gift,
   ListOrdered,
   CreditCard,
   MessageSquare,
@@ -57,6 +58,7 @@ export const SECTIONS: SettingsSection[] = [
       { slug: 'communications-automation', label: 'Communications Automation', icon: MessageSquare },
       { slug: 'payments', label: 'Payments', icon: CreditCard },
       { slug: 'walk-in-queue', label: 'Walk-in Queue', icon: ListOrdered },
+      { slug: 'loyalty', label: 'Loyalty', icon: Gift },
     ],
   },
 ]

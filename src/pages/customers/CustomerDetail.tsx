@@ -5,6 +5,7 @@ import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
 import { formatDateShort, formatDateTime } from '../../lib/datetime'
 import { ContactShortcuts } from '../../components/communications/ContactShortcuts'
+import { LoyaltyCard } from '../../components/customers/LoyaltyCard'
 import {
   callStatusBadgeClass,
   callStatusLabel,
@@ -101,6 +102,8 @@ export function CustomerDetail() {
           )}
         </div>
       </div>
+
+      <LoyaltyCard customerId={customer.id} />
 
       <div className="mt-8">
         <div className="flex items-center justify-between">
