@@ -34,7 +34,7 @@ export function ServicePicker({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">What would you like to book?</h2>
+      <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">What would you like to book?</h2>
       <p className="mt-1 text-sm text-slate-500">
         Choose a service and we'll show you when we're free.
       </p>

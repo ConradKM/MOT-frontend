@@ -11,7 +11,7 @@ export function Disclosure({ title, defaultOpen = false, children }: DisclosureP
   const [open, setOpen] = useState(defaultOpen)
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
+    <div className="rounded-lg bg-white shadow-card">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

@@ -45,7 +45,7 @@ export function AvailabilitySettings() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold text-slate-900">Availability</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Availability</h1>
       <p className="mt-1 text-sm text-slate-500">
         Controls the public booking calendar customers see for your business.
       </p>

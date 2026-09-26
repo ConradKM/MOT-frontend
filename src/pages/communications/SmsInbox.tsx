@@ -155,7 +155,7 @@ function NewSmsModal({
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">New SMS</h2>
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">New SMS</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="text-slate-400">
             ✕
           </button>
@@ -365,7 +365,7 @@ export function SmsInbox() {
         </button>
       </div>
 
-      <div className="flex h-[65vh] min-h-[420px] overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="flex h-[65vh] min-h-[420px] overflow-hidden rounded-lg bg-white shadow-card">
         <div className="flex w-full max-w-xs shrink-0 flex-col border-r border-slate-200">
           <div className="border-b border-slate-200 p-3">
             <input

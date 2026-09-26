@@ -260,7 +260,7 @@ export function AppointmentRemindersSettings() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold text-slate-900">Appointment reminders</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointment reminders</h1>
       <p className="mt-1 mb-6 text-sm text-slate-500">
         Automatic messages sent to customers before a booked appointment.
       </p>

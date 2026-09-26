@@ -46,7 +46,7 @@ export function PaymentsList() {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Payments</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Payments</h1>
           <p className="mt-1 text-sm text-slate-500">
             Deposits collected for your booking requests. Stripe remains the source of payment
             confirmation.
@@ -67,12 +67,12 @@ export function PaymentsList() {
         </p>
       )}
       {!isLoading && !isError && paidRequests.length === 0 && (
-        <div className="mt-6 rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-500">
+        <div className="mt-6 rounded-lg bg-white shadow-card p-6 text-sm text-slate-500">
           No deposit payments yet.
         </div>
       )}
       {paidRequests.length > 0 && (
-        <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="mt-6 overflow-x-auto rounded-lg bg-white shadow-card">
           <table className="min-w-full text-left text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs font-medium uppercase tracking-wide text-slate-500">
               <tr>

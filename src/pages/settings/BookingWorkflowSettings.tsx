@@ -45,7 +45,7 @@ export function BookingWorkflowSettings() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-xl font-semibold text-slate-900">Booking Workflow</h1>
+      <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">Booking Workflow</h1>
       <p className="mt-1 text-sm text-slate-500">
         What customers can book, how it's presented, and what you ask them.
       </p>
@@ -75,7 +75,7 @@ export function BookingWorkflowSettings() {
       </div>
 
       <div className="mt-6">
-        <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+        <section className="mb-6 rounded-lg bg-white shadow-card p-4">
           <h2 className="text-sm font-semibold text-slate-900">Booking request approval</h2>
           <p className="mt-1 text-sm text-slate-600">
             When enabled, a request is accepted only if its requested slot still has capacity and an active employee can be assigned without a clash. Otherwise it stays pending for staff review.

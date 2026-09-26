@@ -16,7 +16,7 @@ import {
 
 function SummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-lg bg-white shadow-card p-4">
       <p className="text-xs font-medium uppercase text-slate-400">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-slate-900">{value}</p>
     </div>
@@ -99,8 +99,8 @@ export function CommunicationsOverview() {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-slate-900">Recent communications</h2>
-        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Recent communications</h2>
+        <div className="mt-3 overflow-hidden rounded-lg bg-white shadow-card">
           {data.recent.length === 0 ? (
             <p className="px-4 py-6 text-sm text-slate-500">
               Nothing yet. Calls, WhatsApp and SMS messages will show up here as they happen.

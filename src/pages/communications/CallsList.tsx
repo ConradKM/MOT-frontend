@@ -259,7 +259,7 @@ export function CallsList() {
         />
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="mt-4 overflow-hidden rounded-lg bg-white shadow-card">
         {isLoading ? (
           <p className="px-4 py-3 text-sm text-slate-500">Loading…</p>
         ) : items.length === 0 ? (

@@ -53,7 +53,7 @@ export function ImpersonationHandoff() {
   if (error) {
     return (
       <AuthCard>
-        <h1 className="text-xl font-semibold text-slate-900">Support session unavailable</h1>
+        <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">Support session unavailable</h1>
         <p className="mt-3 text-sm text-slate-600">{error}</p>
         <p className="mt-4 text-sm text-slate-500">
           Support links are single-use and expire within about a minute. Ask {PLATFORM_NAME}{' '}
@@ -65,7 +65,7 @@ export function ImpersonationHandoff() {
 
   return (
     <AuthCard>
-      <h1 className="text-xl font-semibold text-slate-900">Starting support session</h1>
+      <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">Starting support session</h1>
       <p className="mt-3 text-sm text-slate-600">Opening this business&rsquo;s account&hellip;</p>
     </AuthCard>
   )

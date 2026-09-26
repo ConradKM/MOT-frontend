@@ -91,7 +91,7 @@ export function DepositStep({
   if (createError || !intent?.provider_data) {
     return (
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Deposit</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Deposit</h2>
         <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {createError ?? "This business isn't able to take deposit payments online right now."}
         </p>
@@ -101,7 +101,7 @@ export function DepositStep({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-900">Deposit</h2>
+      <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Deposit</h2>
       <p className="mt-1 text-sm text-slate-500">
         This service needs a deposit before your booking is sent for review.
       </p>

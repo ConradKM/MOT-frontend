@@ -169,7 +169,7 @@ export function AppointmentsCalendar() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Appointments</h1>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointments</h1>
         <Link
           to={`/${garageId}/appointments/new`}
           className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
@@ -319,7 +319,7 @@ export function AppointmentsCalendar() {
           <div className="space-y-6">
             {grouped.length === 0 && <p className="text-sm text-slate-500">No appointments in this range.</p>}
             {grouped.map(([empId, list]) => (
-              <div key={empId} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div key={empId} className="overflow-hidden rounded-lg bg-white shadow-card">
                 <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700">
                   {employeeNameById(employees, empId)}
                 </div>

@@ -46,7 +46,7 @@ function ChecklistItemRow({
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-lg bg-white shadow-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-slate-900">{item.label}</p>
@@ -136,7 +136,7 @@ export function AppointmentChecklistPage() {
         </Link>
       </div>
 
-      <h1 className="mt-2 text-2xl font-semibold text-slate-900">Checklist</h1>
+      <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-slate-900">Checklist</h1>
       {appointment && (
         <p className="mt-1 text-sm text-slate-500">
           {new Date(appointment.start_time).toLocaleString([], {

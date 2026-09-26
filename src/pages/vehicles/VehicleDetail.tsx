@@ -86,7 +86,7 @@ export function VehicleDetail() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-slate-900">{vehicle.registration_number}</h1>
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">{vehicle.registration_number}</h1>
             <MotBadge motExpiryDate={vehicle.mot_expiry_date} />
             {!vehicle.is_active && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
@@ -138,7 +138,7 @@ export function VehicleDetail() {
       <div className="mt-8">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">
+            <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">
               MOT history at {garage?.name ?? 'this business'}
             </h2>
             <p className="mt-0.5 text-xs text-slate-400">
@@ -156,7 +156,7 @@ export function VehicleDetail() {
         {showAddRecord && (
           <form
             onSubmit={handleAddRecord}
-            className="mt-3 space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+            className="mt-3 space-y-3 rounded-lg bg-white shadow-card p-4"
           >
             {formError && (
               <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
@@ -237,7 +237,7 @@ export function VehicleDetail() {
           </form>
         )}
 
-        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="mt-3 overflow-hidden rounded-lg bg-white shadow-card">
           {(!records || records.length === 0) && (
             <p className="p-4 text-sm text-slate-500">No MOT records yet.</p>
           )}

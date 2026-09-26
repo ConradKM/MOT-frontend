@@ -356,10 +356,10 @@ export function EmployeesList() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold text-slate-900">Employees</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Employees</h1>
       <p className="mt-1 text-sm text-slate-500">Everyone with an account at your business.</p>
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow-card">
         {isLoading ? (
           <p className="px-4 py-3 text-sm text-slate-500">Loading…</p>
         ) : employees && employees.length > 0 ? (

@@ -58,7 +58,7 @@ export function ResetPassword() {
 
   return (
     <AuthCard>
-      <h1 className="text-xl font-semibold text-slate-900">Reset password</h1>
+      <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">Reset password</h1>
 
       {status === 'checking' && (
         <p className="mt-3 text-sm text-slate-500">Checking your link…</p>

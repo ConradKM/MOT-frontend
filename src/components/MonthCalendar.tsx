@@ -28,7 +28,7 @@ export function MonthCalendar({ dates, month, today, appointments, customerName,
   for (const onDate of appointmentsByDate.values()) onDate.sort((a, b) => a.start_time.localeCompare(b.start_time))
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-lg bg-white shadow-card">
       <div className="min-w-[700px]">
         <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
           {WEEKDAYS.map((day) => <div key={day} className="px-2 py-2 text-center text-xs font-medium text-slate-600">{day}</div>)}

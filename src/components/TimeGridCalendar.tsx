@@ -56,7 +56,7 @@ export function TimeGridCalendar({ columns, customerName, appointmentTypeName }:
   const gridTop = startHour * 60
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-lg bg-white shadow-card">
       <div
         className="grid"
         style={{

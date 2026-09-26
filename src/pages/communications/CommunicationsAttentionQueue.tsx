@@ -91,7 +91,7 @@ export function CommunicationsAttentionQueue() {
         directly from WhatsApp.
       </p>
 
-      <div className="mt-4 rounded-lg border border-slate-200 bg-white">
+      <div className="mt-4 rounded-lg bg-white shadow-card">
         {isLoading ? (
           <p className="px-4 py-6 text-sm text-slate-500">Loading…</p>
         ) : items.length === 0 ? (

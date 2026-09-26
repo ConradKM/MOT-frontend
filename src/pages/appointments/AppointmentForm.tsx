@@ -154,7 +154,7 @@ export function AppointmentForm() {
   return (
     <div className="max-w-lg">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
           {isEdit ? 'Edit appointment' : 'New appointment'}
         </h1>
         {isEdit && existing?.status === 'BOOKED' && (

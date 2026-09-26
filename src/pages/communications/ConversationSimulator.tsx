@@ -95,7 +95,7 @@ export function ConversationSimulator() {
           </button>
         </div>
 
-        <div className="flex h-[65vh] min-h-[420px] flex-col rounded-lg border border-slate-200 bg-white">
+        <div className="flex h-[65vh] min-h-[420px] flex-col rounded-lg bg-white shadow-card">
           <div className="flex-1 space-y-3 overflow-y-auto p-4">
             {turns.length === 0 && (
               <p className="text-sm text-slate-400">

@@ -40,12 +40,12 @@ export function PaymentsSettings() {
   const ready = Boolean(status?.stripe_charges_enabled)
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-semibold text-slate-900">Payments</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Payments</h1>
       <p className="mt-1 text-sm text-slate-500">
         Connect Stripe so customers can securely pay booking deposits to your business.
       </p>
 
-      <div className="mt-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mt-6 rounded-lg bg-white shadow-card p-5">
         {loading ? (
           <p className="text-sm text-slate-500">Checking Stripe connection…</p>
         ) : (

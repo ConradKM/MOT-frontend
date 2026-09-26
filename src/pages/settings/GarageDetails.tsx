@@ -85,7 +85,7 @@ export function GarageDetails() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-semibold text-slate-900">Business details</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Business details</h1>
       <p className="mt-1 text-sm text-slate-500">
         The business information we hold for you. It is used across the app and for
         customer communications. Only the business owner can change it.

@@ -53,7 +53,7 @@ export function CustomerDetail() {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-slate-900">
+            <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
               {customer.first_name} {customer.last_name}
             </h1>
             {!customer.is_active && (
@@ -85,7 +85,7 @@ export function CustomerDetail() {
 
       <div className="mt-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Internal notes</h2>
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Internal notes</h2>
           <Link
             to={`/${garageId}/customers/${customer.id}/edit`}
             className="text-sm font-medium text-slate-900 hover:underline"
@@ -93,7 +93,7 @@ export function CustomerDetail() {
             Edit notes
           </Link>
         </div>
-        <div className="mt-3 rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-700">
+        <div className="mt-3 rounded-lg bg-white shadow-card p-4 text-sm text-slate-700">
           {customer.notes ? (
             <p className="whitespace-pre-wrap">{customer.notes}</p>
           ) : (
@@ -104,7 +104,7 @@ export function CustomerDetail() {
 
       <div className="mt-8">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Vehicles</h2>
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Vehicles</h2>
           <Link
             to={`/${garageId}/vehicles/new?customer_id=${customer.id}`}
             className="text-sm font-medium text-slate-900 hover:underline"
@@ -113,7 +113,7 @@ export function CustomerDetail() {
           </Link>
         </div>
 
-        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="mt-3 overflow-hidden rounded-lg bg-white shadow-card">
           {(!vehicles || vehicles.length === 0) && (
             <p className="p-4 text-sm text-slate-500">No vehicles on file.</p>
           )}
@@ -154,8 +154,8 @@ export function CustomerDetail() {
       </div>
 
       <div className="mt-8">
-        <h2 className="text-lg font-semibold text-slate-900">Communications</h2>
-        <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Communications</h2>
+        <div className="mt-3 overflow-hidden rounded-lg bg-white shadow-card">
           {(!communications || communications.length === 0) && (
             <p className="p-4 text-sm text-slate-500">
               No calls or WhatsApp messages with this customer yet.

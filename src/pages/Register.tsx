@@ -35,7 +35,7 @@ export function Register() {
 
   return (
     <AuthCard>
-      <h1 className="text-xl font-semibold text-slate-900">Register your business</h1>
+      <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">Register your business</h1>
       <p className="mt-1 text-sm text-slate-500">
         Creates your business and your owner account in one step.
       </p>

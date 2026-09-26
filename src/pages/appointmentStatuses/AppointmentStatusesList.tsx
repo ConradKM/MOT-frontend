@@ -187,13 +187,13 @@ export function AppointmentStatusesList() {
 
   return (
     <>
-      <h1 className="text-2xl font-semibold text-slate-900">Appointment Statuses</h1>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointment Statuses</h1>
       <p className="mt-1 text-sm text-slate-500">
         The labels and colours used for appointment statuses across the app. The seven built-in
         ones can be renamed and recoloured; you can add your own too.
       </p>
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow-card">
         {isLoading ? (
           <p className="px-4 py-3 text-sm text-slate-500">Loading…</p>
         ) : statuses && statuses.length > 0 ? (

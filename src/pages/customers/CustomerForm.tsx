@@ -68,7 +68,7 @@ export function CustomerForm() {
 
   return (
     <div className="max-w-lg">
-      <h1 className="text-2xl font-semibold text-slate-900">
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
         {isEdit ? 'Edit customer' : 'New customer'}
       </h1>
 

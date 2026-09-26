@@ -120,7 +120,7 @@ function ItemRow({
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-lg bg-white shadow-card p-4">
       <div className="flex items-start gap-3">
         <div className="flex flex-col gap-1 pt-1.5">
           <button
@@ -402,7 +402,7 @@ export function ChecklistTemplateBuilder() {
         ← Back to Appointment Types
       </Link>
 
-      <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+      <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-slate-900">
         Checklist for {appointmentType?.name ?? '…'}
       </h1>
       <p className="mt-1 text-sm text-slate-500">

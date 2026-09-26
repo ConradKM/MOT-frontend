@@ -38,7 +38,7 @@ export function ChecklistTemplateViewer() {
         )}
       </div>
 
-      <h1 className="mt-2 text-2xl font-semibold text-slate-900">
+      <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-slate-900">
         Checklist for {appointmentType?.name ?? '…'}
       </h1>
 
@@ -53,7 +53,7 @@ export function ChecklistTemplateViewer() {
       {template && (
         <ol className="mt-6 space-y-3">
           {template.items.map((item, i) => (
-            <li key={item.id} className="rounded-lg border border-slate-200 bg-white p-4">
+            <li key={item.id} className="rounded-lg bg-white shadow-card p-4">
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm font-medium text-slate-900">
                   {i + 1}. {item.label}
