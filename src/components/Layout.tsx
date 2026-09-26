@@ -97,7 +97,7 @@ export function Layout() {
     <button
       type="button"
       onClick={logout}
-      className={`${NAV_ITEM_CLASS} text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
+      className={`${NAV_ITEM_CLASS} cursor-pointer text-slate-600 hover:bg-slate-100 hover:text-slate-900`}
     >
       <LogOut className="h-4 w-4 shrink-0 opacity-70" aria-hidden="true" />
       Log out
