@@ -37,7 +37,7 @@ const SERVER_FIELDS: Record<string, keyof Form> = {
 
 function validate(form: Form, fields: PublicQueueInfo['join_fields']): Errors {
   const errors: Errors = {}
-  if (fields.name.required && !form.firstName.trim()) errors.firstName = 'Name is required.'
+  if (fields.name.required && !form.firstName.trim()) errors.firstName = 'First name is required.'
   if (fields.phone.required && !form.phone.trim()) errors.phone = 'Mobile number is required.'
   else if (fields.phone.enabled && form.phone && !isPlausibleUkMobile(form.phone)) {
     errors.phone = 'Enter a valid UK mobile number, e.g. 07123 456789.'
