@@ -50,6 +50,7 @@ export function WalkInQueueSettings() {
       ) : (
         <div className="mt-8 space-y-10">
           <EstimatesForm settings={data} />
+          <JoinFieldsForm settings={data} />
           <ReservedWindowsSection capacity={data.capacity} />
         </div>
       )}
@@ -64,6 +65,39 @@ export function WalkInQueueSettings() {
       />
     </>
   )
+}
+
+function JoinFieldsForm({ settings }: { settings: QueueSettings }) {
+  const update = useUpdateQueueSettings()
+  const { showToast } = useToast()
+  type JoinField = { key: string; label: string; enabled: boolean; required: boolean }
+  const [fields, setFields] = useState<JoinField[]>(() => [
+    { key: 'name', label: 'Name', enabled: settings.collect_name, required: settings.name_required },
+    { key: 'phone', label: 'Phone number', enabled: settings.collect_phone, required: settings.phone_required },
+    { key: 'email', label: 'Email', enabled: settings.collect_email, required: settings.email_required },
+    { key: 'vehicle_registration', label: 'Vehicle registration', enabled: settings.collect_vehicle_registration, required: settings.vehicle_registration_required },
+  ])
+  const save = async () => {
+    const payload: Record<string, boolean> = {}
+    fields.forEach(({ key, enabled, required }) => {
+      payload[`collect_${key}`] = enabled
+      payload[`${key}_required`] = enabled && required
+    })
+    await update.mutateAsync(payload)
+    showToast('Customer details settings saved.', 'success')
+  }
+  return <section>
+    <h2 className="text-sm font-semibold text-slate-900">Customer details when joining</h2>
+    <p className="mt-1 text-xs text-slate-500">Only ask for information this business needs. A required field is always enabled.</p>
+    <div className="mt-3 space-y-2">
+      {fields.map(({ key, label, enabled, required }, index) => <div key={key} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm">
+        <span>{label}</span><div className="flex gap-4">
+          <label><input type="checkbox" checked={enabled} onChange={(e) => setFields((all) => all.map((f, i) => i === index ? { ...f, enabled: e.target.checked, required: e.target.checked && f.required } : f))} /> Enabled</label>
+          <label className={!enabled ? 'text-slate-400' : ''}><input type="checkbox" disabled={!enabled} checked={required} onChange={(e) => setFields((all) => all.map((f, i) => i === index ? { ...f, required: e.target.checked } : f))} /> Required</label>
+        </div></div>)}
+    </div>
+    <button type="button" onClick={() => void save()} disabled={update.isPending} className={`mt-4 ${saveClass}`}>{update.isPending ? 'Saving…' : 'Save customer details'}</button>
+  </section>
 }
 
 function EstimatesForm({ settings }: { settings: QueueSettings }) {

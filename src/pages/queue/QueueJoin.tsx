@@ -8,6 +8,7 @@ import { formatTime } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { isPlausibleUkMobile } from '../../lib/phone'
 import { formatWait, readStoredQueueToken, storeQueueToken } from '../../lib/queue'
+import type { PublicQueueInfo } from '../../api/queue'
 
 const inputClass =
   'mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none'
@@ -16,6 +17,7 @@ interface Form {
   firstName: string
   lastName: string
   phone: string
+  email: string
   registration: string
   serviceId: string
   smsOptIn: boolean
@@ -28,15 +30,16 @@ const SERVER_FIELDS: Record<string, keyof Form> = {
   customer_first_name: 'firstName',
   customer_last_name: 'lastName',
   customer_phone: 'phone',
+  customer_email: 'email',
   vehicle_registration: 'registration',
   appointment_type_id: 'serviceId',
 }
 
-function validate(form: Form): Errors {
+function validate(form: Form, fields: PublicQueueInfo['join_fields']): Errors {
   const errors: Errors = {}
-  if (!form.firstName.trim()) errors.firstName = 'First name is required.'
-  if (!form.phone.trim()) errors.phone = 'Mobile number is required.'
-  else if (!isPlausibleUkMobile(form.phone)) {
+  if (fields.name.required && !form.firstName.trim()) errors.firstName = 'First name is required.'
+  if (fields.phone.required && !form.phone.trim()) errors.phone = 'Mobile number is required.'
+  else if (fields.phone.enabled && form.phone && !isPlausibleUkMobile(form.phone)) {
     errors.phone = 'Enter a valid UK mobile number, e.g. 07123 456789.'
   }
   return errors
@@ -66,6 +69,7 @@ export function QueueJoin() {
     firstName: '',
     lastName: '',
     phone: '',
+    email: '',
     registration: '',
     serviceId: '',
     smsOptIn: false,
@@ -90,17 +94,18 @@ export function QueueJoin() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    const found = validate(form)
+    const found = validate(form, queue!.join_fields)
     if (captchaEnabled && !captchaToken) found.form = 'Please complete the verification.'
     setErrors(found)
     if (Object.keys(found).length > 0) return
     try {
       const joined = await join.mutateAsync({
-        customer_first_name: form.firstName.trim(),
+        customer_first_name: queue!.join_fields.name.enabled ? form.firstName.trim() || null : null,
         customer_last_name: form.lastName.trim() || null,
-        customer_phone: form.phone,
+        customer_phone: queue!.join_fields.phone.enabled ? form.phone || null : null,
+        customer_email: queue!.join_fields.email.enabled ? form.email.trim() || null : null,
         sms_opt_in: form.smsOptIn,
-        vehicle_registration: form.registration.trim() || null,
+        vehicle_registration: queue!.join_fields.vehicle_registration.enabled ? form.registration.trim() || null : null,
         appointment_type_id: form.serviceId || null,
         captcha_token: captchaToken || undefined,
       })
@@ -178,9 +183,9 @@ export function QueueJoin() {
             </dl>
 
             <form onSubmit={submit} noValidate className="mt-6 space-y-4">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {queue.join_fields.name.enabled && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <label className="block text-sm text-slate-700">
-                  First name
+                  First name{queue.join_fields.name.required ? '' : ' (optional)'}
                   <input
                     value={form.firstName}
                     onChange={(e) => set('firstName', e.target.value)}
@@ -201,9 +206,10 @@ export function QueueJoin() {
                     className={inputClass}
                   />
                 </label>
-              </div>
+              </div>}
+              {queue.join_fields.phone.enabled &&
               <label className="block text-sm text-slate-700">
-                Mobile number
+                Mobile number{queue.join_fields.phone.required ? '' : ' (optional)'}
                 <input
                   type="tel"
                   value={form.phone}
@@ -216,15 +222,21 @@ export function QueueJoin() {
                 {errors.phone && (
                   <span className="mt-1 block text-xs text-red-600">{errors.phone}</span>
                 )}
-              </label>
+              </label>}
+              {queue.join_fields.email.enabled && <label className="block text-sm text-slate-700">
+                Email{queue.join_fields.email.required ? '' : ' (optional)'}
+                <input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} autoComplete="email" className={inputClass} aria-invalid={!!errors.email} />
+                {errors.email && <span className="mt-1 block text-xs text-red-600">{errors.email}</span>}
+              </label>}
+              {queue.join_fields.vehicle_registration.enabled &&
               <label className="block text-sm text-slate-700">
-                Vehicle registration (optional)
+                Vehicle registration{queue.join_fields.vehicle_registration.required ? '' : ' (optional)'}
                 <input
                   value={form.registration}
                   onChange={(e) => set('registration', e.target.value.toUpperCase())}
                   className={inputClass}
                 />
-              </label>
+              </label>}
               {garage.appointment_types.length > 0 && (
                 <label className="block text-sm text-slate-700">
                   What do you need? (optional)
