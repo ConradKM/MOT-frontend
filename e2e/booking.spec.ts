@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { respond, stubApi } from './fixtures/api'
-import { BOOKING_DATE, DAY_AVAILABILITY } from './fixtures/data'
+import { BOOKING_DATE, DAY_AVAILABILITY, PUBLIC_GARAGE } from './fixtures/data'
 
 /**
  * The public booking wizard — the only unauthenticated write path in the
@@ -190,4 +190,109 @@ test('a failed availability lookup offers a retry rather than an empty calendar'
   await page.getByRole('button', { name: /^MOT test/ }).click()
   await expect(page.getByRole('button', { name: /try again/i })).toBeVisible()
   expect(attempts).toBeGreaterThan(0)
+})
+
+test('a customer adds extras, sees the price and finish time change, and books them', async ({ page }) => {
+  const garageWithAddOns = {
+    ...PUBLIC_GARAGE,
+    appointment_types: PUBLIC_GARAGE.appointment_types.map((t) =>
+      t.id !== 'at1'
+        ? t
+        : {
+            ...t,
+            add_ons: [
+              {
+                id: 'ao-tyre',
+                name: 'Tyre check',
+                description: null,
+                price_delta: '15.00',
+                duration_delta_minutes: 30,
+                max_quantity: 1,
+                exclusivity_group: null,
+              },
+              {
+                id: 'ao-rush',
+                name: 'Rush job',
+                description: null,
+                price_delta: '20.00',
+                duration_delta_minutes: -15,
+                max_quantity: 1,
+                exclusivity_group: 'Turnaround',
+              },
+              {
+                id: 'ao-std',
+                name: 'Standard',
+                description: null,
+                price_delta: '0.00',
+                duration_delta_minutes: 0,
+                max_quantity: 1,
+                exclusivity_group: 'Turnaround',
+              },
+            ],
+          },
+    ),
+  }
+  const availabilityQueries: string[] = []
+  let submitted: Record<string, unknown> = {}
+  await stubApi(page, [
+    { path: /^\/api\/public\/garages\/[^/]+$/, handler: (route) => respond.json(route, garageWithAddOns) },
+    {
+      path: /\/availability\/\d{4}-\d{2}-\d{2}$/,
+      handler: (route, url) => {
+        availabilityQueries.push(url.searchParams.get('add_ons') ?? '')
+        return respond.json(route, DAY_AVAILABILITY)
+      },
+    },
+    {
+      method: 'POST',
+      path: /\/booking-requests$/,
+      handler: async (route) => {
+        submitted = JSON.parse(route.request().postData() ?? '{}')
+        return respond.json(route, { id: 'br1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' }, 201)
+      },
+    },
+  ])
+
+  await page.goto('/book/g1')
+  await page.getByRole('button', { name: /^MOT test/ }).click()
+
+  // Extras are chosen before the calendar, because they change the job's length.
+  const total = page.getByTestId('service-add-on-total')
+  await expect(total).toContainText('£54.85')
+  await page.getByRole('button', { name: /Add extras to MOT test/ }).click()
+  await page.getByRole('checkbox', { name: /Tyre check/ }).click()
+  await page.getByRole('radio', { name: /Standard/ }).click()
+  await page.getByRole('radio', { name: /Rush job/ }).click()
+  // One per group: picking Rush job cleared Standard.
+  await expect(page.getByRole('radio', { name: /Standard/ })).not.toBeChecked()
+  await expect(total).toContainText('£89.85')
+  await expect(total).toContainText('about 1 h 15 min')
+  await page.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('button', { name: 'Continue' }).click()
+
+  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
+  await page.getByRole('button', { name: '09:00 — Available' }).click()
+  expect(availabilityQueries.at(-1)).toBe('ao-rush:1,ao-tyre:1')
+
+  await page.getByLabel('First name').fill('Oliver')
+  await page.getByLabel('Last name').fill('Bennett')
+  await page.getByLabel('Email').fill('oliver@example.com')
+  await page.getByLabel('Mobile number').fill('07123 456789')
+  await page.getByLabel('Registration number').fill('OB08AUD')
+  await page.getByRole('button', { name: 'Continue' }).click()
+
+  await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
+  await expect(page.getByText('Tyre check, Rush job')).toBeVisible()
+  await expect(page.getByText('£89.85')).toBeVisible()
+  await expect(page.getByText('09:00–10:15')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Confirm Booking' }).click()
+  await expect(page.getByRole('heading', { name: 'Request received' })).toBeVisible()
+  expect(submitted).toMatchObject({
+    appointment_type_id: 'at1',
+    add_ons: [
+      { add_on_id: 'ao-tyre', quantity: 1 },
+      { add_on_id: 'ao-rush', quantity: 1 },
+    ],
+  })
 })

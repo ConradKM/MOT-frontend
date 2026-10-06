@@ -149,6 +149,40 @@ export interface AppointmentType {
   updated_at: string
 }
 
+/** An optional extra on one appointment type (e.g. "Rush job") that adjusts
+ * an appointment's price and/or duration. Both deltas are signed. */
+export interface AddOn {
+  id: string
+  garage_id: string
+  appointment_type_id: string
+  name: string
+  description: string | null
+  /** Signed decimal string, e.g. "15.00" or "-5.50". */
+  price_delta: string
+  duration_delta_minutes: number
+  /** 1 = pick it at most once; up to 99 shows a quantity stepper. */
+  max_quantity: number
+  /** At most one add-on per group can be selected on one appointment. */
+  exclusivity_group: string | null
+  status: AppointmentTypeStatus
+  order: number
+  created_at: string
+  updated_at: string
+}
+
+/** An add-on as snapshotted onto an appointment or booking request - its
+ * price/duration are what was charged then, not the catalogue's today. */
+export interface AppliedAddOn {
+  id: string
+  /** Null once the catalogue add-on has been deleted; the snapshot remains. */
+  add_on_id: string | null
+  name: string
+  quantity: number
+  /** Per-unit, signed decimal string. */
+  price_delta: string
+  duration_delta_minutes: number
+}
+
 /** How a set of services is presented to a customer choosing one. */
 export type DisplayMode = 'GRID' | 'LIST'
 
@@ -187,6 +221,9 @@ export interface Appointment {
    * appointment_type_id, this remains historically accurate after a service
    * is renamed or archived.  Older records may not have one yet. */
   appointment_type_name_at_booking?: string | null
+  /** Add-ons applied to this appointment; their deltas are already included
+   * in price_at_booking. Absent from records served by an older API. */
+  applied_add_ons?: AppliedAddOn[]
   created_at: string
   updated_at: string
 }

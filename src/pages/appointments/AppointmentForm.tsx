@@ -1,6 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
+  useAddOns,
   useAppointments,
   useAppointmentStatuses,
   useAppointmentTypes,
@@ -11,14 +12,28 @@ import {
   useUpdateAppointment,
   useVehicles,
 } from '../../api/queries'
-import { isoToLocalInputValue, localInputValueToIso } from '../../lib/datetime'
+import {
+  addMinutesToLocalInputValue,
+  isoToLocalInputValue,
+  localInputValueToIso,
+} from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { RichDropdown } from '../../components/rich/RichDropdown'
+import { AddOnPicker } from '../../components/addOns/AddOnPicker'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { richFieldBoxClass, richFieldFocusClass } from '../../components/rich/richFieldStyles'
 import { useGarageId } from '../../hooks/useGarageId'
 import { statusOptions } from '../../lib/appointmentStatuses'
+import {
+  addOnTotals,
+  formatMinutes,
+  formatPence,
+  sameSelection,
+  selectionToPayload,
+  toPence,
+  type AddOnSelection,
+} from '../../lib/addOns'
 import type { AppointmentStatus } from '../../types'
 
 const priceFormatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' })
@@ -52,6 +67,11 @@ export function AppointmentForm() {
   const [appointmentTypeId, setAppointmentTypeId] = useState('')
   const [status, setStatus] = useState<AppointmentStatus>('BOOKED')
   const [notes, setNotes] = useState('')
+  const [addOnSelection, setAddOnSelection] = useState<AddOnSelection>({})
+  // Once staff type their own end time (or when editing a saved one), a
+  // start/type change no longer overwrites it - add-on changes still shift it
+  // by their own duration delta, so the override is kept either way.
+  const [endTouched, setEndTouched] = useState(isEdit)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [conflict, setConflict] = useState(false)
@@ -66,8 +86,98 @@ export function AppointmentForm() {
       setAppointmentTypeId(existing.appointment_type_id)
       setStatus(existing.status)
       setNotes(existing.notes ?? '')
+      setAddOnSelection(savedSelection(existing.applied_add_ons))
     }
   }, [existing])
+
+  const { data: addOnCatalogue } = useAddOns(appointmentTypeId || undefined)
+  const selectedType = appointmentTypes?.find((t) => t.id === appointmentTypeId)
+  const typeChanged = isEdit && !!existing && appointmentTypeId !== existing.appointment_type_id
+
+  // Snapshots of what's already on the appointment - the server keeps these
+  // prices for add-ons that stay selected, so the live total must too.
+  const savedAddOns = useMemo(
+    () => (existing && !typeChanged ? (existing.applied_add_ons ?? []) : []),
+    [existing, typeChanged],
+  )
+  const snapshotDeltas = Object.fromEntries(
+    savedAddOns.filter((a) => a.add_on_id).map((a) => [a.add_on_id as string, a]),
+  )
+  const removedFromCatalogue = savedAddOns.filter((a) => a.add_on_id === null)
+  const addOnsDirty =
+    !isEdit || typeChanged || !sameSelection(addOnSelection, savedSelection(savedAddOns))
+
+  // Only offer active add-ons, plus any already selected (e.g. since hidden)
+  // so they stay visible and can be removed.
+  const pickerOptions = (addOnCatalogue ?? []).filter(
+    (a) => a.status === 'ACTIVE' || addOnSelection[a.id],
+  )
+  const liveTotals = addOnTotals(addOnSelection, addOnCatalogue ?? [], snapshotDeltas)
+  const livePricePence = (() => {
+    if (isEdit && existing && !addOnsDirty) {
+      return existing.price_at_booking != null ? toPence(existing.price_at_booking) : null
+    }
+    if (isEdit && existing && !typeChanged) {
+      // Recover the booked base price the same way the server does.
+      if (existing.price_at_booking == null) return null
+      const savedTotals = addOnTotals(
+        savedSelection(savedAddOns),
+        [],
+        snapshotDeltas,
+      )
+      const orphanPence = removedFromCatalogue.reduce(
+        (n, a) => n + toPence(a.price_delta) * a.quantity,
+        0,
+      )
+      return toPence(existing.price_at_booking) - savedTotals.pricePence - orphanPence + liveTotals.pricePence
+    }
+    if (!selectedType || selectedType.base_price == null) return null
+    return toPence(selectedType.base_price) + liveTotals.pricePence
+  })()
+
+  const derivedEnd = (start: string, typeId: string, selection: AddOnSelection) => {
+    const type = appointmentTypes?.find((t) => t.id === typeId)
+    if (!start || type?.default_duration_minutes == null) return null
+    // A different type's add-ons can't be selected, so the catalogue in hand
+    // is only valid for the current type; after a type change it's empty.
+    const minutes = typeId === appointmentTypeId ? addOnTotals(selection, addOnCatalogue ?? []).minutes : 0
+    return addMinutesToLocalInputValue(start, type.default_duration_minutes + minutes)
+  }
+
+  const handleStartChange = (next: string) => {
+    setStartTime(next)
+    if (!endTouched) {
+      const end = derivedEnd(next, appointmentTypeId, addOnSelection)
+      if (end) setEndTime(end)
+    }
+  }
+
+  const handleTypeChange = (next: string) => {
+    setAppointmentTypeId(next)
+    // Add-ons belong to a type - the old type's can't carry over.
+    setAddOnSelection({})
+    if (!endTouched) {
+      const end = derivedEnd(startTime, next, {})
+      if (end) setEndTime(end)
+    }
+  }
+
+  const handleAddOnsChange = (next: AddOnSelection) => {
+    const before = addOnTotals(addOnSelection, addOnCatalogue ?? [], snapshotDeltas).minutes
+    const after = addOnTotals(next, addOnCatalogue ?? [], snapshotDeltas).minutes
+    setAddOnSelection(next)
+    if (endTime) {
+      setEndTime(addMinutesToLocalInputValue(endTime, after - before))
+    } else {
+      const end = derivedEnd(startTime, appointmentTypeId, next)
+      if (end) setEndTime(end)
+    }
+  }
+
+  const handleEndChange = (next: string) => {
+    setEndTouched(true)
+    setEndTime(next)
+  }
 
   // Default new appointments to the first available type, rather than leaving the picker empty.
   useEffect(() => {
@@ -118,6 +228,9 @@ export function AppointmentForm() {
       appointment_type_id: appointmentTypeId,
       status,
       notes: notes || null,
+      // Omitted on an unchanged edit so the server keeps the saved snapshots
+      // (including any add-on since deleted from the catalogue) as they are.
+      ...(addOnsDirty ? { add_ons: selectionToPayload(addOnSelection) } : {}),
     }
     try {
       if (isEdit) {
@@ -252,7 +365,7 @@ export function AppointmentForm() {
                 type="datetime-local"
                 required
                 value={startTime}
-                onChange={setStartTime}
+                onChange={handleStartChange}
               />
             </div>
             {errors.start_time && <p className="mt-1 text-sm text-red-600">{errors.start_time}</p>}
@@ -267,7 +380,7 @@ export function AppointmentForm() {
                 type="datetime-local"
                 required
                 value={endTime}
-                onChange={setEndTime}
+                onChange={handleEndChange}
               />
             </div>
             {errors.end_time && <p className="mt-1 text-sm text-red-600">{errors.end_time}</p>}
@@ -284,7 +397,7 @@ export function AppointmentForm() {
                 id="appointment_type_id"
                 options={appointmentTypeOptions}
                 value={appointmentTypeId}
-                onChange={setAppointmentTypeId}
+                onChange={handleTypeChange}
                 placeholder={
                   appointmentTypes && appointmentTypes.length === 0
                     ? 'No appointment types set up yet'
@@ -312,6 +425,48 @@ export function AppointmentForm() {
               </div>
             </div>
           )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700" htmlFor="add_ons">
+            Add-ons <span className="font-normal text-slate-400">(optional)</span>
+          </label>
+          <div className="mt-1">
+            <AddOnPicker
+              id="add_ons"
+              addOns={pickerOptions}
+              value={addOnSelection}
+              onChange={handleAddOnsChange}
+              disabled={!appointmentTypeId}
+            />
+          </div>
+          {removedFromCatalogue.length > 0 && (
+            <p className="mt-1 text-xs text-slate-500">
+              Also applied: {removedFromCatalogue.map((a) => a.name).join(', ')} (no longer
+              offered{addOnsDirty ? ' - will be removed when you save' : ''}).
+            </p>
+          )}
+          {errors.add_ons && <p className="mt-1 text-sm text-red-600">{errors.add_ons}</p>}
+          <dl
+            className="mt-2 flex flex-wrap gap-x-4 gap-y-1 rounded-md bg-slate-50 px-3 py-2 text-sm"
+            aria-live="polite"
+            data-testid="appointment-live-summary"
+          >
+            <div className="flex gap-1">
+              <dt className="text-slate-500">Price</dt>
+              <dd className="font-medium text-slate-900">
+                {livePricePence != null ? formatPence(livePricePence) : 'Not set'}
+              </dd>
+            </div>
+            {selectedType?.default_duration_minutes != null && (
+              <div className="flex gap-1">
+                <dt className="text-slate-500">Duration</dt>
+                <dd className="font-medium text-slate-900">
+                  {formatMinutes(selectedType.default_duration_minutes + liveTotals.minutes)}
+                </dd>
+              </div>
+            )}
+          </dl>
         </div>
 
         <div>
@@ -346,4 +501,10 @@ export function AppointmentForm() {
       </form>
     </div>
   )
+}
+
+function savedSelection(applied: { add_on_id: string | null; quantity: number }[] | undefined) {
+  const selection: AddOnSelection = {}
+  for (const a of applied ?? []) if (a.add_on_id) selection[a.add_on_id] = a.quantity
+  return selection
 }

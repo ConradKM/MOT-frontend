@@ -302,6 +302,8 @@ describe('BookingWizard — choosing a service first', () => {
         undefined,
         undefined,
         'type-full-service',
+        // No add-ons selected.
+        undefined,
       ),
     )
   })
@@ -410,6 +412,8 @@ describe('BookingWizard — deep links', () => {
         undefined,
         undefined,
         'type-service',
+        // No add-ons selected.
+        undefined,
       ),
     )
   })

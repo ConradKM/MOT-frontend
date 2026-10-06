@@ -408,6 +408,12 @@ function AppointmentTypeRow({
               {hasTemplate ? 'Edit checklist' : 'Build checklist'}
             </Link>
           )}
+          <Link
+            to={`/${garageId}/appointment-types/${type.id}/add-ons`}
+            className="text-slate-900 hover:underline"
+          >
+            Add-ons
+          </Link>
           <button onClick={onEdit} className="text-slate-600 hover:underline">
             Edit
           </button>

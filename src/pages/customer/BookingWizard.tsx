@@ -32,6 +32,18 @@ import { Captcha, captchaEnabled } from '../../components/Captcha'
 import { isPlausibleUkMobile } from '../../lib/phone'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { DepositStep } from '../../components/customer/DepositStep'
+import { AddOnPicker } from '../../components/addOns/AddOnPicker'
+import {
+  addOnTotals,
+  formatDelta,
+  formatMinutes,
+  formatPence,
+  selectionToPayload,
+  selectionToQuery,
+  toPence,
+  type AddOnOption,
+  type AddOnSelection,
+} from '../../lib/addOns'
 
 /** What the platform itself needs, and the only thing a business cannot
  * configure away: without these there is no account to attach the booking
@@ -145,6 +157,7 @@ export function BookingWizard() {
   const [depositResult, setDepositResult] = useState<DepositIntentCreated | null>(null)
   const [recoveredIntent, setRecoveredIntent] = useState<DepositIntentCreated | null>(null)
   const [recoveryChecked, setRecoveryChecked] = useState(false)
+  const [addOnSelection, setAddOnSelection] = useState<AddOnSelection>({})
 
   const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
   const persistRecoveryToken = useCallback((token: string) => {
@@ -173,7 +186,18 @@ export function BookingWizard() {
     // change invalidates any date/time already picked.
     setData((d) => ({ ...d, appointmentTypeId, date: '', time: '', paymentAttemptId: '' }))
     setErrors({})
-    setStep('time')
+    if (appointmentTypeId !== data.appointmentTypeId) setAddOnSelection({})
+    // A service with add-ons stays on this step so they can be chosen before
+    // the calendar - they change the job's length, and so which slots fit.
+    const chosen = services.find((svc) => svc.id === appointmentTypeId)
+    if (!chosen?.add_ons?.length) setStep('time')
+  }
+
+  const changeAddOns = (next: AddOnSelection) => {
+    setAddOnSelection(next)
+    // Same reason as a service change: a different duration can make the
+    // chosen day/time no longer fit.
+    setData((d) => ({ ...d, date: '', time: '', paymentAttemptId: '' }))
   }
 
   const updateAnswer = (fieldId: string, next: AnswerState) => {
@@ -208,6 +232,8 @@ export function BookingWizard() {
   const hasServices = services.length > 0
   const selectedAppointmentType = services.find((t) => t.id === data.appointmentTypeId)
   const requiresDeposit = selectedAppointmentType?.deposit_required ?? false
+  const availableAddOns = selectedAppointmentType?.add_ons ?? []
+  const addOnsQuery = selectionToQuery(addOnSelection)
 
   // Server state wins over a browser draft.  In particular, ordinary
   // availability must not be consulted first: a customer's own valid hold
@@ -255,6 +281,13 @@ export function BookingWizard() {
           appointmentTypeId: attempt.appointment_type_id,
           paymentAttemptId: '',
         })
+        setAddOnSelection(
+          Object.fromEntries(
+            (attempt.add_ons ?? [])
+              .filter((a) => a.add_on_id)
+              .map((a) => [a.add_on_id as string, a.quantity]),
+          ),
+        )
         setAnswers(Object.fromEntries(attempt.answers.map((answer) => [answer.field_id, {
           value: answer.value ?? '', values: answer.values,
         }])))
@@ -322,7 +355,8 @@ export function BookingWizard() {
 
     if (target) {
       setData((d) => ({ ...d, appointmentTypeId: target.id }))
-      setStep('time')
+      // Land on the add-on choice rather than skipping past it.
+      setStep(target.add_ons?.length ? 'service' : 'time')
     }
     setDeepLinkApplied(true)
   }, [deepLinkApplied, hasServices, searchParams, services])
@@ -421,7 +455,7 @@ export function BookingWizard() {
       const email = data.email.trim()
       const result = await submitBookingRequest(
         garageSlug,
-        buildBookingPayload(data, captchaToken, sections, answers),
+        buildBookingPayload(data, captchaToken, sections, answers, addOnSelection),
       )
       setBookingReference(result.booking_reference)
       // The account (Customer + Vehicle) already exists at this point (see
@@ -485,6 +519,7 @@ export function BookingWizard() {
 
   const restart = () => {
     setData(initialData)
+    setAddOnSelection({})
     setErrors({})
     setStep('time')
     setSubmitted(false)
@@ -560,6 +595,14 @@ export function BookingWizard() {
               selectedId={data.appointmentTypeId}
               onSelect={selectService}
             />
+            {selectedAppointmentType && availableAddOns.length > 0 && (
+              <ServiceAddOns
+                service={selectedAppointmentType}
+                addOns={availableAddOns}
+                value={addOnSelection}
+                onChange={changeAddOns}
+              />
+            )}
             <IncludedItems service={selectedAppointmentType} />
           </>
         )}
@@ -568,6 +611,8 @@ export function BookingWizard() {
             slug={garageSlug}
             date={data.date}
             appointmentTypeId={data.appointmentTypeId}
+            addOns={addOnsQuery}
+            addOnMinutes={addOnTotals(addOnSelection, availableAddOns).minutes}
             selectedService={selectedAppointmentType}
             time={data.time}
             onSelectDate={selectDate}
@@ -592,6 +637,7 @@ export function BookingWizard() {
             data={data}
             garageName={garage.name}
             appointmentType={selectedAppointmentType}
+            addOnSelection={addOnSelection}
             depositResult={depositResult}
             sections={sections}
             answers={answers}
@@ -602,7 +648,7 @@ export function BookingWizard() {
                 <DepositStep
                   slug={garageSlug}
                   garageName={garage.name}
-                  payload={buildBookingPayload(data, captchaToken, sections, answers)}
+                  payload={buildBookingPayload(data, captchaToken, sections, answers, addOnSelection)}
                   appointmentType={selectedAppointmentType}
                   onPaid={handleDepositPaid}
                   onSlotLost={handleDepositSlotLost}
@@ -670,6 +716,7 @@ function buildBookingPayload(
   captchaToken: string,
   sections: BookingFlowSection[],
   answers: AnswerMap,
+  addOnSelection: AddOnSelection,
 ): BookingRequestInput {
   return {
     customer_first_name: data.firstName.trim(),
@@ -678,6 +725,7 @@ function buildBookingPayload(
     // Required (validated above) - the server normalises it to E.164.
     customer_phone: data.phone.trim(),
     appointment_type_id: data.appointmentTypeId || null,
+    add_ons: selectionToPayload(addOnSelection),
     preferred_date: data.date,
     preferred_time: data.time || null,
     preferred_employee_note: null,
@@ -738,10 +786,55 @@ function Field({
   )
 }
 
+/** Add-ons for the chosen service, on the Service step - before the calendar,
+ * so availability is computed at the job's real length. */
+function ServiceAddOns({
+  service,
+  addOns,
+  value,
+  onChange,
+}: {
+  service: PublicAppointmentType
+  addOns: AddOnOption[]
+  value: AddOnSelection
+  onChange: (next: AddOnSelection) => void
+}) {
+  const extra = addOnTotals(value, addOns)
+  const basePence = service.base_price != null ? toPence(service.base_price) : null
+  const baseMinutes = service.default_duration_minutes
+  return (
+    <div className="mt-6 rounded-md border border-slate-200 p-4">
+      <label htmlFor="service-add-ons" className="block text-sm font-medium text-slate-900">
+        Add extras to {service.name} <span className="font-normal text-slate-400">(optional)</span>
+      </label>
+      <div className="mt-2">
+        <AddOnPicker id="service-add-ons" addOns={addOns} value={value} onChange={onChange} />
+      </div>
+      <p className="mt-2 text-sm text-slate-600" aria-live="polite" data-testid="service-add-on-total">
+        {basePence != null && (
+          <>
+            Total <span className="font-medium text-slate-900">{formatPence(basePence + extra.pricePence)}</span>
+          </>
+        )}
+        {basePence != null && baseMinutes != null && ' · '}
+        {baseMinutes != null && <>about {formatMinutes(baseMinutes + extra.minutes)}</>}
+        {basePence == null && baseMinutes == null && formatDelta(extra.pricePence, extra.minutes)}
+      </p>
+      {service.deposit_required && (
+        <p className="mt-1 text-xs text-slate-500">
+          The deposit is worked out on this total when you pay.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function DateTimeStep({
   slug,
   date,
   appointmentTypeId,
+  addOns,
+  addOnMinutes,
   selectedService,
   time,
   onSelectDate,
@@ -751,6 +844,8 @@ function DateTimeStep({
   slug: string
   date: string
   appointmentTypeId: string
+  addOns: string
+  addOnMinutes: number
   selectedService: PublicAppointmentType | undefined
   time: string
   onSelectDate: (date: string) => void
@@ -765,7 +860,7 @@ function DateTimeStep({
           <span>
             Booking <span className="font-medium text-slate-900">{selectedService.name}</span>
             {selectedService.default_duration_minutes != null &&
-              ` · ${selectedService.default_duration_minutes} min`}
+              ` · ${formatMinutes(selectedService.default_duration_minutes + addOnMinutes)}`}
           </span>
           {onChangeService && (
             <button
@@ -787,6 +882,7 @@ function DateTimeStep({
           selectedDate={date || null}
           onSelectDate={onSelectDate}
           appointmentTypeId={appointmentTypeId || undefined}
+          addOns={addOns || undefined}
         />
       </div>
       {date && (
@@ -794,6 +890,7 @@ function DateTimeStep({
           slug={slug}
           date={date}
           appointmentTypeId={appointmentTypeId || undefined}
+          addOns={addOns || undefined}
           selectedTime={time || null}
           onSelectSlot={onSelectSlot}
         />
@@ -906,6 +1003,7 @@ function ReviewStep({
   data,
   garageName,
   appointmentType,
+  addOnSelection,
   depositResult,
   sections,
   answers,
@@ -916,6 +1014,7 @@ function ReviewStep({
   data: WizardData
   garageName: string
   appointmentType: PublicAppointmentType | undefined
+  addOnSelection: AddOnSelection
   depositResult: DepositIntentCreated | null
   sections: BookingFlowSection[]
   answers: AnswerMap
@@ -923,9 +1022,12 @@ function ReviewStep({
   requiresDeposit: boolean
   paymentCheckout: ReactNode
 }) {
+  const catalogue = appointmentType?.add_ons ?? []
+  const chosenAddOns = catalogue.filter((a) => addOnSelection[a.id])
+  const extra = addOnTotals(addOnSelection, catalogue)
   const finishTime =
     data.time && appointmentType?.default_duration_minutes != null
-      ? addMinutesToTime(data.time, appointmentType.default_duration_minutes)
+      ? addMinutesToTime(data.time, appointmentType.default_duration_minutes + extra.minutes)
       : null
 
   // Once a deposit is paid the booking already exists server-side, so nothing
@@ -951,8 +1053,19 @@ function ReviewStep({
         >
           <SummaryRow label="Business" value={garageName} />
           {appointmentType && <SummaryRow label="Service" value={appointmentType.name} />}
+          {chosenAddOns.length > 0 && (
+            <SummaryRow
+              label="Add-ons"
+              value={chosenAddOns
+                .map((a) => (addOnSelection[a.id] > 1 ? `${addOnSelection[a.id]}× ${a.name}` : a.name))
+                .join(', ')}
+            />
+          )}
           {appointmentType?.base_price != null && (
-            <SummaryRow label="Price" value={`£${appointmentType.base_price}`} />
+            <SummaryRow
+              label="Price"
+              value={formatPence(toPence(appointmentType.base_price) + extra.pricePence)}
+            />
           )}
           <SummaryRow label="Date" value={data.date ? formatLongDate(data.date) : '—'} />
           <SummaryRow

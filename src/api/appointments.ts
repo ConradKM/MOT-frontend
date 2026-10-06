@@ -10,6 +10,8 @@ export interface AppointmentInput {
   appointment_type_id: string
   status?: AppointmentStatus
   notes?: string | null
+  /** The full add-on selection. Omit on update to leave it unchanged. */
+  add_ons?: { add_on_id: string; quantity: number }[]
 }
 
 export interface AppointmentListParams {

@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { server } from '../../test/msw/server'
 import {
+  makeAddOn,
   makeAppointment,
   makeAppointmentType,
   makeCustomer,
@@ -59,6 +60,13 @@ async function choose(
 ) {
   await user.click(screen.getByRole('combobox', { name: new RegExp(field) }))
   await user.click(await screen.findByRole('option', { name: optionName }))
+}
+
+/** End is derived from Start + type duration once Start is typed; staff
+ * overriding it clear the derived value first. */
+async function overrideEnd(user: ReturnType<typeof userEvent.setup>, value: string) {
+  await user.clear(screen.getByLabelText('End'))
+  await user.type(screen.getByLabelText('End'), value)
 }
 
 afterEach(() => vi.restoreAllMocks())
@@ -141,7 +149,7 @@ describe('AppointmentForm — creating', () => {
     await choose(user, 'Employee', /greg@bennett.example/)
     await choose(user, 'Customer', /Oliver Bennett/)
     await user.type(screen.getByLabelText('Start'), '2026-09-14T09:00')
-    await user.type(screen.getByLabelText('End'), '2026-09-14T10:00')
+    await overrideEnd(user, '2026-09-14T10:00')
     await user.type(screen.getByLabelText('Notes'), 'Customer waiting.')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
@@ -166,7 +174,7 @@ describe('AppointmentForm — creating', () => {
     await choose(user, 'Employee', /greg@/)
     await choose(user, 'Customer', /Oliver/)
     await user.type(screen.getByLabelText('Start'), '2026-09-14T09:00')
-    await user.type(screen.getByLabelText('End'), '2026-09-14T10:00')
+    await overrideEnd(user, '2026-09-14T10:00')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(await screen.findByText('Appointment booked.')).toBeInTheDocument()
@@ -197,7 +205,7 @@ describe('AppointmentForm — server rejections', () => {
     await choose(user, 'Employee', /greg@/)
     await choose(user, 'Customer', /Oliver/)
     await user.type(screen.getByLabelText('Start'), '2026-09-14T09:00')
-    await user.type(screen.getByLabelText('End'), '2026-09-14T10:00')
+    await overrideEnd(user, '2026-09-14T10:00')
     await user.click(screen.getByRole('button', { name: 'Save' }))
   }
 
@@ -266,7 +274,7 @@ describe('AppointmentForm — server rejections', () => {
     await choose(user, 'Employee', /greg@/)
     await choose(user, 'Customer', /Oliver/)
     await user.type(screen.getByLabelText('Start'), '2026-09-14T09:00')
-    await user.type(screen.getByLabelText('End'), '2026-09-14T10:00')
+    await overrideEnd(user, '2026-09-14T10:00')
     await user.tripleClick(screen.getByRole('button', { name: 'Save' }))
 
     await screen.findByRole('heading', { name: 'Diary' })
@@ -420,5 +428,141 @@ describe('AppointmentForm — cancelling an appointment', () => {
     await user.click(await screen.findByRole('button', { name: 'Cancel appointment' }))
     expect(await screen.findByText('Not permitted.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Edit appointment' })).toBeInTheDocument()
+  })
+})
+
+describe('AppointmentForm — add-ons', () => {
+  const ADD_ONS = [
+    makeAddOn({ id: 'tyre', name: 'Tyre check', price_delta: '15.00', duration_delta_minutes: 30 }),
+    makeAddOn({ id: 'wash', name: 'Skip wash', price_delta: '-5.00', duration_delta_minutes: -10 }),
+    makeAddOn({ id: 'retired', name: 'Retired', status: 'HIDDEN' }),
+  ]
+  const serveAddOns = () =>
+    server.use(http.get('*/api/appointment-types/at1/add-ons', () => HttpResponse.json(ADD_ONS)))
+
+  const summary = () => screen.getByTestId('appointment-live-summary')
+
+  it('recomputes price and end time live as add-ons change, and still allows a manual end', async () => {
+    serveLookups()
+    serveAddOns()
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.post('*/api/appointments/', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(makeAppointment())
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm()
+    await screen.findByRole('combobox', { name: 'Employee' })
+    await choose(user, 'Employee', /greg@/)
+    await choose(user, 'Customer', /Oliver/)
+    await user.type(screen.getByLabelText('Start'), '2026-09-14T09:00')
+
+    // Derived from the type's 60-minute default.
+    expect(screen.getByLabelText('End')).toHaveValue('2026-09-14T10:00')
+    expect(summary()).toHaveTextContent('Price£54.85')
+
+    await user.click(screen.getByRole('button', { name: /Add-ons/ }))
+    expect(screen.queryByRole('checkbox', { name: /Retired/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: /Tyre check/ }))
+    expect(screen.getByLabelText('End')).toHaveValue('2026-09-14T10:30')
+    expect(summary()).toHaveTextContent('Price£69.85')
+    expect(summary()).toHaveTextContent('Duration1 h 30 min')
+
+    await user.click(screen.getByRole('checkbox', { name: /Skip wash/ }))
+    expect(screen.getByLabelText('End')).toHaveValue('2026-09-14T10:20')
+    expect(summary()).toHaveTextContent('Price£64.85')
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+
+    await overrideEnd(user, '2026-09-14T11:00')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('heading', { name: 'Diary' })).toBeInTheDocument()
+    expect(body.add_ons).toEqual([
+      { add_on_id: 'tyre', quantity: 1 },
+      { add_on_id: 'wash', quantity: 1 },
+    ])
+    expect(String(body.end_time)).toMatch(/^2026-09-14T11:00:00/)
+  })
+
+  it('leaves saved add-ons untouched on an edit that does not change them', async () => {
+    const existing = makeAppointment({
+      price_at_booking: '69.85',
+      applied_add_ons: [
+        {
+          id: 'aa1',
+          add_on_id: 'tyre',
+          name: 'Tyre check',
+          quantity: 1,
+          price_delta: '15.00',
+          duration_delta_minutes: 30,
+        },
+      ],
+    })
+    serveLookups([existing])
+    serveAddOns()
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.patch('*/api/appointments/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(existing)
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm('/g1/appointments/a1/edit')
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /Add-ons/ })).toHaveTextContent('Tyre check'))
+    expect(summary()).toHaveTextContent('Price£69.85')
+    await user.type(screen.getByLabelText('Notes'), 'x')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('heading', { name: 'Diary' })).toBeInTheDocument()
+    expect(body).not.toHaveProperty('add_ons')
+  })
+
+  it('prices a changed edit from the saved snapshot, not today’s catalogue price', async () => {
+    const existing = makeAppointment({
+      // Booked when the tyre check cost £10; the catalogue now says £15.
+      price_at_booking: '64.85',
+      applied_add_ons: [
+        {
+          id: 'aa1',
+          add_on_id: 'tyre',
+          name: 'Tyre check',
+          quantity: 1,
+          price_delta: '10.00',
+          duration_delta_minutes: 30,
+        },
+      ],
+    })
+    serveLookups([existing])
+    serveAddOns()
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.patch('*/api/appointments/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(existing)
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm('/g1/appointments/a1/edit')
+    await waitFor(() => expect(screen.getByRole('button', { name: /Add-ons/ })).toHaveTextContent('Tyre check'))
+
+    await user.click(screen.getByRole('button', { name: /Add-ons/ }))
+    await user.click(screen.getByRole('checkbox', { name: /Skip wash/ }))
+
+    // 64.85 - 10 (saved tyre) = 54.85 base; + 10 (kept snapshot) - 5 (new) = 59.85
+    expect(summary()).toHaveTextContent('Price£59.85')
+    // End shifts by the new add-on's -10 minutes from the saved 10:00.
+    expect(screen.getByLabelText('End')).toHaveValue('2026-09-14T09:50')
+
+    await user.click(screen.getByRole('button', { name: 'Done' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('heading', { name: 'Diary' })).toBeInTheDocument()
+    expect(body.add_ons).toEqual([
+      { add_on_id: 'tyre', quantity: 1 },
+      { add_on_id: 'wash', quantity: 1 },
+    ])
   })
 })

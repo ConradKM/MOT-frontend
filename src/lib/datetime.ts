@@ -29,6 +29,14 @@ export function isoToLocalInputValue(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+/** Shift an <input type="datetime-local"> value by whole minutes (either sign). */
+export function addMinutesToLocalInputValue(value: string, minutes: number): string {
+  const d = new Date(value)
+  if (!value || Number.isNaN(d.getTime())) return value
+  d.setMinutes(d.getMinutes() + minutes)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 /** <input type="datetime-local"> value -> ISO 8601 datetime with the browser's local UTC offset. */
 export function localInputValueToIso(value: string): string {
   if (!value) return value

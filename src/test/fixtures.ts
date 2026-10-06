@@ -1,4 +1,5 @@
 import type {
+  AddOn,
   Appointment,
   AppointmentType,
   Customer,
@@ -139,6 +140,25 @@ export function makeAppointmentType(patch: Partial<AppointmentType> = {}): Appoi
     image_uploaded_at: null,
     created_at: '',
     updated_at: '',
+    ...patch,
+  }
+}
+
+export function makeAddOn(patch: Partial<AddOn> = {}): AddOn {
+  return {
+    id: 'ao1',
+    garage_id: GARAGE_ID,
+    appointment_type_id: 'at1',
+    name: 'Tyre check',
+    description: null,
+    price_delta: '15.00',
+    duration_delta_minutes: 30,
+    max_quantity: 1,
+    exclusivity_group: null,
+    status: 'ACTIVE',
+    order: 0,
+    created_at: '2026-01-01T00:00:00+00:00',
+    updated_at: '2026-01-01T00:00:00+00:00',
     ...patch,
   }
 }

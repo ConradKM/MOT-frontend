@@ -652,3 +652,47 @@ describe('BookingRequestsList — the business\'s own questions', () => {
     expect(screen.queryByText(/Not collected/)).not.toBeInTheDocument()
   })
 })
+
+describe('BookingRequestsList — add-ons', () => {
+  it('lists the customer’s add-ons and quotes the request’s own add-on-inclusive price', async () => {
+    serveRequests({
+      PENDING: [
+        makeRequest({
+          appointment_type: { id: 'at1', name: 'MOT test', base_price: '100.00' },
+          requested_price: '130.00',
+          add_ons: [
+            {
+              id: 'ra1',
+              add_on_id: 'ao1',
+              name: 'Key cut',
+              quantity: 2,
+              price_delta: '15.00',
+              duration_delta_minutes: 10,
+            },
+          ],
+          payment: {
+            id: 'pay1',
+            status: 'SUCCEEDED',
+            currency: 'GBP',
+            amount: '30.00',
+            provider: 'stripe',
+            provider_payment_id: 'pi_123',
+            refunded_amount_minor: null,
+            refunded_at: null,
+            paid_at: '2026-09-01T10:00:00+01:00',
+            failure_reason: null,
+          },
+        }),
+      ],
+    })
+    const user = userEvent.setup()
+    renderList()
+    await screen.findByText('Oliver Bennett')
+    await user.click(await screen.findByRole('button', { name: 'View' }))
+
+    expect(screen.getByText('2× Key cut (+10 min · +£15.00)')).toBeInTheDocument()
+    expect(screen.getByText(/£130\.00/)).toBeInTheDocument()
+    // 130 - 30 deposit, not 100 (the bare catalogue price) - 30.
+    expect(screen.getByText(/Remaining balance/)).toHaveTextContent('£100.00')
+  })
+})
