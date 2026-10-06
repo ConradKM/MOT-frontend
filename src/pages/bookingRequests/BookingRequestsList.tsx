@@ -18,6 +18,7 @@ import { errorMessage } from '../../lib/errors'
 import { employeeDisplayName } from '../../lib/employees'
 import { formatDateShort, formatDateTime, localInputValueToIso } from '../../lib/datetime'
 import { formatDurationMinutes } from '../../lib/duration'
+import { formatAddOnDelta } from '../../lib/addOns'
 import { ContactShortcuts } from '../../components/communications/ContactShortcuts'
 
 const STATUS_TABS: BookingRequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED']
@@ -203,9 +204,21 @@ function RequestDetails({ request }: { request: BookingRequest }) {
           {' · '}
           {formatDurationMinutes(request.duration_minutes)}
           {' · '}
-          {formatPrice(request.appointment_type?.base_price ?? request.requested_price)}
+          {/* The request's own snapshot first: it's what the customer was
+              quoted (add-ons included) and what approval will charge. */}
+          {formatPrice(request.requested_price ?? request.appointment_type?.base_price ?? null)}
         </dd>
       </div>
+      {request.add_ons && request.add_ons.length > 0 && (
+        <div>
+          <dt className="font-medium text-slate-700">Add-ons</dt>
+          <dd className="text-slate-600">
+            {request.add_ons
+              .map((a) => `${a.quantity > 1 ? `${a.quantity}× ` : ''}${a.name} (${formatAddOnDelta(a)})`)
+              .join(', ')}
+          </dd>
+        </div>
+      )}
       {request.payment && (
         <div>
           <dt className="font-medium text-slate-700">Deposit</dt>
@@ -217,12 +230,13 @@ function RequestDetails({ request }: { request: BookingRequest }) {
             >
               {paymentStatusLabels[request.payment.status] ?? request.payment.status}
             </span>
-            {request.appointment_type?.base_price && (
+            {(request.requested_price ?? request.appointment_type?.base_price) && (
               <span className="ml-2 text-slate-500">
                 · Remaining balance:{' '}
                 {formatPrice(
                   (
-                    Number(request.appointment_type.base_price) - Number(request.payment.amount)
+                    Number(request.requested_price ?? request.appointment_type?.base_price) -
+                    Number(request.payment.amount)
                   ).toFixed(2),
                 )}
               </span>

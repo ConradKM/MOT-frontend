@@ -31,6 +31,8 @@ interface Props {
    * app/public_booking/availability.py::day_summary. The wizard asks what
    * the customer is booking before this step precisely so it can be passed. */
   appointmentTypeId?: string
+  /** Selected add-ons in `id:qty,...` form - they change the duration too. */
+  addOns?: string
 }
 
 function isoFor(month: string, day: number): string {
@@ -48,12 +50,14 @@ export function AvailabilityCalendar({
   selectedDate,
   onSelectDate,
   appointmentTypeId,
+  addOns,
 }: Props) {
   const { data, isLoading, isError, refetch, isFetching } = useGarageAvailability(
     slug,
     undefined,
     undefined,
     appointmentTypeId,
+    addOns,
   )
 
   const byDate = useMemo(() => {

@@ -1,4 +1,5 @@
 import { apiFetch } from './client'
+import type { AppliedAddOn } from '../types'
 
 export type BookingRequestStatus =
   | 'AWAITING_PAYMENT'
@@ -93,7 +94,11 @@ export interface BookingRequest {
   /** What the customer actually saw/chose at submission time - stays
    * accurate even if the type is edited or deleted afterwards. */
   requested_duration_minutes: number | null
+  /** Includes the add-ons' price deltas (see add_ons). */
   requested_price: string | null
+  /** What the customer added on the booking page, snapshotted. Absent from
+   * records served by an older API. */
+  add_ons?: AppliedAddOn[]
   preferred_date: string
   preferred_time: string | null
   preferred_employee_note: string | null

@@ -17,6 +17,7 @@ import { errorMessage } from '../../lib/errors'
 import { formatDateTime } from '../../lib/datetime'
 import { statusBadgeClass, statusLabel, statusOptions } from '../../lib/appointmentStatuses'
 import { employeeDisplayName } from '../../lib/employees'
+import { formatDelta, formatPence, toPence } from '../../lib/addOns'
 import { RichDropdown } from '../../components/rich/RichDropdown'
 import { ContactShortcuts } from '../../components/communications/ContactShortcuts'
 import type { AppointmentStatus } from '../../types'
@@ -131,6 +132,29 @@ export function AppointmentOverview() {
             <p className="mt-0.5 text-sm text-slate-900">
               £{appointment.price_at_booking}
               <span className="ml-1 text-xs text-slate-400">(at time of booking)</span>
+            </p>
+          </div>
+        )}
+        {appointment.applied_add_ons && appointment.applied_add_ons.length > 0 && (
+          <div>
+            <p className="text-xs font-medium uppercase text-slate-400">Add-ons</p>
+            <ul className="mt-1 space-y-1 text-sm">
+              {appointment.applied_add_ons.map((a) => (
+                <li key={a.id} className="flex justify-between gap-3">
+                  <span className="text-slate-900">
+                    {a.quantity > 1 ? `${a.quantity}× ` : ''}
+                    {a.name}
+                  </span>
+                  <span className="text-slate-500">
+                    {formatDelta(toPence(a.price_delta) * a.quantity, a.duration_delta_minutes * a.quantity)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-1 text-xs text-slate-400">
+              As charged when booked
+              {appointment.price_at_booking != null &&
+                ` · included in the ${formatPence(toPence(appointment.price_at_booking))} price`}
             </p>
           </div>
         )}

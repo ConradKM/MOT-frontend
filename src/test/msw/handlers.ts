@@ -57,6 +57,7 @@ export const handlers = [
   http.get('*/api/roles/', () => HttpResponse.json([])),
   http.get('*/api/appointments/', () => HttpResponse.json([makeAppointment()])),
   http.get('*/api/appointment-types/', () => HttpResponse.json([makeAppointmentType()])),
+  http.get('*/api/appointment-types/:id/add-ons', () => HttpResponse.json([])),
   http.get('*/api/appointment-statuses/', () => HttpResponse.json([])),
   http.get('*/api/appointment-type-groups/', () => HttpResponse.json([])),
   http.get('*/api/booking-flow/sections', () => HttpResponse.json([])),

@@ -11,6 +11,8 @@ interface Props {
    * offered (see app/public_booking/availability.py). Undefined for a
    * garage with no appointment types configured. */
   appointmentTypeId?: string
+  /** Selected add-ons in `id:qty,...` form - they change the duration too. */
+  addOns?: string
   selectedTime: string | null
   onSelectSlot: (time: string) => void
 }
@@ -19,11 +21,12 @@ export function TimeSlotPicker({
   slug,
   date,
   appointmentTypeId,
+  addOns,
   selectedTime,
   onSelectSlot,
 }: Props) {
   const { data, isLoading, isError, refetch, isFetching } =
-    useGarageDayAvailability(slug, date, appointmentTypeId)
+    useGarageDayAvailability(slug, date, appointmentTypeId, addOns)
 
   // Which hour bucket is expanded to its 5-minute slots, or null while the
   // customer is still choosing a bucket. Reset whenever a new day's slots

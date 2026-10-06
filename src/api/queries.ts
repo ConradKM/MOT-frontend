@@ -19,6 +19,7 @@ import * as motRecordsApi from './motRecords'
 import * as appointmentsApi from './appointments'
 import * as appointmentTypesApi from './appointmentTypes'
 import * as checklistTemplatesApi from './checklistTemplates'
+import * as addOnsApi from './addOns'
 import * as appointmentChecklistsApi from './appointmentChecklists'
 import * as customerAccountApi from './customerAccount'
 import { setCustomerPassword } from './customerAuth'
@@ -385,6 +386,40 @@ export function useDeleteAppointmentType() {
   })
 }
 
+// Add-ons (per appointment type)
+export function useAddOns(appointmentTypeId: string | undefined) {
+  return useQuery({
+    queryKey: ['addOns', appointmentTypeId],
+    queryFn: () => addOnsApi.listAddOns(appointmentTypeId as string),
+    enabled: !!appointmentTypeId,
+  })
+}
+
+export function useCreateAddOn(appointmentTypeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: addOnsApi.AddOnInput) => addOnsApi.createAddOn(appointmentTypeId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['addOns', appointmentTypeId] }),
+  })
+}
+
+export function useUpdateAddOn(appointmentTypeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<addOnsApi.AddOnInput> }) =>
+      addOnsApi.updateAddOn(appointmentTypeId, id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['addOns', appointmentTypeId] }),
+  })
+}
+
+export function useDeleteAddOn(appointmentTypeId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => addOnsApi.deleteAddOn(appointmentTypeId, id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['addOns', appointmentTypeId] }),
+  })
+}
+
 // Appointment statuses (per-garage labels / colours)
 export function useAppointmentStatuses() {
   return useQuery({
@@ -743,9 +778,11 @@ export function useGarageAvailability(
   from?: string,
   to?: string,
   appointmentTypeId?: string,
+  addOns?: string,
 ) {
   return useQuery({
-    // appointmentTypeId is part of the key for the same reason as below: the
+    // appointmentTypeId (and add-ons, which change the duration too) are
+    // part of the key for the same reason as below: the
     // day levels are computed at the selected service's duration, so changing
     // the service has to refetch rather than show a calendar built for a
     // different length of appointment.
@@ -755,9 +792,10 @@ export function useGarageAvailability(
       from ?? null,
       to ?? null,
       appointmentTypeId ?? null,
+      addOns || null,
     ],
     queryFn: () =>
-      publicGarageApi.getGarageAvailability(slug as string, from, to, appointmentTypeId),
+      publicGarageApi.getGarageAvailability(slug as string, from, to, appointmentTypeId, addOns),
     enabled: !!slug,
     retry: false,
     staleTime: 15_000,
@@ -769,14 +807,26 @@ export function useGarageDayAvailability(
   slug: string | undefined,
   date: string | undefined,
   appointmentTypeId?: string,
+  addOns?: string,
 ) {
   return useQuery({
     // appointmentTypeId is part of the key so switching the selected service
     // (item 13) immediately refetches rather than showing stale times for
     // the previous type's duration.
-    queryKey: ['garageDayAvailability', slug, date ?? null, appointmentTypeId ?? null],
+    queryKey: [
+      'garageDayAvailability',
+      slug,
+      date ?? null,
+      appointmentTypeId ?? null,
+      addOns || null,
+    ],
     queryFn: () =>
-      publicGarageApi.getGarageDayAvailability(slug as string, date as string, appointmentTypeId),
+      publicGarageApi.getGarageDayAvailability(
+        slug as string,
+        date as string,
+        appointmentTypeId,
+        addOns,
+      ),
     enabled: !!slug && !!date,
     retry: false,
     staleTime: 10_000,

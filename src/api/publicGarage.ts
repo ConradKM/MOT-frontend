@@ -1,5 +1,6 @@
 import { apiFetch } from './client'
-import type { DepositType } from '../types'
+import type { AppliedAddOn, DepositType } from '../types'
+import type { AddOnOption } from '../lib/addOns'
 
 export interface PublicIncludedItem {
   label: string
@@ -37,6 +38,10 @@ export interface PublicAppointmentType {
   deposit_type: DepositType | null
   deposit_value: string | null
   deposit_currency: string
+  /** Active add-ons only. Picked on the Service step, before the calendar,
+   * because they change the job's length and so which slots can fit it.
+   * Optional so an older API payload without it still renders. */
+  add_ons?: AddOnOption[]
 }
 
 export interface PublicAppointmentTypeGroup {
@@ -86,6 +91,9 @@ export interface BookingRequestInput {
    * app/public_booking/availability.py). Null only for a garage with no
    * appointment types configured. */
   appointment_type_id?: string | null
+  /** Re-validated and re-priced server-side; their deltas are folded into
+   * the request's price, duration and any deposit. */
+  add_ons?: { add_on_id: string; quantity: number }[]
   preferred_date: string
   preferred_time?: string | null
   preferred_employee_note?: string | null
@@ -250,6 +258,7 @@ export type DepositStatusPoll = Omit<
 export interface RecoveredDepositAttempt extends DepositIntentCreated {
   appointment_type_id: string | null
   appointment_type_name: string | null
+  add_ons?: AppliedAddOn[]
   preferred_date: string
   preferred_time: string | null
   requested_duration_minutes: number | null
@@ -359,6 +368,7 @@ export function getGarageAvailability(
   from?: string,
   to?: string,
   appointmentTypeId?: string,
+  addOns?: string,
 ): Promise<AvailabilityRange> {
   const qs = new URLSearchParams()
   if (from) qs.set('from', from)
@@ -368,6 +378,8 @@ export function getGarageAvailability(
   // times at all. The wizard picks the service first precisely so this can be
   // sent. See app/public_booking/availability.py::day_summary.
   if (appointmentTypeId) qs.set('appointment_type_id', appointmentTypeId)
+  // Add-ons change the job's length too - see lib/addOns.ts::selectionToQuery.
+  if (appointmentTypeId && addOns) qs.set('add_ons', addOns)
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return apiFetch<AvailabilityRange>(
     `/api/public/${slug}/availability${suffix}`,
@@ -379,10 +391,14 @@ export function getGarageDayAvailability(
   slug: string,
   date: string,
   appointmentTypeId?: string,
+  addOns?: string,
 ): Promise<DayAvailabilityDetail> {
-  const qs = appointmentTypeId ? `?appointment_type_id=${appointmentTypeId}` : ''
+  const qs = new URLSearchParams()
+  if (appointmentTypeId) qs.set('appointment_type_id', appointmentTypeId)
+  if (appointmentTypeId && addOns) qs.set('add_ons', addOns)
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return apiFetch<DayAvailabilityDetail>(
-    `/api/public/${slug}/availability/${date}${qs}`,
+    `/api/public/${slug}/availability/${date}${suffix}`,
     { skipAuth: true },
   )
 }

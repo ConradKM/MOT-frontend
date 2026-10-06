@@ -75,6 +75,11 @@ const AppointmentTypesList = lazy(() =>
     default: m.AppointmentTypesList,
   })),
 )
+const AddOnsBuilder = lazy(() =>
+  import('./pages/appointmentTypes/AddOnsBuilder').then((m) => ({
+    default: m.AddOnsBuilder,
+  })),
+)
 const ChecklistTemplateBuilder = lazy(() =>
   import('./pages/appointmentTypes/ChecklistTemplateBuilder').then((m) => ({
     default: m.ChecklistTemplateBuilder,
@@ -299,6 +304,7 @@ export default function App() {
               path="appointment-types/:appointmentTypeId/checklist/build"
               element={<ChecklistTemplateBuilder />}
             />
+            <Route path="appointment-types/:appointmentTypeId/add-ons" element={<AddOnsBuilder />} />
 
             {/* Every settings page nests here, so SettingsLayout's sidebar is
                 applied by routing - a page can't be added without it. */}
