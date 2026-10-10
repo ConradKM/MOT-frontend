@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { bookingUrl } from '../lib/bookingUrl'
+import { saveBlob } from '../lib/download'
 
 interface BookingQrCardProps {
   garageId: string
@@ -52,17 +53,6 @@ export function BookingQrCard({
     window.setTimeout(() => setNote(null), 2500)
   }
 
-  const download = (blob: Blob, filename: string) => {
-    const href = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = href
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(href)
-  }
-
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(url)
@@ -74,7 +64,7 @@ export function BookingQrCard({
 
   const downloadSvg = () => {
     if (!svg) return
-    download(new Blob([svg], { type: 'image/svg+xml' }), `${filenameStem}.svg`)
+    saveBlob(new Blob([svg], { type: 'image/svg+xml' }), `${filenameStem}.svg`)
   }
 
   const downloadPng = () => {
@@ -93,7 +83,7 @@ export function BookingQrCard({
       ctx.fillRect(0, 0, size, size)
       ctx.drawImage(img, 0, 0, size, size)
       canvas.toBlob((blob) => {
-        if (blob) download(blob, `${filenameStem}.png`)
+        if (blob) saveBlob(blob, `${filenameStem}.png`)
       }, 'image/png')
     }
     img.onerror = () => flash('PNG render failed — use Download SVG instead')

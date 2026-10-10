@@ -19,6 +19,7 @@ import {
   localDateKey,
   monthLabel,
   monthGridDatesIso,
+  startOfMonthIso,
   todayIso,
   weekDatesIso,
 } from '../../lib/datetime'
@@ -30,6 +31,7 @@ import { useToast } from '../../components/Toast'
 import { RichDropdown } from '../../components/rich/RichDropdown'
 import { TimeGridCalendar, type CalendarColumn } from '../../components/TimeGridCalendar'
 import { MonthCalendar } from '../../components/MonthCalendar'
+import { AddToCalendarDialog } from '../../components/calendar/AddToCalendarDialog'
 import { useGarageId } from '../../hooks/useGarageId'
 import type { Appointment } from '../../types'
 
@@ -50,6 +52,7 @@ export function AppointmentsCalendar() {
   const [startDate, setStartDate] = useState(todayIso())
   const [endDate, setEndDate] = useState(todayIso())
   const [employeeId, setEmployeeId] = useState('')
+  const [calendarDialogOpen, setCalendarDialogOpen] = useState(false)
   const { showToast } = useToast()
 
   const weekDates = useMemo(() => weekDatesIso(date), [date])
@@ -75,6 +78,17 @@ export function AppointmentsCalendar() {
             end_date: endDate,
             employee_id: employeeId || undefined,
           }
+
+  // What the page is showing right now - the "Add to calendar" dialog starts
+  // from it (the month view's own month, not the grid's spill-over days).
+  const visibleRange =
+    mode === 'day'
+      ? { start: date, end: date }
+      : mode === 'week'
+        ? { start: weekDates[0], end: weekDates[6] }
+        : mode === 'month'
+          ? { start: startOfMonthIso(date), end: addDaysIso(addMonthsIso(startOfMonthIso(date), 1), -1) }
+          : { start: startDate, end: endDate }
 
   const { data: appointments, isLoading, isError } = useAppointments(listParams)
   const { data: customers } = useCustomers()
@@ -168,15 +182,33 @@ export function AppointmentsCalendar() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointments</h1>
-        <Link
-          to={`/${garageId}/appointments/new`}
-          className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          New appointment
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setCalendarDialogOpen(true)}
+            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Add to calendar
+          </button>
+          <Link
+            to={`/${garageId}/appointments/new`}
+            className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            New appointment
+          </Link>
+        </div>
       </div>
+
+      {calendarDialogOpen && (
+        <AddToCalendarDialog
+          open
+          onClose={() => setCalendarDialogOpen(false)}
+          initialRange={visibleRange}
+          initialEmployeeId={employeeId}
+        />
+      )}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <div className="flex rounded-md border border-slate-300 text-sm">

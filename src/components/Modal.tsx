@@ -7,6 +7,9 @@ interface ModalProps {
   onClose: () => void
   children: ReactNode
   wide?: boolean
+  /** Panel width: `md` (default), `lg` (same as `wide`), or `xl` for content
+   * with tabs or side-by-side sections. Takes precedence over `wide`. */
+  size?: 'md' | 'lg' | 'xl'
   /** Actions pinned below the content. When set, the header and footer stay
    * fixed and only the content scrolls - for long content whose actions must
    * stay reachable (e.g. Terms & Conditions with an Accept button). */
@@ -25,7 +28,18 @@ interface ModalProps {
  * booking wizard's step-in animation) becomes the containing block for
  * `position: fixed`, which would otherwise clip the overlay to that ancestor
  * and push the panel's top or bottom off screen. */
-export function Modal({ open, title, onClose, children, wide = false, footer, bodyLabel }: ModalProps) {
+const SIZE_CLASS = { md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' } as const
+
+export function Modal({
+  open,
+  title,
+  onClose,
+  children,
+  wide = false,
+  size,
+  footer,
+  bodyLabel,
+}: ModalProps) {
   const bodyRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -74,7 +88,7 @@ export function Modal({ open, title, onClose, children, wide = false, footer, bo
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`w-full ${wide ? 'max-w-lg' : 'max-w-md'} max-h-[85vh] rounded-lg bg-white shadow-xl ${
+        className={`w-full ${SIZE_CLASS[size ?? (wide ? 'lg' : 'md')]} max-h-[85vh] rounded-lg bg-white shadow-xl ${
           scrollRegion ? 'flex flex-col' : 'overflow-y-auto p-5'
         }`}
         onClick={(e) => e.stopPropagation()}
