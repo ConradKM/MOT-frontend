@@ -26,6 +26,7 @@ import * as customerAccountApi from './customerAccount'
 import { setCustomerPassword } from './customerAuth'
 import * as bookingRequestsApi from './bookingRequests'
 import * as appointmentStatusesApi from './appointmentStatuses'
+import * as calendarExportApi from './calendarExport'
 import { getCustomerAccessToken } from './customerTokens'
 import type { BookingRequestStatus } from './bookingRequests'
 import type { CustomerInput } from './customers'
@@ -337,6 +338,43 @@ export function useCancelAppointment() {
   return useMutation({
     mutationFn: (id: string) => appointmentsApi.cancelAppointment(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['appointments'] }),
+  })
+}
+
+// Calendar export (Apple / Google Calendar)
+export function useDownloadAppointmentsIcs() {
+  return useMutation({
+    mutationFn: (params: calendarExportApi.CalendarDownloadParams) =>
+      calendarExportApi.downloadAppointmentsIcs(params),
+  })
+}
+
+export function useCalendarFeeds() {
+  return useQuery({ queryKey: ['calendarFeeds'], queryFn: calendarExportApi.listCalendarFeeds })
+}
+
+export function useCreateCalendarFeed() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: calendarExportApi.CalendarFeedInput) =>
+      calendarExportApi.createCalendarFeed(data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['calendarFeeds'] }),
+  })
+}
+
+export function useRegenerateCalendarFeed() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => calendarExportApi.regenerateCalendarFeed(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['calendarFeeds'] }),
+  })
+}
+
+export function useRevokeCalendarFeed() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => calendarExportApi.revokeCalendarFeed(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['calendarFeeds'] }),
   })
 }
 

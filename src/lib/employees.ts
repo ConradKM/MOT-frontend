@@ -19,3 +19,9 @@ export function employeeNameById(
   const found = employees?.find((e) => e.id === employeeId)
   return found ? employeeDisplayName(found) : 'Unknown employee'
 }
+
+/** Whether this employee holds the reserved OWNER role. For showing or hiding
+ * owner-only options only - the API is always the real gate. */
+export function isOwner(e: Pick<Employee, 'roles'> | undefined | null): boolean {
+  return Boolean(e?.roles.some((role) => role.name === 'OWNER'))
+}
