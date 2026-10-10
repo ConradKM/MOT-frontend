@@ -1,5 +1,8 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import { TERMS_VERSION_MISMATCH } from '../../api/terms'
+import { TermsAcceptance } from '../../components/customer/TermsAcceptance'
 import { useJoinQueue, usePublicGarage, usePublicQueue } from '../../api/queries'
 import { BusinessBrandMark } from '../../components/BusinessBrandMark'
 import { Captcha, captchaEnabled } from '../../components/Captcha'
@@ -21,6 +24,7 @@ interface Form {
   registration: string
   serviceId: string
   smsOptIn: boolean
+  termsAccepted: boolean
 }
 
 type Errors = Partial<Record<keyof Form | 'form', string>>
@@ -33,6 +37,7 @@ const SERVER_FIELDS: Record<string, keyof Form> = {
   customer_email: 'email',
   vehicle_registration: 'registration',
   appointment_type_id: 'serviceId',
+  terms_accepted: 'termsAccepted',
 }
 
 function validate(form: Form, fields: PublicQueueInfo['join_fields']): Errors {
@@ -73,7 +78,9 @@ export function QueueJoin() {
     registration: '',
     serviceId: '',
     smsOptIn: false,
+    termsAccepted: false,
   })
+  const queryClient = useQueryClient()
   const [errors, setErrors] = useState<Errors>({})
   const [captchaToken, setCaptchaToken] = useState('')
   const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
@@ -92,9 +99,16 @@ export function QueueJoin() {
     )
   }
 
+  // No terms entered = no checkbox, nothing sent (see BookingWizard).
+  const terms = garage.terms_and_conditions?.trim() ? garage.terms_and_conditions : null
+  const termsVersion = terms ? (garage.terms_version ?? null) : null
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     const found = validate(form, queue!.join_fields)
+    if (terms && !form.termsAccepted) {
+      found.termsAccepted = 'Please accept the terms and conditions to continue.'
+    }
     if (captchaEnabled && !captchaToken) found.form = 'Please complete the verification.'
     setErrors(found)
     if (Object.keys(found).length > 0) return
@@ -108,10 +122,21 @@ export function QueueJoin() {
         vehicle_registration: queue!.join_fields.vehicle_registration.enabled ? form.registration.trim() || null : null,
         appointment_type_id: form.serviceId || null,
         captcha_token: captchaToken || undefined,
+        ...(termsVersion != null
+          ? { terms_accepted: form.termsAccepted, terms_version: termsVersion }
+          : {}),
       })
       storeQueueToken(garageId, joined.token)
       navigate(queueStatusPath(garageId, joined.token))
     } catch (err) {
+      if (isApiError(err) && err.code === 409 && err.reason === TERMS_VERSION_MISMATCH) {
+        // Edited while the customer was on the page - show the new wording.
+        void queryClient.invalidateQueries({ queryKey: ['publicGarage', garageId] })
+        set('termsAccepted', false)
+        setErrors({ form: 'The terms were updated. Please read and accept the latest version.' })
+        setCaptchaToken('')
+        return
+      }
       const mapped: Errors = {}
       for (const [field, message] of Object.entries(fieldErrors(err))) {
         const key = SERVER_FIELDS[field]
@@ -268,6 +293,19 @@ export function QueueJoin() {
                   </span>
                 </span>
               </label>
+
+              {terms && (
+                <TermsAcceptance
+                  terms={terms}
+                  garageId={garageId}
+                  accepted={form.termsAccepted}
+                  onChange={(accepted) => {
+                    set('termsAccepted', accepted)
+                    if (accepted) setErrors((er) => ({ ...er, termsAccepted: undefined }))
+                  }}
+                  error={errors.termsAccepted}
+                />
+              )}
 
               <Captcha onToken={handleCaptchaToken} />
 

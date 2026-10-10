@@ -15,6 +15,8 @@ import {
   makeQueueSettings,
   makeQueueStatus,
   makeVehicle,
+  makePublicTerms,
+  makeTermsAcceptanceLookup,
   QUEUE_TOKEN,
 } from '../fixtures'
 
@@ -107,6 +109,30 @@ export const handlers = [
   ),
   http.post('*/api/public/:slug/booking-requests', () =>
     HttpResponse.json({ id: 'br1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' }, { status: 201 }),
+  ),
+
+  // --- Terms & Conditions ---------------------------------------------------
+  http.get('*/api/garage/terms', () =>
+    HttpResponse.json({ terms_and_conditions: null, terms_version: null, terms_updated_at: null }),
+  ),
+  http.put('*/api/garage/terms', async ({ request }) => {
+    const { terms_and_conditions } = (await request.json()) as { terms_and_conditions: string }
+    const text = terms_and_conditions.trim() || null
+    return HttpResponse.json({
+      terms_and_conditions: text,
+      terms_version: text ? 1 : null,
+      terms_updated_at: text ? '2099-09-14T10:00:00Z' : null,
+    })
+  }),
+  http.get('*/api/public/garages/:id/terms', () => HttpResponse.json(makePublicTerms())),
+  http.get('*/api/public/garages/:id/terms/:version', ({ params }) =>
+    HttpResponse.json(makePublicTerms({ version: Number(params.version) })),
+  ),
+  http.post('*/api/public/:slug/terms-acceptance/lookup', () =>
+    HttpResponse.json(makeTermsAcceptanceLookup()),
+  ),
+  http.post('*/api/public/:slug/terms-acceptance/accept', () =>
+    HttpResponse.json({ status: 'PENDING', booking_reference: 'BK7F3K9Q2', recovery_token: null }),
   ),
 
   // --- walk-in queue -------------------------------------------------------

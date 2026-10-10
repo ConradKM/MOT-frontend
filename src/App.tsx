@@ -194,6 +194,15 @@ const CustomerAppointmentDetail = lazy(() =>
 
 // Walk-in queue: the public join/status pages (what the queue QR code opens)
 // and the staff live queue.
+const TermsPage = lazy(() =>
+  import('./pages/terms/TermsPage').then((m) => ({ default: m.TermsPage })),
+)
+const AcceptTermsPage = lazy(() =>
+  import('./pages/terms/AcceptTermsPage').then((m) => ({ default: m.AcceptTermsPage })),
+)
+const TermsSettings = lazy(() =>
+  import('./pages/settings/TermsSettings').then((m) => ({ default: m.TermsSettings })),
+)
 const QueueJoin = lazy(() => import('./pages/queue/QueueJoin').then((m) => ({ default: m.QueueJoin })))
 const QueueStatus = lazy(() =>
   import('./pages/queue/QueueStatus').then((m) => ({ default: m.QueueStatus })),
@@ -246,6 +255,13 @@ export default function App() {
               No account: the status page's token is in the URL fragment. */}
           <Route path="/queue/:garageId" element={<QueueJoin />} />
           <Route path="/queue/:garageId/status" element={<QueueStatus />} />
+          {/* A business's Terms & Conditions: current, and one exact version
+              (what confirmations link to). Public, no sign-in. */}
+          <Route path="/terms/:garageId" element={<TermsPage />} />
+          <Route path="/terms/:garageId/v/:version" element={<TermsPage />} />
+          {/* Accepting them for a WhatsApp/SMS/phone booking; the token is in
+              the URL fragment. */}
+          <Route path="/accept-terms/:garageId" element={<AcceptTermsPage />} />
           <Route element={<CustomerProtectedRoute />}>
             <Route path="/customer/account" element={<CustomerAccount />} />
             <Route
@@ -315,6 +331,7 @@ export default function App() {
               <Route path="appointment-types" element={<AppointmentTypesList />} />
               <Route path="appointment-statuses" element={<AppointmentStatusesList />} />
               <Route path="booking-workflow" element={<BookingWorkflowSettings />} />
+              <Route path="terms" element={<TermsSettings />} />
               <Route path="reminders">
                 <Route index element={<AppointmentRemindersSettings />} />
                 <Route path="customer" element={<CustomerSaleReminders />} />

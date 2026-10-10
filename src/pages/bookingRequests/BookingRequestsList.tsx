@@ -21,9 +21,16 @@ import { formatDurationMinutes } from '../../lib/duration'
 import { formatAddOnDelta } from '../../lib/addOns'
 import { ContactShortcuts } from '../../components/communications/ContactShortcuts'
 
-const STATUS_TABS: BookingRequestStatus[] = ['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED']
+const STATUS_TABS: BookingRequestStatus[] = [
+  'PENDING',
+  'AWAITING_TERMS',
+  'APPROVED',
+  'REJECTED',
+  'EXPIRED',
+]
 
 const statusClasses: Record<BookingRequestStatus, string> = {
+  AWAITING_TERMS: 'bg-sky-100 text-sky-700',
   AWAITING_PAYMENT: 'bg-amber-100 text-amber-700',
   PENDING: 'bg-violet-100 text-violet-700',
   APPROVED: 'bg-emerald-100 text-emerald-700',
@@ -33,12 +40,18 @@ const statusClasses: Record<BookingRequestStatus, string> = {
 }
 
 const statusLabels: Record<BookingRequestStatus, string> = {
+  AWAITING_TERMS: 'Awaiting customer to accept terms',
   AWAITING_PAYMENT: 'Awaiting payment',
   PENDING: 'Pending',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
   EXPIRED: 'Expired',
   CANCELLED: 'Cancelled',
+}
+
+// Shorter than the badge, which has room to say who it is waiting on.
+const tabLabels: Partial<Record<BookingRequestStatus, string>> = {
+  AWAITING_TERMS: 'Awaiting terms',
 }
 
 const paymentStatusLabels: Record<string, string> = {
@@ -179,6 +192,28 @@ function RequestDetails({ request }: { request: BookingRequest }) {
           />
         )}
       </div>
+      {request.status === 'AWAITING_TERMS' ? (
+        <div className="sm:col-span-2">
+          <dt className="font-medium text-slate-700">Terms &amp; Conditions</dt>
+          <dd className="text-slate-600">
+            Awaiting the customer to accept your terms via the link they were texted. You can
+            approve it once they do
+            {request.hold_expires_at
+              ? `; the slot is held until ${formatDateTime(request.hold_expires_at)}.`
+              : '.'}
+          </dd>
+        </div>
+      ) : request.terms_url ? (
+        <div>
+          <dt className="font-medium text-slate-700">Terms &amp; Conditions</dt>
+          <dd className="text-slate-600">
+            <a href={request.terms_url} target="_blank" rel="noreferrer" className="underline">
+              Version {request.terms_version} accepted
+            </a>
+            {request.terms_accepted_at ? ` ${formatDateTime(request.terms_accepted_at)}` : ''}
+          </dd>
+        </div>
+      ) : null}
       <div>
         <dt className="font-medium text-slate-700">Vehicle</dt>
         <dd className="text-slate-600">
@@ -441,6 +476,18 @@ function ReviewRow({ request }: { request: BookingRequest }) {
               >
                 View
               </button>
+              {request.status === 'AWAITING_TERMS' ? (
+                // Not actionable yet: the server refuses approval until the
+                // customer accepts the terms via the link they were texted.
+                <button
+                  type="button"
+                  disabled
+                  title="The customer hasn't accepted your terms and conditions yet"
+                  className="font-medium text-slate-300"
+                >
+                  Approve
+                </button>
+              ) : null}
               <span className="text-xs text-slate-400">
                 {request.reviewed_at ? formatDateTime(request.reviewed_at) : '—'}
               </span>
@@ -629,7 +676,7 @@ export function BookingRequestsList() {
         </label>
       )}
 
-      <div className="mt-6 flex gap-1">
+      <div className="mt-6 flex flex-wrap gap-1">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab}
@@ -640,7 +687,7 @@ export function BookingRequestsList() {
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
-            {statusLabels[tab]}
+            {tabLabels[tab] ?? statusLabels[tab]}
           </button>
         ))}
       </div>

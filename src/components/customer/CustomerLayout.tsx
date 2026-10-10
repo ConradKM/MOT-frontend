@@ -1,10 +1,19 @@
-import { Link, Outlet } from 'react-router-dom'
+import { Link, Outlet, useParams } from 'react-router-dom'
 import { Footer } from '../Footer'
+import { usePublicGarage } from '../../api/queries'
+import { termsPath } from '../../lib/bookingUrl'
 import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 import { PLATFORM_NAME } from '../../lib/branding'
 
 export function CustomerLayout() {
   const { isAuthenticated } = useCustomerAuth()
+  // Every business-specific public page (/book, /queue, /terms,
+  // /accept-terms) carries :garageId. The page itself loads the same public
+  // garage, so this is a cache hit rather than a second request.
+  const { garageId } = useParams<{ garageId: string }>()
+  const { data: garage } = usePublicGarage(garageId)
+  const termsHref =
+    garageId && garage?.terms_and_conditions?.trim() ? termsPath(garageId) : null
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -32,7 +41,7 @@ export function CustomerLayout() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <Outlet />
       </main>
-      <Footer />
+      <Footer termsHref={termsHref} />
     </div>
   )
 }

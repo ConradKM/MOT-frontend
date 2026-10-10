@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type {
   CustomerAppointmentSummary,
   CustomerPendingRequest,
@@ -122,6 +122,14 @@ export function CustomerAccount() {
         <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Past appointments</h2>
         <AppointmentList appointments={past} emptyText="No past appointments." />
       </section>
+
+      {customer.garage_terms_url && (
+        <p className="text-sm text-slate-500">
+          <Link to={appPath(customer.garage_terms_url)} className="underline hover:text-slate-800">
+            {customer.garage_name} terms &amp; conditions
+          </Link>
+        </p>
+      )}
     </div>
   )
 }
@@ -240,8 +248,25 @@ function PendingRequestRow({ request }: { request: CustomerPendingRequest }) {
       {request.booking_reference && (
         <p className="mt-2 text-xs text-slate-400">Reference: {request.booking_reference}</p>
       )}
+      {request.terms_url && (
+        <p className="mt-1 text-xs">
+          <Link to={appPath(request.terms_url)} className="text-slate-600 underline">
+            Terms you accepted
+          </Link>
+        </p>
+      )}
     </div>
   )
+}
+
+/** The API hands out absolute public URLs (the same ones it emails); within
+ * the app, follow them as in-app routes so they work on any deployment. */
+function appPath(url: string): string {
+  try {
+    return new URL(url).pathname
+  } catch {
+    return url
+  }
 }
 
 function VehicleRow({ vehicle }: { vehicle: CustomerVehicle }) {

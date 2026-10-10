@@ -353,3 +353,29 @@ describe('CustomerAccount — content', () => {
     await expectNoA11yViolations(container)
   })
 })
+
+describe('CustomerAccount — terms and conditions', () => {
+  it('links the business terms, and the wording a pending request accepted', async () => {
+    serveAccount({
+      ...ACCOUNT,
+      customer: { ...ACCOUNT.customer, garage_terms_url: 'https://app.comaz.co.uk/terms/g1' },
+      pending_requests: [pendingRequest({ terms_url: 'https://app.comaz.co.uk/terms/g1/v/2' })],
+    })
+    renderAccount()
+    // Followed as in-app routes, so they work on any deployment.
+    expect(
+      await screen.findByRole('link', { name: 'Bennett Motors terms & conditions' }),
+    ).toHaveAttribute('href', '/terms/g1')
+    expect(screen.getByRole('link', { name: 'Terms you accepted' })).toHaveAttribute(
+      'href',
+      '/terms/g1/v/2',
+    )
+  })
+
+  it('shows no terms links when the business has none', async () => {
+    serveAccount({ ...ACCOUNT, pending_requests: [pendingRequest()] })
+    renderAccount()
+    await screen.findByText('Hi Oliver')
+    expect(screen.queryByRole('link', { name: /terms/i })).not.toBeInTheDocument()
+  })
+})

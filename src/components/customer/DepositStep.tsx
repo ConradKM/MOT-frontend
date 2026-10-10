@@ -7,6 +7,7 @@ import {
 } from '../../api/publicGarage'
 import { errorMessage, isApiError } from '../../lib/errors'
 import { PaymentCheckout } from './payments/PaymentCheckout'
+import { TERMS_VERSION_MISMATCH } from '../../api/terms'
 
 interface Props {
   slug: string
@@ -17,6 +18,9 @@ interface Props {
   onSlotLost: () => void
   initialIntent?: DepositIntentCreated | null
   onRecoveryToken: (token: string) => void
+  /** The business changed its terms since the customer ticked the box - the
+   * wizard refetches and asks again. */
+  onTermsChanged?: () => void
 }
 
 /** The Deposit step: creates a short-lived payment hold + provider session
@@ -30,6 +34,7 @@ interface Props {
  */
 export function DepositStep({
   slug, garageName, payload, appointmentType, onPaid, onSlotLost, initialIntent, onRecoveryToken,
+  onTermsChanged,
 }: Props) {
   const [intent, setIntent] = useState<DepositIntentCreated | null>(initialIntent ?? null)
   const [creating, setCreating] = useState(!initialIntent)
@@ -57,6 +62,10 @@ export function DepositStep({
         // resolve_customer_and_vehicle) has nothing to do with the slot - a
         // different customer already owns a vehicle with this registration at
         // this garage - so it must not be shown as "slot unavailable".
+        if (isApiError(err) && err.code === 409 && err.reason === TERMS_VERSION_MISMATCH) {
+          onTermsChanged?.()
+          return
+        }
         if (isApiError(err) && err.code === 409 && err.reason === 'vehicle_reference_conflict') {
           setCreateError(
             'That vehicle registration is already registered under a different profile ' +

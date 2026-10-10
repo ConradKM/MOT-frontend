@@ -12,6 +12,8 @@ export interface CustomerProfile {
   email: string | null
   phone: string | null
   garage_name: string
+  /** The business's current Terms & Conditions page, or null without terms. */
+  garage_terms_url?: string | null
   /** Whether email + password sign-in is set up yet. */
   has_password: boolean
 }
@@ -54,6 +56,8 @@ export interface CustomerPendingRequest {
   vehicle_registration: string
   notes: string | null
   appointment_type_name: string | null
+  /** The terms wording accepted for this request; null without terms. */
+  terms_url?: string | null
 }
 
 export interface CustomerAccount {

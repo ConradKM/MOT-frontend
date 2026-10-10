@@ -2,6 +2,9 @@ import { apiFetch } from './client'
 import type { AppliedAddOn } from '../types'
 
 export type BookingRequestStatus =
+  /** A WhatsApp/SMS/phone booking held until the customer accepts the
+   * business's terms via a texted link - can't be approved yet. */
+  | 'AWAITING_TERMS'
   | 'AWAITING_PAYMENT'
   | 'PENDING'
   | 'APPROVED'
@@ -128,6 +131,15 @@ export interface BookingRequest {
   appointment_id: string | null
   /** Null when this request's type never required a deposit. */
   payment: BookingPaymentSummary | null
+  /** The business's terms as the customer accepted them - null without
+   * terms, and while a request is still AWAITING_TERMS. Optional so an older
+   * payload without them still renders. */
+  terms_accepted_at?: string | null
+  terms_version?: number | null
+  /** Public page showing that exact accepted wording. */
+  terms_url?: string | null
+  /** When an AWAITING_TERMS / AWAITING_PAYMENT hold releases the slot. */
+  hold_expires_at?: string | null
   created_at: string
   updated_at: string
 }

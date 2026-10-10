@@ -7,6 +7,7 @@ import {
   ListOrdered,
   CreditCard,
   MessageSquare,
+  ScrollText,
   ShieldCheck,
   Tags,
   Users,
@@ -35,6 +36,7 @@ export const SECTIONS: SettingsSection[] = [
       { slug: 'appointment-types', label: 'Appointment Types', icon: Tags },
       { slug: 'appointment-statuses', label: 'Appointment Statuses', icon: CircleDot },
       { slug: 'booking-workflow', label: 'Booking Workflow', icon: Workflow },
+      { slug: 'terms', label: 'Terms & Conditions', icon: ScrollText },
     ],
   },
   {
