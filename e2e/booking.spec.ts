@@ -296,3 +296,53 @@ test('a customer adds extras, sees the price and finish time change, and books t
     ],
   })
 })
+
+test('a customer reads and accepts the business terms before booking', async ({ page }) => {
+  const terms = '1. Deposits are non-refundable.\n2. Please arrive 10 minutes early.'
+  let submitted: Record<string, unknown> = {}
+  await stubApi(page, [
+    {
+      path: /^\/api\/public\/(garages\/g1|bennett-motors)$/,
+      handler: (route) =>
+        respond.json(route, { ...PUBLIC_GARAGE, terms_and_conditions: terms, terms_version: 3 }),
+    },
+    {
+      method: 'POST',
+      path: /\/booking-requests$/,
+      handler: async (route) => {
+        submitted = JSON.parse(route.request().postData() ?? '{}')
+        return respond.json(route, { id: 'br1', status: 'PENDING', booking_reference: 'BK7F3K9Q2' }, 201)
+      },
+    },
+  ])
+
+  await fillWizard(page)
+
+  // Not bookable until the terms are accepted - and trying says why.
+  const confirm = page.getByRole('button', { name: 'Confirm Booking' })
+  await expect(confirm).toHaveAttribute('aria-disabled', 'true')
+  // aria-disabled, not disabled: it stays clickable so a customer who tries
+  // is told why. Playwright won't click aria-disabled controls unforced.
+  await confirm.click({ force: true })
+  await expect(page.getByText('Please accept the terms and conditions to continue.')).toBeVisible()
+
+  // The terms open in a popup whose text scrolls on its own, with Accept
+  // always reachable below it.
+  await page.getByRole('button', { name: 'terms and conditions' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Terms and conditions' })
+  await expect(dialog).toBeVisible()
+  const text = dialog.getByRole('region', { name: 'Terms and conditions text' })
+  await expect(text).toContainText('Please arrive 10 minutes early.')
+  await expect(text).toBeFocused()
+  await dialog.getByRole('button', { name: 'Accept' }).click()
+
+  await expect(dialog).toBeHidden()
+  await expect(page.getByRole('checkbox', { name: /I have read and accept the/ })).toBeChecked()
+  // The public booking layout links the same terms in its footer.
+  await expect(page.getByRole('contentinfo').getByRole('link', { name: 'Terms & Conditions' }))
+    .toHaveAttribute('href', '/terms/g1')
+
+  await confirm.click()
+  await expect(page.getByRole('heading', { name: 'Request received' })).toBeVisible()
+  expect(submitted).toMatchObject({ terms_accepted: true, terms_version: 3 })
+})

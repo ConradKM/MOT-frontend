@@ -49,8 +49,9 @@ describe('Modal', () => {
 
   it('closes when the backdrop is clicked', async () => {
     const user = userEvent.setup()
-    const { onClose, container } = renderModal()
-    await user.click(container.firstElementChild as HTMLElement)
+    const { onClose } = renderModal()
+    // The backdrop is the dialog's parent (portalled into <body>).
+    await user.click(screen.getByRole('dialog').parentElement as HTMLElement)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -79,7 +80,35 @@ describe('Modal', () => {
   })
 
   it('has no detectable accessibility violations', async () => {
+    renderModal()
+    await expectNoA11yViolations(screen.getByRole('dialog'))
+  })
+
+  it('keeps no separate scroll region without a footer', () => {
+    renderModal()
+    expect(screen.queryByRole('region')).not.toBeInTheDocument()
+  })
+
+  it('with a footer, pins it and scrolls only the content, focusing that region', () => {
+    renderModal({ footer: <button type="button">Accept</button>, bodyLabel: 'Call notes' })
+    const region = screen.getByRole('region', { name: 'Call notes' })
+    expect(region).toHaveTextContent('Inbound from 07123 456789')
+    expect(region).toHaveClass('overflow-y-auto')
+    expect(region).toHaveAttribute('tabindex', '0')
+    expect(region).toHaveFocus()
+    expect(region).not.toContainElement(screen.getByRole('button', { name: 'Accept' }))
+  })
+
+  it('with a footer, has no detectable accessibility violations', async () => {
+    renderModal({ footer: <button type="button">Accept</button> })
+    await expectNoA11yViolations(screen.getByRole('dialog'))
+  })
+
+  it('renders over the whole page, outside any transformed ancestor', () => {
     const { container } = renderModal()
-    await expectNoA11yViolations(container)
+    // Portalled to <body>: a transformed wrapper (e.g. the wizard's step
+    // animation) would otherwise clip a fixed overlay to itself.
+    expect(container).not.toContainElement(screen.getByRole('dialog'))
+    expect(document.body).toContainElement(screen.getByRole('dialog'))
   })
 })

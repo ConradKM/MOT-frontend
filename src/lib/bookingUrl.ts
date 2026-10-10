@@ -59,3 +59,17 @@ export function queueUrl(garageId: string): string {
 export function queueStatusPath(garageId: string, token: string): string {
   return `/queue/${garageId}/status#${token}`
 }
+
+/**
+ * The public Terms & Conditions page for a business - what the Settings page
+ * offers to paste into the business's own website. With `version`, the page
+ * for one exact wording, which is what booking confirmations link to (must
+ * match app/terms/service.py::terms_url in MOT-backend).
+ */
+export function termsUrl(garageId: string, version?: number): string {
+  return `${BOOKING_BASE_URL}${termsPath(garageId, version)}`
+}
+
+export function termsPath(garageId: string, version?: number): string {
+  return version != null ? `/terms/${garageId}/v/${version}` : `/terms/${garageId}`
+}

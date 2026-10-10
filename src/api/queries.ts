@@ -10,6 +10,7 @@ import * as groupsApi from './appointmentTypeGroups'
 import * as imagesApi from './images'
 import * as publicGarageApi from './publicGarage'
 import * as queueApi from './queue'
+import * as termsApi from './terms'
 import * as employeesApi from './employees'
 import * as feedbackApi from './feedback'
 import * as rolesApi from './roles'
@@ -575,6 +576,49 @@ export function usePublicGarageBySlug(slug: string | undefined) {
     queryFn: () => publicGarageApi.getPublicGarageBySlug(slug as string),
     enabled: !!slug,
     retry: false,
+  })
+}
+
+// Terms & Conditions
+export function useGarageTerms() {
+  return useQuery({ queryKey: ['garageTerms'], queryFn: termsApi.getGarageTerms })
+}
+
+export function useUpdateGarageTerms() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: termsApi.updateGarageTerms,
+    onSuccess: (terms) => qc.setQueryData(['garageTerms'], terms),
+  })
+}
+
+/** The public Terms page: current wording, or one exact version. */
+export function usePublicTerms(garageId: string | undefined, version?: string) {
+  return useQuery({
+    queryKey: ['publicTerms', garageId, version ?? 'current'],
+    queryFn: () => termsApi.getPublicTerms(garageId as string, version),
+    enabled: !!garageId,
+    retry: false,
+  })
+}
+
+/** What a texted acceptance link resolves to. A POST (the token stays out of
+ * URLs) but a read, so it lives in the query cache like any other read. */
+export function useTermsAcceptanceLookup(slug: string | undefined, token: string | null) {
+  return useQuery({
+    queryKey: ['termsAcceptance', slug, token],
+    queryFn: () => termsApi.lookupTermsAcceptance(slug as string, token as string),
+    enabled: !!slug && !!token,
+    retry: false,
+  })
+}
+
+export function useAcceptTerms(slug: string | undefined, token: string | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (termsVersion: number | null) =>
+      termsApi.acceptTerms(slug as string, token as string, termsVersion),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['termsAcceptance', slug, token] }),
   })
 }
 

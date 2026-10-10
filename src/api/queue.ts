@@ -74,6 +74,9 @@ export interface QueueJoinInput {
   appointment_type_id?: string | null
   notes?: string | null
   captcha_token?: string
+  /** See BookingRequestInput.terms_accepted. */
+  terms_accepted?: boolean
+  terms_version?: number | null
 }
 
 export function getPublicQueue(slug: string): Promise<PublicQueueInfo> {

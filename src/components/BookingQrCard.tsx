@@ -110,6 +110,7 @@ export function BookingQrCard({
           <div
             ref={svgWrapRef}
             className="flex h-40 w-40 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full"
+            role="img"
             aria-label={qrLabel}
             dangerouslySetInnerHTML={{ __html: svg }}
           />
@@ -117,6 +118,7 @@ export function BookingQrCard({
           <div
             ref={svgWrapRef}
             className="flex h-40 w-40 shrink-0 items-center justify-center"
+            role="img"
             aria-label={qrLabel}
           >
             <span className="text-xs text-slate-400">Generating…</span>

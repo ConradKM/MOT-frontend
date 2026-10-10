@@ -696,3 +696,46 @@ describe('BookingRequestsList — add-ons', () => {
     expect(screen.getByText(/Remaining balance/)).toHaveTextContent('£100.00')
   })
 })
+
+describe('BookingRequestsList — awaiting terms', () => {
+  it('labels a request awaiting the customer and offers no way to approve it', async () => {
+    serveRequests({
+      AWAITING_TERMS: [
+        makeRequest({ status: 'AWAITING_TERMS', hold_expires_at: '2026-09-14T10:00:00Z' }),
+      ],
+    })
+    const user = userEvent.setup()
+    renderList()
+    await user.click(await screen.findByRole('button', { name: 'Awaiting terms' }))
+
+    const row = (await screen.findByText('Oliver Bennett')).closest('tr')!
+    expect(within(row).getByText('Awaiting customer to accept terms')).toBeInTheDocument()
+    expect(within(row).getByRole('button', { name: 'Approve' })).toBeDisabled()
+    expect(within(row).queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument()
+
+    await user.click(within(row).getByRole('button', { name: 'View' }))
+    expect(
+      await screen.findByText(/Awaiting the customer to accept your terms/),
+    ).toBeInTheDocument()
+  })
+
+  it('links the exact terms a request accepted', async () => {
+    serveRequests({
+      PENDING: [
+        makeRequest({
+          terms_version: 2,
+          terms_accepted_at: '2026-09-10T08:00:00Z',
+          terms_url: 'https://app.comaz.co.uk/terms/g1/v/2',
+        }),
+      ],
+    })
+    const user = userEvent.setup()
+    renderList()
+    const row = (await screen.findByText('Oliver Bennett')).closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'View' }))
+    expect(await screen.findByRole('link', { name: 'Version 2 accepted' })).toHaveAttribute(
+      'href',
+      'https://app.comaz.co.uk/terms/g1/v/2',
+    )
+  })
+})

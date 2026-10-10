@@ -32,6 +32,8 @@ import { Captcha, captchaEnabled } from '../../components/Captcha'
 import { isPlausibleUkMobile } from '../../lib/phone'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { DepositStep } from '../../components/customer/DepositStep'
+import { TermsAcceptance } from '../../components/customer/TermsAcceptance'
+import { TERMS_VERSION_MISMATCH } from '../../api/terms'
 import { AddOnPicker } from '../../components/addOns/AddOnPicker'
 import {
   addOnTotals,
@@ -158,6 +160,11 @@ export function BookingWizard() {
   const [recoveredIntent, setRecoveredIntent] = useState<DepositIntentCreated | null>(null)
   const [recoveryChecked, setRecoveryChecked] = useState(false)
   const [addOnSelection, setAddOnSelection] = useState<AddOnSelection>({})
+  // The business's Terms & Conditions, accepted on Review. Sent with whichever
+  // call creates the booking request - the plain submit, or the deposit
+  // intent - and enforced server-side either way.
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [termsError, setTermsError] = useState<string | undefined>()
 
   const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
   const persistRecoveryToken = useCallback((token: string) => {
@@ -229,6 +236,25 @@ export function BookingWizard() {
   }, [sections])
 
   const services = useMemo(() => garage?.appointment_types ?? [], [garage])
+  // No terms entered (or whitespace only, which the server stores as none) =
+  // no checkbox and nothing sent.
+  const terms = garage?.terms_and_conditions?.trim() ? garage.terms_and_conditions : null
+  const termsVersion = terms ? (garage?.terms_version ?? null) : null
+  const changeTermsAccepted = (accepted: boolean) => {
+    setTermsAccepted(accepted)
+    if (accepted) setTermsError(undefined)
+  }
+  // The server rejected the version the customer ticked: the business edited
+  // its terms mid-booking. Fetch the new wording and ask again, rather than
+  // ever accepting words the customer hasn't seen.
+  const handleTermsChanged = () => {
+    void queryClient.invalidateQueries({ queryKey: ['publicGarage', urlGarageId] })
+    setTermsAccepted(false)
+    setTermsError(undefined)
+    setErrors({ form: 'The terms were updated. Please read and accept the latest version.' })
+    setStep('review')
+  }
+  const termsPayload = { termsAccepted: Boolean(terms) && termsAccepted, termsVersion }
   const hasServices = services.length > 0
   const selectedAppointmentType = services.find((t) => t.id === data.appointmentTypeId)
   const requiresDeposit = selectedAppointmentType?.deposit_required ?? false
@@ -449,13 +475,17 @@ export function BookingWizard() {
       setErrors({ form: 'Please confirm that you are not a robot.' })
       return
     }
+    if (terms && !termsAccepted) {
+      setTermsError('Please accept the terms and conditions to continue.')
+      return
+    }
     setSubmitting(true)
     setErrors({})
     try {
       const email = data.email.trim()
       const result = await submitBookingRequest(
         garageSlug,
-        buildBookingPayload(data, captchaToken, sections, answers, addOnSelection),
+        buildBookingPayload(data, captchaToken, sections, answers, addOnSelection, termsPayload),
       )
       setBookingReference(result.booking_reference)
       // The account (Customer + Vehicle) already exists at this point (see
@@ -469,6 +499,10 @@ export function BookingWizard() {
       }
       setSubmitted(true)
     } catch (err) {
+      if (isApiError(err) && err.code === 409 && err.reason === TERMS_VERSION_MISMATCH) {
+        handleTermsChanged()
+        return
+      }
       // The slot was taken between loading the calendar and submitting.
       if (isApiError(err) && err.code === 409) {
         setData((d) => ({ ...d, time: '', paymentAttemptId: '' }))
@@ -492,6 +526,7 @@ export function BookingWizard() {
       }
 
       const fields = fieldErrors(err)
+      if (fields.terms_accepted) setTermsError(fields.terms_accepted)
       const mapped: FieldErrors = {}
       if (fields.customer_email) mapped.email = fields.customer_email
       if (fields.customer_phone) mapped.phone = fields.customer_phone
@@ -526,6 +561,8 @@ export function BookingWizard() {
     setBookingReference(null)
     setDepositResult(null)
     setCaptchaToken('')
+    setTermsAccepted(false)
+    setTermsError(undefined)
   }
 
   if (submitted) {
@@ -643,18 +680,50 @@ export function BookingWizard() {
             answers={answers}
             onEditStep={goToStep}
             requiresDeposit={requiresDeposit}
+            termsAcceptance={
+              // Not once a deposit has been paid, nor for a resumed checkout:
+              // acceptance was already recorded when that request was made.
+              terms && !depositResult && !recoveredIntent ? (
+                <TermsAcceptance
+                  terms={terms}
+                  garageId={garage.id}
+                  accepted={termsAccepted}
+                  onChange={changeTermsAccepted}
+                  error={termsError}
+                  // Ticking it on a deposit booking starts the checkout, which
+                  // records the acceptance - it can't be taken back from here.
+                  disabled={requiresDeposit && termsAccepted}
+                />
+              ) : null
+            }
             paymentCheckout={
               requiresDeposit && !depositResult ? (
-                <DepositStep
-                  slug={garageSlug}
-                  garageName={garage.name}
-                  payload={buildBookingPayload(data, captchaToken, sections, answers, addOnSelection)}
-                  appointmentType={selectedAppointmentType}
-                  onPaid={handleDepositPaid}
-                  onSlotLost={handleDepositSlotLost}
-                  initialIntent={recoveredIntent}
-                  onRecoveryToken={persistRecoveryToken}
-                />
+                // The deposit intent *creates* the booking request, so the box
+                // has to be ticked before it is ever requested.
+                !terms || termsAccepted || recoveredIntent ? (
+                  <DepositStep
+                    slug={garageSlug}
+                    garageName={garage.name}
+                    payload={buildBookingPayload(
+                      data,
+                      captchaToken,
+                      sections,
+                      answers,
+                      addOnSelection,
+                      termsPayload,
+                    )}
+                    appointmentType={selectedAppointmentType}
+                    onPaid={handleDepositPaid}
+                    onSlotLost={handleDepositSlotLost}
+                    initialIntent={recoveredIntent}
+                    onRecoveryToken={persistRecoveryToken}
+                    onTermsChanged={handleTermsChanged}
+                  />
+                ) : (
+                  <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    Accept the terms and conditions above to continue to payment.
+                  </p>
+                )
               ) : null
             }
           />
@@ -682,7 +751,12 @@ export function BookingWizard() {
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              // Looks disabled until the terms are ticked, but stays
+              // focusable and clickable so trying anyway explains why.
+              aria-disabled={terms && !termsAccepted && !depositResult ? true : undefined}
+              className={`rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 ${
+                terms && !termsAccepted && !depositResult ? 'opacity-50' : ''
+              }`}
             >
               {/* Deposit bookings only ever reach Review once depositResult
                   is set - i.e. once the server has confirmed the deposit
@@ -717,6 +791,7 @@ function buildBookingPayload(
   sections: BookingFlowSection[],
   answers: AnswerMap,
   addOnSelection: AddOnSelection,
+  { termsAccepted, termsVersion }: { termsAccepted: boolean; termsVersion: number | null },
 ): BookingRequestInput {
   return {
     customer_first_name: data.firstName.trim(),
@@ -735,6 +810,10 @@ function buildBookingPayload(
     answers: toAnswerInput(sections, answers),
     captcha_token: captchaToken,
     payment_attempt_id: data.paymentAttemptId || undefined,
+    // Only meaningful (and only checked) when the business has terms.
+    ...(termsVersion != null
+      ? { terms_accepted: termsAccepted, terms_version: termsVersion }
+      : {}),
   }
 }
 
@@ -1009,6 +1088,7 @@ function ReviewStep({
   answers,
   onEditStep,
   requiresDeposit,
+  termsAcceptance,
   paymentCheckout,
 }: {
   data: WizardData
@@ -1020,6 +1100,7 @@ function ReviewStep({
   answers: AnswerMap
   onEditStep: (step: StepKey) => void
   requiresDeposit: boolean
+  termsAcceptance: ReactNode
   paymentCheckout: ReactNode
 }) {
   const catalogue = appointmentType?.add_ons ?? []
@@ -1091,6 +1172,9 @@ function ReviewStep({
           </SummarySection>
         )}
 
+        {/* Before the payment for a deposit booking (it gates it); after the
+            summary for a plain one, right above Confirm Booking. */}
+        {termsAcceptance && requiresDeposit && <div className="mt-6">{termsAcceptance}</div>}
         {paymentCheckout && <div className="mt-6">{paymentCheckout}</div>}
 
         <SummarySection
@@ -1125,6 +1209,8 @@ function ReviewStep({
           </SummarySection>
         ))}
       </div>
+
+      {termsAcceptance && !requiresDeposit && <div className="mt-6">{termsAcceptance}</div>}
 
       <p className="mt-6 text-sm text-slate-600">
         {depositResult

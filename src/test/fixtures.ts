@@ -1,3 +1,4 @@
+import type { PublicTerms, TermsAcceptanceLookup } from '../api/terms'
 import type {
   AddOn,
   Appointment,
@@ -516,6 +517,51 @@ export function makeReservedWindow(patch: Partial<ReservedWindow> = {}): Reserve
     ends_at: '11:00:00',
     reserved_capacity: 1,
     note: null,
+    ...patch,
+  }
+}
+
+// --- Terms & Conditions ---------------------------------------------------------
+
+export const TERMS_TEXT = '1. Deposits are non-refundable.\n2. Please arrive 10 minutes early.'
+export const TERMS_TOKEN = 'terms-token-0123456789abcdefghijklmnopqrstuv'
+
+export function makePublicTerms(patch: Partial<PublicTerms> = {}): PublicTerms {
+  return {
+    garage_id: GARAGE_ID,
+    garage_name: 'Bennett Motors',
+    logo_url: null,
+    version: 1,
+    body: TERMS_TEXT,
+    effective_at: '2099-09-01T10:00:00Z',
+    is_current: true,
+    ...patch,
+  }
+}
+
+export function makeTermsAcceptanceLookup(
+  patch: Partial<TermsAcceptanceLookup> = {},
+): TermsAcceptanceLookup {
+  return {
+    state: 'AWAITING_ACCEPTANCE',
+    status: 'AWAITING_TERMS',
+    garage_id: GARAGE_ID,
+    garage_name: 'Bennett Motors',
+    booking: {
+      booking_reference: 'BK7F3K9Q2',
+      customer_first_name: 'Jo',
+      service_name: 'MOT test',
+      add_ons: [],
+      preferred_date: '2099-09-15',
+      preferred_time: '10:00:00',
+      duration_minutes: 60,
+      price: '54.85',
+      vehicle_registration: 'AB12CDE',
+      deposit_required: false,
+    },
+    terms_and_conditions: TERMS_TEXT,
+    terms_version: 1,
+    hold_expires_at: '2099-09-14T11:00:00Z',
     ...patch,
   }
 }

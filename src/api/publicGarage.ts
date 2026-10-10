@@ -70,6 +70,12 @@ export interface PublicGarage {
   /** Every active service, grouped or not, in display order. Partition on
    * `group_id` to render the groups. */
   appointment_types: PublicAppointmentType[]
+  /** The business's own Terms & Conditions - plain text, always rendered as
+   * text, never HTML - or null when it has none (then no checkbox at all).
+   * Optional so an older payload without it still renders. */
+  terms_and_conditions?: string | null
+  /** The version a submission echoes back as `terms_version`. */
+  terms_version?: number | null
 }
 
 /** Kept as an alias: the by-slug and by-id public garage lookups return the
@@ -101,6 +107,10 @@ export interface BookingRequestInput {
   captcha_token?: string
   /** Opaque browser-generated idempotency token for a deposit attempt. */
   payment_attempt_id?: string
+  /** Required - and checked against the current version - only when the
+   * business has terms. A stale version is a 409 `terms_version_mismatch`. */
+  terms_accepted?: boolean
+  terms_version?: number | null
 }
 
 export function getPublicGarages(): Promise<PublicGarage[]> {
