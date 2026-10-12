@@ -89,7 +89,7 @@ export function QueueJoin() {
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((f) => ({ ...f, [key]: value }))
 
-  if (garageLoading) return <p className="text-sm text-slate-500">Loading…</p>
+  if (garageLoading) return <p className="text-sm text-page-muted">Loading…</p>
   if (!garage || !garageId) {
     return (
       <QueueNotice
@@ -157,8 +157,8 @@ export function QueueJoin() {
       <div className="mb-6 flex items-center gap-3">
         <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
         <div>
-          <p className="text-sm font-medium text-slate-500">Walk-in queue</p>
-          <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">{garage.name}</h1>
+          <p className="text-sm font-medium text-page-muted">Walk-in queue</p>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-page-strong">{garage.name}</h1>
         </div>
       </div>
 

@@ -18,7 +18,7 @@ export function WizardStepper({ steps, currentStep }: Props) {
 
   return (
     <div>
-      <p className="text-sm font-medium text-slate-500">
+      <p className="text-sm font-medium text-page-muted">
         Step {currentIndex + 1} of {steps.length}
         {current ? `: ${current.label}` : ''}
       </p>
@@ -41,13 +41,13 @@ export function WizardStepper({ steps, currentStep }: Props) {
                 </span>
                 <span
                   className={`hidden text-xs font-medium sm:block ${
-                    state === 'upcoming' ? 'text-slate-400' : 'text-slate-700'
+                    state === 'upcoming' ? 'text-page-faint' : 'text-page-soft'
                   }`}
                 >
                   {s.label}
                 </span>
               </div>
-              {i < steps.length - 1 && <span className="mx-3 h-px flex-1 bg-slate-200" />}
+              {i < steps.length - 1 && <span className="mx-3 h-px flex-1 bg-page-border" />}
             </li>
           )
         })}

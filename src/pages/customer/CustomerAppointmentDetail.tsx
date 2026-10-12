@@ -1,6 +1,7 @@
 import { Link, useParams } from 'react-router-dom'
 import type { CustomerAppointmentDetail as CustomerAppointmentDetailData } from '../../api/customerAccount'
 import { useCustomerAppointment } from '../../api/queries'
+import { useReportThemeGarage } from '../../components/customer/bookingThemeContext'
 import { appointmentStatusClasses, appointmentStatusLabels } from '../../lib/appointments'
 import { formatDateTime } from '../../lib/datetime'
 import { errorMessage, isApiError } from '../../lib/errors'
@@ -8,11 +9,12 @@ import { errorMessage, isApiError } from '../../lib/errors'
 export function CustomerAppointmentDetail() {
   const { appointmentId } = useParams<{ appointmentId: string }>()
   const { data: appointment, isLoading, isError, error } = useCustomerAppointment(appointmentId)
+  useReportThemeGarage(appointment?.garage_id)
 
   const backLink = (
     <Link
       to="/customer/account"
-      className="text-sm font-medium text-slate-500 hover:text-slate-800"
+      className="text-sm font-medium text-page-muted hover:text-page-fg"
     >
       ← Back to my account
     </Link>
@@ -22,7 +24,7 @@ export function CustomerAppointmentDetail() {
     return (
       <div>
         {backLink}
-        <p className="mt-4 text-sm text-slate-500">Loading…</p>
+        <p className="mt-4 text-sm text-page-muted">Loading…</p>
       </div>
     )
   }
@@ -45,10 +47,10 @@ export function CustomerAppointmentDetail() {
 
       <div className="mt-2 flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-page-strong">
             {appointment.appointment_type_name}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-page-muted">
             {formatDateTime(appointment.start_time)} – {formatDateTime(appointment.end_time)}
           </p>
         </div>

@@ -19,6 +19,10 @@ export interface Garage {
   /** Owner-controlled; defaults false for every business. */
   auto_accept_booking_requests: boolean
   auto_accept_booking_requests_enabled: boolean
+  /** Owner-chosen booking-page colours (`#rrggbb`): the page background and
+   * the text on it. Both null = the default look. */
+  booking_background_color: string | null
+  booking_text_color: string | null
   created_at: string
   updated_at: string
 }

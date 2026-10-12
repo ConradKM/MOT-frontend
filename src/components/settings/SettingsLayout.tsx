@@ -7,6 +7,7 @@ import {
   ListOrdered,
   CreditCard,
   MessageSquare,
+  Palette,
   ScrollText,
   ShieldCheck,
   Tags,
@@ -37,6 +38,7 @@ export const SECTIONS: SettingsSection[] = [
       { slug: 'appointment-statuses', label: 'Appointment Statuses', icon: CircleDot },
       { slug: 'booking-workflow', label: 'Booking Workflow', icon: Workflow },
       { slug: 'terms', label: 'Terms & Conditions', icon: ScrollText },
+      { slug: 'booking-appearance', label: 'Booking Page Appearance', icon: Palette },
     ],
   },
   {

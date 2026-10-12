@@ -12,6 +12,7 @@ import {
 } from '../../api/queries'
 import { useCustomerAuth } from '../../auth/CustomerAuthContext'
 import { MotBadge } from '../../components/MotBadge'
+import { useReportThemeGarage } from '../../components/customer/bookingThemeContext'
 import { appointmentStatusClasses, appointmentStatusLabels } from '../../lib/appointments'
 import { formatDateShort, formatDateTime, formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors } from '../../lib/errors'
@@ -21,6 +22,7 @@ export function CustomerAccount() {
   const { logout } = useCustomerAuth()
   const navigate = useNavigate()
   const { data, isLoading, isError, error } = useCustomerAccount()
+  useReportThemeGarage(data?.customer.garage_id)
 
   const signOut = () => {
     logout()
@@ -28,7 +30,7 @@ export function CustomerAccount() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-slate-500">Loading your account…</p>
+    return <p className="text-sm text-page-muted">Loading your account…</p>
   }
 
   if (isError || !data) {
@@ -57,15 +59,15 @@ export function CustomerAccount() {
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
+          <h1 className="font-display text-2xl font-semibold tracking-tight text-page-strong">
             Hi {customer.first_name}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">{customer.garage_name}</p>
+          <p className="mt-1 text-sm text-page-muted">{customer.garage_name}</p>
         </div>
         <button
           type="button"
           onClick={signOut}
-          className="shrink-0 rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="shrink-0 rounded-md border border-slate-300 bg-page-control px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Sign out
         </button>
@@ -73,8 +75,8 @@ export function CustomerAccount() {
 
       {pendingRequests.length > 0 && (
         <section>
-          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Pending requests</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-page-strong">Pending requests</h2>
+          <p className="mt-1 text-sm text-page-muted">
             Awaiting review by {customer.garage_name}.
           </p>
           <div className="mt-3 space-y-2">
@@ -86,7 +88,7 @@ export function CustomerAccount() {
       )}
 
       <section>
-        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Your details</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-page-strong">Your details</h2>
         <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-white shadow-card p-4 text-sm">
           <dt className="text-slate-500">Name</dt>
           <dd className="text-right text-slate-800">
@@ -101,9 +103,9 @@ export function CustomerAccount() {
       </section>
 
       <section>
-        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Your vehicles</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-page-strong">Your vehicles</h2>
         {vehicles.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500">No vehicles on file.</p>
+          <p className="mt-2 text-sm text-page-muted">No vehicles on file.</p>
         ) : (
           <div className="mt-3 space-y-3">
             {vehicles.map((v) => (
@@ -114,18 +116,18 @@ export function CustomerAccount() {
       </section>
 
       <section>
-        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Upcoming appointments</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-page-strong">Upcoming appointments</h2>
         <AppointmentList appointments={upcoming} emptyText="Nothing booked in." />
       </section>
 
       <section>
-        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Past appointments</h2>
+        <h2 className="font-display text-lg font-semibold tracking-tight text-page-strong">Past appointments</h2>
         <AppointmentList appointments={past} emptyText="No past appointments." />
       </section>
 
       {customer.garage_terms_url && (
-        <p className="text-sm text-slate-500">
-          <Link to={appPath(customer.garage_terms_url)} className="underline hover:text-slate-800">
+        <p className="text-sm text-page-muted">
+          <Link to={appPath(customer.garage_terms_url)} className="underline hover:text-page-fg">
             {customer.garage_name} terms &amp; conditions
           </Link>
         </p>
@@ -318,7 +320,7 @@ function AppointmentList({
   emptyText: string
 }) {
   if (appointments.length === 0) {
-    return <p className="mt-2 text-sm text-slate-500">{emptyText}</p>
+    return <p className="mt-2 text-sm text-page-muted">{emptyText}</p>
   }
 
   return (

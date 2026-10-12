@@ -203,6 +203,11 @@ const AcceptTermsPage = lazy(() =>
 const TermsSettings = lazy(() =>
   import('./pages/settings/TermsSettings').then((m) => ({ default: m.TermsSettings })),
 )
+const BookingAppearanceSettings = lazy(() =>
+  import('./pages/settings/BookingAppearanceSettings').then((m) => ({
+    default: m.BookingAppearanceSettings,
+  })),
+)
 const QueueJoin = lazy(() => import('./pages/queue/QueueJoin').then((m) => ({ default: m.QueueJoin })))
 const QueueStatus = lazy(() =>
   import('./pages/queue/QueueStatus').then((m) => ({ default: m.QueueStatus })),
@@ -332,6 +337,7 @@ export default function App() {
               <Route path="appointment-statuses" element={<AppointmentStatusesList />} />
               <Route path="booking-workflow" element={<BookingWorkflowSettings />} />
               <Route path="terms" element={<TermsSettings />} />
+              <Route path="booking-appearance" element={<BookingAppearanceSettings />} />
               <Route path="reminders">
                 <Route index element={<AppointmentRemindersSettings />} />
                 <Route path="customer" element={<CustomerSaleReminders />} />

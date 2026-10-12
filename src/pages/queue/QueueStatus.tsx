@@ -44,7 +44,7 @@ export function QueueStatus() {
     if (garageId && notFound) clearStoredQueueToken(garageId)
   }, [garageId, notFound])
 
-  if (garageLoading) return <p className="text-sm text-slate-500">Loading…</p>
+  if (garageLoading) return <p className="text-sm text-page-muted">Loading…</p>
   if (!garage || !garageId) {
     return (
       <QueueNotice
@@ -60,7 +60,7 @@ export function QueueStatus() {
           title="We couldn't find your place"
           body="Use the link from when you joined the queue, or ask at reception."
         />
-        <Link to={`/queue/${garageId}`} className="text-sm font-medium text-slate-900 underline">
+        <Link to={`/queue/${garageId}`} className="text-sm font-medium text-page-strong underline">
           Join the queue
         </Link>
       </div>
@@ -83,8 +83,8 @@ export function QueueStatus() {
       <div className="mb-6 flex items-center gap-3">
         <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
         <div>
-          <p className="text-sm font-medium text-slate-500">Walk-in queue</p>
-          <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">{garage.name}</h1>
+          <p className="text-sm font-medium text-page-muted">Walk-in queue</p>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-page-strong">{garage.name}</h1>
         </div>
       </div>
 
@@ -118,7 +118,7 @@ export function QueueStatus() {
           </div>
         )}
       </div>
-      <p className="mt-3 text-center text-xs text-slate-400">
+      <p className="mt-3 text-center text-xs text-page-faint">
         This page updates by itself. Keep it open, or come back to this link any time.
       </p>
 

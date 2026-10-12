@@ -49,7 +49,7 @@ export function AcceptTermsPage() {
       />
     )
   }
-  if (garageLoading || lookup.isLoading) return <p className="text-sm text-slate-500">Loading…</p>
+  if (garageLoading || lookup.isLoading) return <p className="text-sm text-page-muted">Loading…</p>
   if (!garage || !garageId) {
     return <Notice title="Business not found" body="Please check the link you were sent." />
   }
@@ -136,8 +136,8 @@ export function AcceptTermsPage() {
       <div className="mb-6 flex items-center gap-3">
         <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
         <div>
-          <p className="text-sm font-medium text-slate-500">Confirm your booking</p>
-          <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">
+          <p className="text-sm font-medium text-page-muted">Confirm your booking</p>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-page-strong">
             {data.garage_name}
           </h1>
         </div>

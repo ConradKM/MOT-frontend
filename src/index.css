@@ -38,6 +38,33 @@
   --shadow-sm: var(--shadow-card);
 }
 
+/* Booking-page colours: a business may pick the page background and the text
+ * colour of its customer-facing pages (src/components/customer/
+ * BookingThemeScope.tsx sets the --page-* variables). These utilities go only
+ * on elements that sit directly on the page background - never inside cards,
+ * fields, modals or buttons, which keep their own look. Pick the token by the
+ * slate shade the element used: strong 900, fg 800, soft 700, subtle 600,
+ * muted 500, faint 400, border 200.
+ *
+ * Each fallback is exactly the slate shade the element used before, so where
+ * no theme is set (every staff page, every business that hasn't picked
+ * colours) the render is unchanged. Inline so the var() lookup happens on the
+ * element, inside whichever scope set it. */
+@theme inline {
+  --color-page: var(--page-bg, var(--color-slate-50));
+  --color-page-fg: var(--page-fg, var(--color-slate-800));
+  --color-page-strong: var(--page-strong, var(--color-slate-900));
+  --color-page-soft: var(--page-soft, var(--color-slate-700));
+  --color-page-subtle: var(--page-subtle, var(--color-slate-600));
+  --color-page-muted: var(--page-muted, var(--color-slate-500));
+  --color-page-faint: var(--page-faint, var(--color-slate-400));
+  --color-page-border: var(--page-border, var(--color-slate-200));
+  /* Outlined buttons that sit on the page have no background of their own;
+   * on a themed page they get a white one so their slate text stays readable
+   * - the same look as every other control. Transparent by default. */
+  --color-page-control: var(--page-control, transparent);
+}
+
 @layer base {
   body {
     @apply bg-slate-50 text-slate-800 antialiased;
@@ -51,6 +78,15 @@
   select,
   textarea {
     background-color: var(--color-white);
+  }
+
+  /* On a business's own page colours (BookingThemeScope), text that sets no
+   * colour of its own would inherit the page text colour - light text on a
+   * white card, for a dark theme. Cards and other surfaces keep their own
+   * look, so put back the colour they'd have inherited from <body>. In the
+   * base layer, so any explicit text-* utility still wins. */
+  [data-booking-theme="custom"] :is(.bg-white, .bg-slate-50, input, select, textarea) {
+    color: var(--color-slate-800);
   }
 }
 

@@ -587,7 +587,7 @@ export function BookingWizard() {
     )
   }
   if (garageLoading) {
-    return <p className="mx-auto max-w-2xl text-sm text-slate-500">Loading…</p>
+    return <p className="mx-auto max-w-2xl text-sm text-page-muted">Loading…</p>
   }
   if (!garage) {
     return (
@@ -605,8 +605,8 @@ export function BookingWizard() {
       <div className="mb-6 flex items-center gap-3">
         <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
         <div>
-          <p className="text-sm font-medium text-slate-500">Book an appointment</p>
-          <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">{garage.name}</h1>
+          <p className="text-sm font-medium text-page-muted">Book an appointment</p>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-page-strong">{garage.name}</h1>
         </div>
       </div>
 
@@ -1263,8 +1263,8 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 function GarageNotice({ title, body }: { title: string; body: string }) {
   return (
     <div className="mx-auto max-w-lg text-center">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-      <p className="mt-2 text-slate-600">{body}</p>
+      <h1 className="font-display text-2xl font-semibold tracking-tight text-page-strong">{title}</h1>
+      <p className="mt-2 text-page-subtle">{body}</p>
     </div>
   )
 }
@@ -1289,8 +1289,8 @@ function ConfirmationScreen({
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600">
         ✓
       </div>
-      <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-slate-900">Request received</h1>
-      <p className="mt-2 text-slate-600">
+      <h1 className="mt-4 font-display text-2xl font-semibold tracking-tight text-page-strong">Request received</h1>
+      <p className="mt-2 text-page-subtle">
         Thanks, {firstName}. We've sent your request for {date ? formatLongDate(date) : ''} at {time}.
         The business will review it and be in touch at {email} to confirm.
       </p>
@@ -1313,7 +1313,7 @@ function ConfirmationScreen({
         <button
           type="button"
           onClick={onRestart}
-          className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="bg-page-control rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Book another appointment
         </button>
