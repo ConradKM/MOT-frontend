@@ -68,7 +68,11 @@ async function parseError(res: Response): Promise<ApiError> {
   return new ApiError(body, `Request failed with status ${res.status}`)
 }
 
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/** The shared request path for every staff API call: attaches the access
+ * token, silently refreshes once on a 401 and retries, and turns any non-2xx
+ * into an ApiError. Resolves with the raw (ok) Response so callers decide how
+ * to read the body - JSON for nearly everything, a Blob for file downloads. */
+async function authorizedFetch(path: string, options: RequestOptions = {}): Promise<Response> {
   const { body, skipAuth, headers, ...rest } = options
 
   const doFetch = async (): Promise<Response> => {
@@ -108,9 +112,23 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     throw await parseError(res)
   }
 
+  return res
+}
+
+export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const res = await authorizedFetch(path, options)
+
   if (res.status === 204) {
     return undefined as T
   }
 
   return (await res.json()) as T
+}
+
+/** Like apiFetch, for endpoints that return a file rather than JSON (e.g. an
+ * .ics export). Same auth, refresh-and-retry and error handling - an error
+ * response is still a JSON body and still becomes an ApiError. */
+export async function apiFetchBlob(path: string, options: RequestOptions = {}): Promise<Blob> {
+  const res = await authorizedFetch(path, options)
+  return res.blob()
 }

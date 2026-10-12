@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { AppointmentsCalendar } from './AppointmentsCalendar'
-import { renderWithAppProviders } from '../../test/utils'
+import { renderWithAppProviders, signInAsStaff } from '../../test/utils'
 import { server } from '../../test/msw/server'
 import { makeAppointment } from '../../test/fixtures'
 import { formatLongDate, todayIso } from '../../lib/datetime'
@@ -36,5 +36,20 @@ describe('AppointmentsCalendar month navigation', () => {
     await screen.findByRole('button', { name: `View ${formatLongDate(today)}` })
     fireEvent.click(screen.getByRole('button', { name: `View ${formatLongDate(today)}` }))
     await waitFor(() => expect(dates).toContain(today))
+  })
+})
+
+describe('AppointmentsCalendar — Add to calendar', () => {
+  it("opens the dialog pre-filled with the month on screen (not the grid's spill-over days)", async () => {
+    signInAsStaff('e1')
+    renderCalendar()
+    fireEvent.click(await screen.findByRole('button', { name: 'Add to calendar' }))
+    expect(await screen.findByRole('dialog', { name: 'Add to calendar' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Custom' })).toBeChecked()
+    expect(screen.getByLabelText('From')).toHaveValue('2026-09-01')
+    expect(screen.getByLabelText('to')).toHaveValue('2026-09-30')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Add to calendar' })).not.toBeInTheDocument())
   })
 })

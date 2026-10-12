@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../test/msw/server'
-import { ApiError, apiFetch, setOnAuthFailure } from './client'
+import { ApiError, apiFetch, apiFetchBlob, setOnAuthFailure } from './client'
 import { clearTokens, getAccessToken, setAccessToken, setTokens } from './tokens'
 import { makeJwt } from '../test/fixtures'
 
@@ -263,5 +263,58 @@ describe('apiFetch — silent token refresh on 401', () => {
     )
     await expect(apiFetch('/api/things')).rejects.toBeInstanceOf(ApiError)
     expect(attempts).toBe(2)
+  })
+})
+
+describe('apiFetchBlob — file downloads', () => {
+  const ICS = 'BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n'
+
+  it('returns the body as a Blob with its content type, sending the bearer token', async () => {
+    setTokens('access-1', 'refresh-1')
+    let auth = ''
+    server.use(
+      http.get('*/api/file.ics', ({ request }) => {
+        auth = request.headers.get('Authorization') ?? ''
+        return new HttpResponse(ICS, { headers: { 'Content-Type': 'text/calendar; charset=utf-8' } })
+      }),
+    )
+    const blob = await apiFetchBlob('/api/file.ics')
+    expect(auth).toBe('Bearer access-1')
+    expect(blob.type).toContain('text/calendar')
+    expect(await blob.text()).toBe(ICS)
+  })
+
+  it('refreshes once on a 401 and retries, like apiFetch', async () => {
+    setTokens('stale-access', 'good-refresh')
+    const seen: string[] = []
+    server.use(
+      http.get('*/api/file.ics', ({ request }) => {
+        const auth = request.headers.get('Authorization') ?? ''
+        seen.push(auth)
+        return auth === 'Bearer fresh-access'
+          ? new HttpResponse(ICS, { headers: { 'Content-Type': 'text/calendar' } })
+          : HttpResponse.json({ code: 401, status: 'Unauthorized' }, { status: 401 })
+      }),
+      http.post('*/api/auth/refresh', () => HttpResponse.json({ access_token: 'fresh-access' })),
+    )
+    expect(await (await apiFetchBlob('/api/file.ics')).text()).toBe(ICS)
+    expect(seen).toEqual(['Bearer stale-access', 'Bearer fresh-access'])
+    expect(onAuthFailure).not.toHaveBeenCalled()
+  })
+
+  it('turns a JSON error body into an ApiError with the server message', async () => {
+    setTokens('access-1', 'refresh-1')
+    server.use(
+      http.get('*/api/file.ics', () =>
+        HttpResponse.json(
+          { code: 422, status: 'Unprocessable Entity', message: 'Narrow the date range.' },
+          { status: 422 },
+        ),
+      ),
+    )
+    const err = await apiFetchBlob('/api/file.ics').catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).code).toBe(422)
+    expect((err as ApiError).message).toBe('Narrow the date range.')
   })
 })
