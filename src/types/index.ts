@@ -23,6 +23,9 @@ export interface Garage {
    * the text on it. Both null = the default look. */
   booking_background_color: string | null
   booking_text_color: string | null
+  /** IANA zone the business's wall-clock times are in, e.g. "Europe/London".
+   * Platform-managed. */
+  timezone?: string
   created_at: string
   updated_at: string
 }
@@ -384,4 +387,87 @@ export interface ApiErrorBody {
    * _configure_request_id) - worth showing/logging alongside any error a
    * customer reports, so it can be traced server-side without guesswork. */
   request_id?: string
+}
+
+// --- bulk import (MOT-backend app/bulk_import) --------------------------------
+
+export type ImportKind = 'services' | 'appointments'
+export type ImportItemStatus = 'NEW' | 'EXISTS' | 'ERROR'
+
+export interface ImportIssue {
+  /** A JSON path into the pasted payload, e.g. `appointments[3].start`. */
+  path: string
+  message: string
+}
+
+export interface ImportItem {
+  index: number
+  status: ImportItemStatus
+  /** What the server resolved the row to. Its shape depends on the kind; see
+   * `ServiceNormalised` / `AppointmentNormalised`. */
+  normalised: Record<string, unknown>
+  errors: ImportIssue[]
+  warnings: ImportIssue[]
+}
+
+/** One import, previewed or committed. The server decides every rule; the
+ * console only renders this. */
+export interface ImportResult {
+  kind: ImportKind
+  ok: boolean
+  dry_run: boolean
+  committed: boolean
+  counts: { new: number; exists: number; error: number; warning: number }
+  items: ImportItem[]
+  warnings: ImportIssue[]
+  context: { timezone?: string }
+}
+
+export interface ServiceNormalised {
+  name?: string
+  description?: string | null
+  base_price?: string | null
+  default_duration_minutes?: number | null
+  status?: AppointmentTypeStatus
+  group?: string | null
+  group_is_new?: boolean
+  existing?: { id: string; name: string }
+}
+
+export type AppointmentFlag = 'past' | 'clash' | 'over_capacity' | 'out_of_hours'
+
+export interface AppointmentNormalised {
+  service?: string
+  /** ISO 8601 with the business's own offset. */
+  start?: string
+  end?: string
+  status?: string
+  employee?: { email: string; name: string | null }
+  customer?: {
+    first_name: string
+    last_name: string
+    phone: string | null
+    email: string | null
+    match?: 'new' | 'existing' | 'earlier_row'
+    existing_name?: string
+    same_as_index?: number
+  }
+  notes?: string | null
+  price_at_booking?: string | null
+  flags?: AppointmentFlag[]
+  existing_id?: string
+  duplicate_of?: number
+}
+
+export interface ImportFormat {
+  example: Record<string, unknown>
+  json_schema: Record<string, unknown>
+  ai_prompt_template: string
+}
+
+export interface ImportFormats {
+  services: ImportFormat
+  appointments: ImportFormat
+  defaults: { timezone: string; statuses: string[] }
+  limits: { max_body_bytes: number; max_services: number; max_appointments: number }
 }

@@ -27,6 +27,7 @@ import { setCustomerPassword } from './customerAuth'
 import * as bookingRequestsApi from './bookingRequests'
 import * as appointmentStatusesApi from './appointmentStatuses'
 import * as calendarExportApi from './calendarExport'
+import * as bulkImportApi from './bulkImport'
 import { getCustomerAccessToken } from './customerTokens'
 import type { BookingRequestStatus } from './bookingRequests'
 import type { CustomerInput } from './customers'
@@ -1437,5 +1438,47 @@ export function useDeleteReservedWindow() {
   return useMutation({
     mutationFn: (id: string) => queueApi.deleteReservedWindow(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reservedWindows'] }),
+  })
+}
+
+// --- bulk import (owner only) ------------------------------------------------
+
+/** The import formats - they only change with a backend deploy. */
+export function useImportFormats(enabled = true) {
+  return useQuery({
+    queryKey: ['importFormats'],
+    queryFn: bulkImportApi.getImportFormats,
+    staleTime: Infinity,
+    enabled,
+  })
+}
+
+type BulkImportVariables = { payload: unknown } & bulkImportApi.BulkImportOptions
+
+/** Preview (dry run) and commit share this mutation; only a committed import
+ * refreshes anything, since a preview wrote nothing. */
+export function useBulkImportAppointmentTypes() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ payload, ...options }: BulkImportVariables) =>
+      bulkImportApi.bulkImportAppointmentTypes(payload, options),
+    onSuccess: (result) => {
+      if (!result.committed) return
+      qc.invalidateQueries({ queryKey: ['appointmentTypes'] })
+      qc.invalidateQueries({ queryKey: ['appointmentTypeGroups'] })
+    },
+  })
+}
+
+export function useBulkImportAppointments() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ payload, ...options }: BulkImportVariables) =>
+      bulkImportApi.bulkImportAppointments(payload, options),
+    onSuccess: (result) => {
+      if (!result.committed) return
+      qc.invalidateQueries({ queryKey: ['appointments'] })
+      qc.invalidateQueries({ queryKey: ['customers'] })
+    },
   })
 }

@@ -32,6 +32,8 @@ import { RichDropdown } from '../../components/rich/RichDropdown'
 import { TimeGridCalendar, type CalendarColumn } from '../../components/TimeGridCalendar'
 import { MonthCalendar } from '../../components/MonthCalendar'
 import { AddToCalendarDialog } from '../../components/calendar/AddToCalendarDialog'
+import { ImportAppointmentsDialog } from '../../components/import/BulkImportDialogs'
+import { useIsOwner } from '../../hooks/useIsOwner'
 import { useGarageId } from '../../hooks/useGarageId'
 import type { Appointment } from '../../types'
 
@@ -53,6 +55,8 @@ export function AppointmentsCalendar() {
   const [endDate, setEndDate] = useState(todayIso())
   const [employeeId, setEmployeeId] = useState('')
   const [calendarDialogOpen, setCalendarDialogOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const isOwner = useIsOwner()
   const { showToast } = useToast()
 
   const weekDates = useMemo(() => weekDatesIso(date), [date])
@@ -184,7 +188,16 @@ export function AppointmentsCalendar() {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointments</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {isOwner ? (
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Import appointments
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setCalendarDialogOpen(true)}
@@ -209,6 +222,9 @@ export function AppointmentsCalendar() {
           initialEmployeeId={employeeId}
         />
       )}
+      {isOwner && importOpen ? (
+        <ImportAppointmentsDialog open onClose={() => setImportOpen(false)} />
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <div className="flex rounded-md border border-slate-300 text-sm">

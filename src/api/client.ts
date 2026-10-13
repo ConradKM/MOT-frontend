@@ -9,6 +9,9 @@ export class ApiError extends Error {
   /** See ApiErrorBody.errors.reason. */
   reason?: string
   requestId?: string
+  /** The parsed response body. Most errors only need the fields above; a
+   * refused bulk import (409/422) carries its full per-row result here. */
+  body: unknown
 
   constructor(body: ApiErrorBody, fallbackMessage: string) {
     super(body.message ?? body.msg ?? fallbackMessage)
@@ -17,6 +20,7 @@ export class ApiError extends Error {
     this.fieldErrors = body.errors?.json ?? body.errors?.query
     this.reason = body.errors?.reason
     this.requestId = body.request_id
+    this.body = body
   }
 }
 
@@ -61,7 +65,9 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
 async function parseError(res: Response): Promise<ApiError> {
   let body: ApiErrorBody
   try {
-    body = (await res.json()) as ApiErrorBody
+    // A body without `code` (a refused bulk import returns its result, not an
+    // error envelope) still gets the HTTP status.
+    body = { code: res.status, status: res.statusText, ...((await res.json()) as object) }
   } catch {
     body = { code: res.status, status: res.statusText }
   }

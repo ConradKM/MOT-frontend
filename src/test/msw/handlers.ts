@@ -18,6 +18,9 @@ import {
   makePublicTerms,
   makeTermsAcceptanceLookup,
   QUEUE_TOKEN,
+  makeImportFormats,
+  makeImportItem,
+  makeImportResult,
 } from '../fixtures'
 
 /**
@@ -47,6 +50,13 @@ export const handlers = [
 
   // --- garage-scoped reads ----------------------------------------------
   http.get('*/api/garage', () => HttpResponse.json(makeGarage())),
+  http.get('*/api/bulk-import/formats', () => HttpResponse.json(makeImportFormats())),
+  http.post('*/api/appointment-types/bulk', () =>
+    HttpResponse.json(makeImportResult([makeImportItem()])),
+  ),
+  http.post('*/api/appointments/bulk', () =>
+    HttpResponse.json(makeImportResult([makeImportItem()], { kind: 'appointments' })),
+  ),
   http.get('*/api/garage/capacity/summary', () =>
     HttpResponse.json({
       today: { booked_minutes: 120, capacity_minutes: 480, level: 'green' },

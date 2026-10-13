@@ -10,6 +10,10 @@ import type {
   GarageAppointmentStatus,
   Role,
   Vehicle,
+  AppointmentNormalised,
+  ImportFormats,
+  ImportItem,
+  ImportResult,
 } from '../types'
 import type {
   BookingFlowField as StaffBookingFlowField,
@@ -568,4 +572,80 @@ export function makeTermsAcceptanceLookup(
     hold_expires_at: '2099-09-14T11:00:00Z',
     ...patch,
   }
+}
+
+// --- bulk import ------------------------------------------------------------
+
+export function makeImportFormats(patch: Partial<ImportFormats> = {}): ImportFormats {
+  return {
+    services: {
+      example: { services: [{ name: 'MOT Test', base_price: '54.85' }] },
+      json_schema: { type: 'object' },
+      ai_prompt_template: 'Extract services. Existing: {{service_names}}',
+    },
+    appointments: {
+      example: { appointments: [{ service: 'MOT Test', start: '2030-01-07T09:30' }] },
+      json_schema: { type: 'object' },
+      ai_prompt_template:
+        'Extract bookings. Services: {{service_names}}. Times in {{timezone}}. Statuses: {{statuses}}.',
+    },
+    defaults: { timezone: 'Europe/London', statuses: ['BOOKED', 'CANCELLED'] },
+    limits: { max_body_bytes: 1048576, max_services: 500, max_appointments: 1000 },
+    ...patch,
+  }
+}
+
+export function makeImportItem(patch: Partial<ImportItem> = {}): ImportItem {
+  return { index: 0, status: 'NEW', normalised: {}, errors: [], warnings: [], ...patch }
+}
+
+/** A result whose counts are derived from its items, as the server's are. */
+export function makeImportResult(
+  items: ImportItem[],
+  patch: Partial<ImportResult> = {},
+): ImportResult {
+  return {
+    kind: 'services',
+    ok: !items.some((item) => item.status === 'ERROR'),
+    dry_run: true,
+    committed: false,
+    counts: {
+      new: items.filter((item) => item.status === 'NEW').length,
+      exists: items.filter((item) => item.status === 'EXISTS').length,
+      error: items.filter((item) => item.status === 'ERROR').length,
+      warning: items.filter((item) => item.warnings.length > 0).length,
+    },
+    items,
+    warnings: [],
+    context: {},
+    ...patch,
+  }
+}
+
+export function makeAppointmentItem(
+  index: number,
+  normalised: Partial<AppointmentNormalised> = {},
+  patch: Partial<ImportItem> = {},
+): ImportItem {
+  return makeImportItem({
+    index,
+    normalised: {
+      service: 'MOT Test',
+      start: '2030-01-07T10:00:00+00:00',
+      end: '2030-01-07T11:00:00+00:00',
+      status: 'BOOKED',
+      employee: { email: 'owner@garage.example', name: 'Greg Mason' },
+      customer: {
+        first_name: 'Sam',
+        last_name: 'Lee',
+        phone: '+447123456789',
+        email: null,
+        match: 'new',
+      },
+      notes: null,
+      flags: [],
+      ...normalised,
+    },
+    ...patch,
+  })
 }
