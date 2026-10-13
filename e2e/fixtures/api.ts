@@ -35,6 +35,43 @@ const apiError = (route: Route, status: number, message: string) =>
 
 export const respond = { json, apiError }
 
+/** Fixture businesses that picked their own booking-page colours - one dark
+ * page with light text, one light page with dark text - plus `none`, the same
+ * business on the default look, to compare against. */
+export const THEMED_GARAGES = {
+  none: PUBLIC_GARAGE,
+  dark: { ...PUBLIC_GARAGE, booking_background_color: '#0b1f3a', booking_text_color: '#f5f7fa' },
+  light: { ...PUBLIC_GARAGE, booking_background_color: '#fefce8', booking_text_color: '#1e3a8a' },
+} as const
+
+/** What the walk-in queue join page needs for an open queue. */
+export const OPEN_PUBLIC_QUEUE = {
+  garage_name: 'Bennett Motors',
+  is_open: true,
+  accepting_joins: true,
+  refusal_reason: null,
+  refusal_message: null,
+  waiting_count: 1,
+  estimated_start_at: '2099-09-14T10:30:00Z',
+  estimated_wait_minutes: 30,
+  opens_at: '2099-09-14T08:00:00Z',
+  closes_at: '2099-09-14T16:00:00Z',
+  join_fields: {
+    name: { enabled: true, required: true },
+    phone: { enabled: true, required: true },
+    email: { enabled: false, required: false },
+    vehicle_registration: { enabled: false, required: false },
+  },
+}
+
+/** Serve one of {@link THEMED_GARAGES} (and an open queue) for the public pages. */
+export function themedGarage(theme: keyof typeof THEMED_GARAGES): Override[] {
+  return [
+    { path: /^\/api\/public\/garages\/[^/]+$/, handler: (r) => json(r, THEMED_GARAGES[theme]) },
+    { path: '/api/public/bennett-motors/queue', handler: (r) => json(r, OPEN_PUBLIC_QUEUE) },
+  ]
+}
+
 function defaults(): Stub[] {
   return [
     // auth

@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
-import { signInAsStaff, stubApi } from './fixtures/api'
+import { signInAsStaff, stubApi, themedGarage } from './fixtures/api'
 
 /**
  * A browser-level accessibility sweep. Unlike the jsdom checks in the unit
@@ -195,4 +195,61 @@ test.describe('known limitation: muted text falls below the AA contrast threshol
     )
     expect(blocking.map((b) => b.selector)).toEqual([])
   })
+})
+
+test.describe('booking-page colours keep text readable', () => {
+  /**
+   * A business can pick its page background and text colour. jsdom can't
+   * compute colours, so this is where the contrast promise is checked, in a
+   * dark theme and a light one:
+   *
+   * - every piece of text sitting on the themed page - headings, helper copy,
+   *   step labels, the header and footer - passes AA against it;
+   * - cards keep their own look, so the theme may not make anything on them
+   *   worse: their contrast findings must be exactly the unthemed page's
+   *   (the pre-existing slate-400 limitation pinned in the block above).
+   */
+  const scanPage = (page: import('@playwright/test').Page) =>
+    new AxeBuilder({ page })
+      .withTags(RULESET)
+      .withRules(['color-contrast'])
+      .exclude('.shadow-card')
+      // The stepper's numbered circles are chips with their own fill.
+      .exclude('ol .rounded-full')
+      .analyze()
+
+  const cardFindings = async (page: import('@playwright/test').Page) => {
+    const results = await new AxeBuilder({ page })
+      .withTags(RULESET)
+      .withRules(['color-contrast'])
+      .include('.shadow-card')
+      .analyze()
+    return results.violations.flatMap((v) => v.nodes.map((n) => n.target.join(' '))).sort()
+  }
+
+  for (const theme of ['dark', 'light'] as const) {
+    for (const [name, path] of [
+      ['booking wizard', '/book/g1'],
+      ['walk-in queue', '/queue/g1'],
+    ] as const) {
+      test(`${name} on a ${theme} theme stays readable`, async ({ page, browser }) => {
+        // No colour transition mid-scan.
+        await page.emulateMedia({ reducedMotion: 'reduce' })
+        await stubApi(page, themedGarage(theme))
+        await page.goto(path)
+        await expect(page.locator('h1')).toBeVisible()
+        await expect(page.locator('[data-booking-theme="custom"]')).toBeVisible()
+
+        expect(describeViolations(await scanPage(page)).join('\n\n')).toBe('')
+
+        const context = await browser.newContext()
+        const unthemed = await context.newPage()
+        await stubApi(unthemed, themedGarage('none'))
+        await unthemed.goto(path)
+        await expect(unthemed.locator('h1')).toBeVisible()
+        expect(await cardFindings(page)).toEqual(await cardFindings(unthemed))
+        await context.close()
+      })
+    }
+  }
 })

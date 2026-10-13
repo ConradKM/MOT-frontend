@@ -11,6 +11,8 @@ export interface CustomerProfile {
   last_name: string
   email: string | null
   phone: string | null
+  /** The business's id - the one in its /book/<id> URL. */
+  garage_id?: string
   garage_name: string
   /** The business's current Terms & Conditions page, or null without terms. */
   garage_terms_url?: string | null
@@ -81,6 +83,7 @@ export interface CustomerAppointmentDetail {
     model: string | null
     year: number | null
   } | null
+  garage_id?: string
   garage_name: string
 }
 

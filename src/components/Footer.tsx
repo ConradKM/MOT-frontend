@@ -7,10 +7,10 @@ import { PLATFORM_TAGLINE } from '../lib/branding'
  * one; the staff and sign-in layouts never do. */
 export function Footer({ termsHref }: { termsHref?: string | null } = {}) {
   return (
-    <footer className="py-4 text-center text-xs text-slate-400">
+    <footer className="py-4 text-center text-xs text-page-faint">
       {termsHref && (
         <>
-          <Link to={termsHref} className="text-slate-500 underline hover:text-slate-700">
+          <Link to={termsHref} className="text-page-muted underline hover:text-page-soft">
             Terms &amp; Conditions
           </Link>
           <span aria-hidden="true"> · </span>

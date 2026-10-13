@@ -19,6 +19,17 @@ export function updateGarage(patch: GarageDetailsPatch): Promise<Garage> {
   return apiFetch<Garage>('/api/garage', { method: 'PATCH', body: patch })
 }
 
+/** Both set, or both null to reset to the default look. OWNER only; 422 with
+ * the measured ratio when the pair's contrast is under 4.5:1. */
+export interface BookingAppearanceInput {
+  booking_background_color: string | null
+  booking_text_color: string | null
+}
+
+export function updateBookingAppearance(input: BookingAppearanceInput): Promise<Garage> {
+  return apiFetch<Garage>('/api/garage/booking-appearance', { method: 'PUT', body: input })
+}
+
 export function updateBookingRequestSettings(auto_accept_booking_requests: boolean): Promise<Garage> {
   return apiFetch<Garage>('/api/garage/booking-request-settings', {
     method: 'PUT',

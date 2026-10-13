@@ -48,6 +48,19 @@ export function useUpdateGarage() {
   })
 }
 
+export function useUpdateBookingAppearance() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: garageApi.updateBookingAppearance,
+    onSuccess: (garage) => {
+      qc.setQueryData(['garage'], garage)
+      // The business's own customer pages read the colours from here.
+      qc.invalidateQueries({ queryKey: ['publicGarage', garage.id] })
+      qc.invalidateQueries({ queryKey: ['publicGarageBySlug', garage.slug] })
+    },
+  })
+}
+
 export function useUpdateBookingRequestSettings() {
   const qc = useQueryClient()
   return useMutation({

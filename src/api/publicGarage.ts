@@ -65,6 +65,12 @@ export interface PublicGarage {
   logo_url: string | null
   /** The business-wide default; a group may override it. */
   booking_display_mode: DisplayMode
+  /** The business's page background and page text colours (`#rrggbb`), or
+   * null for the default look. Re-validated client-side before use (see
+   * BookingThemeScope) - never trusted as-is. Optional so an older payload
+   * without them still renders. */
+  booking_background_color?: string | null
+  booking_text_color?: string | null
   /** Only groups with something active in them. */
   appointment_type_groups: PublicAppointmentTypeGroup[]
   /** Every active service, grouped or not, in display order. Partition on

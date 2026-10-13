@@ -18,15 +18,15 @@ export function TermsPage() {
   const { garageId, version } = useParams<{ garageId: string; version?: string }>()
   const { data, isLoading, isError } = usePublicTerms(garageId, version)
 
-  if (isLoading) return <p className="text-sm text-slate-500">Loading…</p>
+  if (isLoading) return <p className="text-sm text-page-muted">Loading…</p>
 
   if (isError || !data || !garageId) {
     return (
       <div className="mx-auto max-w-lg text-center">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-page-strong">
           Terms not found
         </h1>
-        <p className="mt-2 text-slate-600">
+        <p className="mt-2 text-page-subtle">
           {version
             ? "We couldn't find that version of this business's terms and conditions."
             : "This business hasn't published any terms and conditions."}{' '}
@@ -46,8 +46,8 @@ export function TermsPage() {
       <header className="mb-6 flex items-center gap-3">
         <BusinessBrandMark name={data.garage_name} logoUrl={data.logo_url} />
         <div>
-          <p className="text-sm font-medium text-slate-500">{data.garage_name}</p>
-          <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">
+          <p className="text-sm font-medium text-page-muted">{data.garage_name}</p>
+          <h1 className="font-display text-xl font-semibold tracking-tight text-page-strong">
             Terms and conditions
           </h1>
         </div>
@@ -76,7 +76,7 @@ export function TermsPage() {
         <button
           type="button"
           onClick={() => window.print()}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+          className="rounded-md border border-slate-300 bg-page-control px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
         >
           Print
         </button>
