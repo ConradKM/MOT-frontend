@@ -10,6 +10,8 @@ import {
 } from '../../api/queries'
 import type { AppointmentTypeInput } from '../../api/appointmentTypes'
 import { Disclosure } from '../../components/Disclosure'
+import { BulkAddServicesDialog } from '../../components/import/BulkImportDialogs'
+import { useIsOwner } from '../../hooks/useIsOwner'
 import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
@@ -434,7 +436,9 @@ export function AppointmentTypesList() {
   const { data: types, isLoading } = useAppointmentTypes()
   const { data: groups } = useAppointmentTypeGroups()
   const garageId = useGarageId()
+  const isOwner = useIsOwner()
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   // Resolved once here rather than per row, which would mean one lookup per
   // service for a list that never changes between them.
@@ -445,7 +449,18 @@ export function AppointmentTypesList() {
 
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointment Types</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointment Types</h1>
+        {isOwner ? (
+          <button
+            type="button"
+            onClick={() => setBulkOpen(true)}
+            className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Bulk add (JSON)
+          </button>
+        ) : null}
+      </div>
       <p className="mt-1 text-sm text-slate-500">
         The services your business offers. Each type can have one checklist that staff work
         through, and appears in the public booking form while it's <strong>ACTIVE</strong>.
@@ -499,6 +514,10 @@ export function AppointmentTypesList() {
           <AddAppointmentTypeForm />
         </Disclosure>
       </div>
+
+      {isOwner ? (
+        <BulkAddServicesDialog open={bulkOpen} onClose={() => setBulkOpen(false)} />
+      ) : null}
     </>
   )
 }

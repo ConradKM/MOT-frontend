@@ -28,6 +28,18 @@ interface Props {
   columns: CalendarColumn[]
   customerName: (id: string) => string
   appointmentTypeName: (appointment: Appointment) => string
+  /** Read-only mode (e.g. previewing an import, whose rows are not real
+   * appointments yet): blocks become buttons that report the click instead of
+   * links to an appointment page. */
+  onSelect?: (appointment: Appointment) => void
+  /** Overrides the status colour for a block - with `marker`, how a preview
+   * shows a clash or an error. */
+  blockClassName?: (appointment: Appointment) => string
+  /** A leading icon plus its spoken equivalent, so a block's state is never
+   * shown by colour alone. */
+  marker?: (appointment: Appointment) => { icon: string; label: string } | null
+  /** The id of the selected block, in read-only mode. */
+  selectedId?: string | null
 }
 
 const HOUR_HEIGHT = 56
@@ -43,7 +55,15 @@ function minutesFromStart(iso: string, startHour: number): number {
   return (d.getHours() - startHour) * 60 + d.getMinutes()
 }
 
-export function TimeGridCalendar({ columns, customerName, appointmentTypeName }: Props) {
+export function TimeGridCalendar({
+  columns,
+  customerName,
+  appointmentTypeName,
+  onSelect,
+  blockClassName,
+  marker,
+  selectedId,
+}: Props) {
   const garageId = useGarageId()
   const { data: statusConfig } = useAppointmentStatuses()
   const allAppointments = columns.flatMap((c) => c.appointments)
@@ -133,23 +153,52 @@ export function TimeGridCalendar({ columns, customerName, appointmentTypeName }:
                   18,
                 )
                 const widthPct = 100 / colCount
-                return (
-                  <Link
-                    key={a.id}
-                    to={`/${garageId}/appointments/${a.id}/overview`}
-                    className={`absolute overflow-hidden rounded-md border border-black/10 px-1.5 py-0.5 text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${statusBadgeClass(statusConfig, a.status)}`}
-                    style={{
-                      top,
-                      height,
-                      left: `${column * widthPct}%`,
-                      width: `calc(${widthPct}% - 2px)`,
-                    }}
-                    title={`${formatTime(a.start_time)}–${formatTime(a.end_time)} · ${customerName(a.customer_id)}`}
-                  >
+                const className = `absolute overflow-hidden rounded-md border border-black/10 px-1.5 py-0.5 text-left text-[11px] leading-tight shadow-sm hover:z-10 hover:shadow-md ${
+                  blockClassName ? blockClassName(a) : statusBadgeClass(statusConfig, a.status)
+                } ${selectedId === a.id ? 'ring-2 ring-slate-900' : ''}`
+                const style = {
+                  top,
+                  height,
+                  left: `${column * widthPct}%`,
+                  width: `calc(${widthPct}% - 2px)`,
+                }
+                const title = `${formatTime(a.start_time)}–${formatTime(a.end_time)} · ${customerName(a.customer_id)}`
+                const mark = marker?.(a) ?? null
+                const content = (
+                  <>
                     <p className="truncate font-medium">
+                      {mark ? (
+                        <>
+                          <span aria-hidden>{mark.icon} </span>
+                          <span className="sr-only">{mark.label}: </span>
+                        </>
+                      ) : null}
                       {formatTime(a.start_time)} {customerName(a.customer_id)}
                     </p>
                     <p className="truncate opacity-80">{appointmentTypeName(a)}</p>
+                  </>
+                )
+                return onSelect ? (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => onSelect(a)}
+                    aria-pressed={selectedId === a.id}
+                    className={className}
+                    style={style}
+                    title={title}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  <Link
+                    key={a.id}
+                    to={`/${garageId}/appointments/${a.id}/overview`}
+                    className={className}
+                    style={style}
+                    title={title}
+                  >
+                    {content}
                   </Link>
                 )
               })}

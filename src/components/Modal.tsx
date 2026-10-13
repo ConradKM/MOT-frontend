@@ -7,9 +7,10 @@ interface ModalProps {
   onClose: () => void
   children: ReactNode
   wide?: boolean
-  /** Panel width: `md` (default), `lg` (same as `wide`), or `xl` for content
-   * with tabs or side-by-side sections. Takes precedence over `wide`. */
-  size?: 'md' | 'lg' | 'xl'
+  /** Panel width: `md` (default), `lg` (same as `wide`), `xl` for content
+   * with tabs or side-by-side sections, or `2xl` for a week calendar or a
+   * wide table. Takes precedence over `wide`. */
+  size?: 'md' | 'lg' | 'xl' | '2xl'
   /** Actions pinned below the content. When set, the header and footer stay
    * fixed and only the content scrolls - for long content whose actions must
    * stay reachable (e.g. Terms & Conditions with an Accept button). */
@@ -28,7 +29,12 @@ interface ModalProps {
  * booking wizard's step-in animation) becomes the containing block for
  * `position: fixed`, which would otherwise clip the overlay to that ancestor
  * and push the panel's top or bottom off screen. */
-const SIZE_CLASS = { md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' } as const
+const SIZE_CLASS = {
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-2xl',
+  '2xl': 'max-w-5xl',
+} as const
 
 export function Modal({
   open,
