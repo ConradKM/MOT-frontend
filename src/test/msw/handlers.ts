@@ -21,6 +21,7 @@ import {
   makeImportFormats,
   makeImportItem,
   makeImportResult,
+  makeSquareStatus,
 } from '../fixtures'
 
 /**
@@ -164,4 +165,27 @@ export const handlers = [
   http.post('*/api/queue/entries/:id/:action', () => HttpResponse.json(makeQueueEntry())),
   http.get('*/api/queue/settings', () => HttpResponse.json(makeQueueSettings())),
   http.get('*/api/queue/reserved-windows', () => HttpResponse.json([])),
+
+  // --- payments settings -------------------------------------------------
+  http.get('*/api/payments/provider', () =>
+    HttpResponse.json({
+      provider: 'stripe',
+      options: [
+        { name: 'stripe', ready: false },
+        { name: 'square', ready: false },
+      ],
+    }),
+  ),
+  http.get('*/api/payments/stripe/status', () =>
+    HttpResponse.json({
+      provider: null,
+      stripe_account_id: null,
+      stripe_onboarding_complete: false,
+      stripe_charges_enabled: false,
+      stripe_payouts_enabled: false,
+      apple_pay_status: null,
+      apple_pay_status_details: null,
+    }),
+  ),
+  http.get('*/api/payments/square/status', () => HttpResponse.json(makeSquareStatus())),
 ]

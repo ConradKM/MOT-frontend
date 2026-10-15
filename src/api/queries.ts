@@ -28,6 +28,7 @@ import * as bookingRequestsApi from './bookingRequests'
 import * as appointmentStatusesApi from './appointmentStatuses'
 import * as calendarExportApi from './calendarExport'
 import * as bulkImportApi from './bulkImport'
+import * as paymentsApi from './payments'
 import { getCustomerAccessToken } from './customerTokens'
 import type { BookingRequestStatus } from './bookingRequests'
 import type { CustomerInput } from './customers'
@@ -1479,6 +1480,61 @@ export function useBulkImportAppointments() {
       if (!result.committed) return
       qc.invalidateQueries({ queryKey: ['appointments'] })
       qc.invalidateQueries({ queryKey: ['customers'] })
+    },
+  })
+}
+
+// Payments settings - provider choice and the Square connection (owner-only;
+// the API resolves the business from the access token).
+export function usePaymentProvider() {
+  return useQuery({
+    queryKey: ['paymentProvider'],
+    queryFn: paymentsApi.getPaymentProvider,
+    retry: false,
+  })
+}
+
+export function useSetPaymentProvider() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: paymentsApi.setPaymentProvider,
+    onSuccess: (data) => qc.setQueryData(['paymentProvider'], data),
+  })
+}
+
+export function useSquareStatus() {
+  return useQuery({
+    queryKey: ['squareStatus'],
+    queryFn: paymentsApi.getSquareConnectStatus,
+    retry: false,
+    // Always re-read on mount: after Square's redirect back the query
+    // string is never trusted, only this.
+    refetchOnMount: 'always',
+  })
+}
+
+export function useStartSquareConnect() {
+  return useMutation({ mutationFn: paymentsApi.startSquareConnect })
+}
+
+export function useSetSquareLocation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: paymentsApi.setSquareLocation,
+    onSuccess: (data) => {
+      qc.setQueryData(['squareStatus'], data)
+      qc.invalidateQueries({ queryKey: ['paymentProvider'] })
+    },
+  })
+}
+
+export function useDisconnectSquare() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: paymentsApi.disconnectSquare,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['squareStatus'] })
+      qc.invalidateQueries({ queryKey: ['paymentProvider'] })
     },
   })
 }

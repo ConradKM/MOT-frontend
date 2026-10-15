@@ -1,3 +1,4 @@
+import type { SquareConnectStatus } from '../api/payments'
 import type { PublicTerms, TermsAcceptanceLookup } from '../api/terms'
 import type {
   AddOn,
@@ -647,5 +648,46 @@ export function makeAppointmentItem(
       ...normalised,
     },
     ...patch,
+  })
+}
+
+// --- Payments settings -----------------------------------------------------
+
+export function makeSquareStatus(
+  overrides: Partial<SquareConnectStatus> = {},
+): SquareConnectStatus {
+  return {
+    status: 'NOT_CONNECTED',
+    merchant_id: null,
+    merchant_name: null,
+    location_id: null,
+    location_name: null,
+    locations: [],
+    can_take_card_payments: false,
+    currency: 'GBP',
+    charges_in_currency: false,
+    ready: false,
+    environment: 'sandbox',
+    deployment_configured: true,
+    ...overrides,
+  }
+}
+
+export function makeConnectedSquareStatus(
+  overrides: Partial<SquareConnectStatus> = {},
+): SquareConnectStatus {
+  return makeSquareStatus({
+    status: 'CONNECTED',
+    merchant_id: 'MLMERCHANT1',
+    merchant_name: 'Test Motors Ltd',
+    location_id: 'LOC_1',
+    location_name: 'Main garage',
+    locations: [
+      { id: 'LOC_1', name: 'Main garage', currency: 'GBP', can_take_card_payments: true, eligible: true },
+    ],
+    can_take_card_payments: true,
+    charges_in_currency: true,
+    ready: true,
+    ...overrides,
   })
 }
