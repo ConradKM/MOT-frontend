@@ -169,6 +169,45 @@ export async function stubApi(page: Page, overrides: Override[] = []): Promise<v
   })
 }
 
+/**
+ * Stand-in for Square's Web Payments SDK. Square only ships it as a hosted
+ * script, so the CDN is routed to this stub (never the real network): a card
+ * "field" that is just an input, and tokenize() that returns a fixed
+ * single-use token. Records every load so a test can assert the script was
+ * only fetched once a Square deposit was actually due.
+ */
+export async function stubSquareSdk(page: Page): Promise<{ loads: string[] }> {
+  const loads: string[] = []
+  const sdk = `
+    window.Square = {
+      payments: function (applicationId, locationId) {
+        window.__squarePayments = { applicationId: applicationId, locationId: locationId }
+        return {
+          card: async function () {
+            return {
+              attach: async function (el) {
+                var input = document.createElement('input')
+                input.setAttribute('aria-label', 'Card number')
+                el.appendChild(input)
+              },
+              tokenize: async function (details) {
+                window.__squareVerification = details
+                return { status: 'OK', token: 'cnon:e2e-card' }
+              },
+              destroy: async function () { return true },
+            }
+          },
+        }
+      },
+    }
+  `
+  await page.route(/https:\/\/(sandbox\.)?web\.squarecdn\.com\/.*/, (route) => {
+    loads.push(route.request().url())
+    return route.fulfill({ status: 200, contentType: 'application/javascript', body: sdk })
+  })
+  return { loads }
+}
+
 /** Seed a staff session in localStorage before the app boots. */
 export async function signInAsStaff(page: Page): Promise<void> {
   await page.addInitScript((token: string) => {

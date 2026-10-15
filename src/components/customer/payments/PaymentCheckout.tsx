@@ -6,6 +6,11 @@ import type { PaymentCheckoutProps } from './types'
 const StripeCheckout = lazy(() =>
   import('./StripeCheckout').then((m) => ({ default: m.StripeCheckout })),
 )
+// Same rule for Square: its component (and the SDK script it injects on
+// mount) only loads once a Square deposit is actually due.
+const SquareCheckout = lazy(() =>
+  import('./SquareCheckout').then((m) => ({ default: m.SquareCheckout })),
+)
 
 /** Picks the right provider-specific checkout component for this deposit
  * session - the only place in the wizard that branches on `provider`/
@@ -24,9 +29,17 @@ export function PaymentCheckout(props: PaymentCheckoutProps) {
     )
   }
 
+  if (provider === 'square' && checkoutMode === 'EMBEDDED') {
+    return (
+      <Suspense fallback={<p className="text-sm text-slate-500">Loading secure checkout…</p>}>
+        <SquareCheckout {...props} />
+      </Suspense>
+    )
+  }
+
   // A provider this build of the frontend doesn't have a component for yet
-  // (e.g. a business configured for PayPal/Square before those adapters are
-  // real) - a clear message, never a blank screen or a silent failure.
+  // (e.g. a business configured for PayPal before that adapter is real) - a
+  // clear message, never a blank screen or a silent failure.
   return (
     <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
       This business's payment method isn't available online right now. Please contact them

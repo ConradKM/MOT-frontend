@@ -251,7 +251,8 @@ export interface DepositIntentCreated {
   provider: PaymentProviderName | null
   checkout_mode: CheckoutMode | null
   /** Provider-specific, client-safe fields only (e.g. Stripe's
-   * client_secret + publishable_key + available_wallets) - shape depends on
+   * client_secret + publishable_key + available_wallets; Square's
+   * application_id + location_id + environment + amount) - shape depends on
    * `provider`/`checkout_mode`. Only present on creation, never on the
    * status-poll response - a fresh session token is only ever handed out
    * once. Never contains anything that isn't already safe to show a
@@ -259,7 +260,7 @@ export interface DepositIntentCreated {
    * purely informational - the wallet buttons themselves are rendered by
    * the provider's own checkout widget (see StripeCheckout.tsx's
    * PaymentElement), never built by CoMaz. */
-  provider_data: Record<string, string | string[] | null> | null
+  provider_data: Record<string, string | string[] | number | null> | null
   /** Opaque server-issued recovery capability. It is safe to keep only in
    * sessionStorage and is never a Stripe credential. */
   recovery_token?: string | null
@@ -308,6 +309,22 @@ export function getDepositStatus(
   return apiFetch<DepositStatusPoll>(
     `/api/public/${slug}/booking-requests/${bookingReference}/payment-status`,
     { skipAuth: true },
+  )
+}
+
+/** Phase two of a two-phase provider's deposit (Square): post the
+ * single-use card token the provider's SDK produced. The backend charges it
+ * on the business's own merchant account and answers PENDING - the deposit
+ * only counts as paid once the status poll reports the webhook-confirmed
+ * outcome. Safe to retry: a double submit never charges twice. */
+export function submitDepositToken(
+  slug: string,
+  bookingReference: string,
+  data: { source_id: string; verification_token?: string | null },
+): Promise<DepositStatusPoll> {
+  return apiFetch<DepositStatusPoll>(
+    `/api/public/${slug}/booking-requests/${bookingReference}/payments/token`,
+    { method: 'POST', body: data, skipAuth: true },
   )
 }
 

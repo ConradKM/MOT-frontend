@@ -1,7 +1,7 @@
 import type { DepositIntentCreated } from '../../../api/publicGarage'
 
-/** What every provider-specific checkout component (StripeCheckout.tsx, and
- * any future PayPalCheckout.tsx/SquareCheckout.tsx) receives - the common
+/** What every provider-specific checkout component (StripeCheckout.tsx,
+ * SquareCheckout.tsx, and any future PayPalCheckout.tsx) receives - the common
  * Deposit UI (src/components/customer/DepositStep.tsx) owns everything
  * else (summary, branding, retry/error chrome around this). A checkout
  * component's only job is the actual secure payment interaction and
