@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Palette,
   ScrollText,
+  Share2,
   ShieldCheck,
   Tags,
   Users,
@@ -30,6 +31,7 @@ export interface SettingsSection {
  * there is no per-page wrapper to forget. */
 export const SECTIONS: SettingsSection[] = [
   { group: null, items: [{ slug: 'garage-details', label: 'Business Details', icon: Building2 }] },
+  { group: null, items: [{ slug: 'share', label: 'Share your business', icon: Share2 }] },
   { group: null, items: [{ slug: 'availability', label: 'Availability', icon: Clock }] },
   {
     group: 'Appointments',
@@ -71,7 +73,7 @@ export function SettingsLayout() {
   const garageId = useGarageId()
 
   return (
-    <div className="flex flex-col gap-8 sm:flex-row">
+    <div className="settings-scope flex flex-col gap-8 sm:flex-row">
       <nav
         aria-label="Settings"
         className="flex shrink-0 flex-row items-center gap-1 overflow-x-auto sm:w-52 sm:flex-col sm:items-stretch"

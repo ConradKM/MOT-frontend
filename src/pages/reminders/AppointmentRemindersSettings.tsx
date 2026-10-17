@@ -5,6 +5,12 @@ import {
 } from '../../api/queries'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
+import { InfoTip } from '../../components/settings/InfoTip'
+import {
+  SectionHeading,
+  SettingsCard,
+  SettingsPageHeader,
+} from '../../components/settings/SettingsUI'
 import type {
   AppointmentReminderSettings,
   AppointmentReminderTiming,
@@ -74,11 +80,11 @@ function TimingsEditor({
             className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-400"
             aria-label={`Timing ${i + 1} hours before`}
           />
-          <span className="flex-1 text-sm text-slate-500">hours before the appointment</span>
+          <span className="flex-1 text-sm text-slate-600">hours before the appointment</span>
           <button
             type="button"
             onClick={() => removeTiming(t.key)}
-            className="rounded-md px-2 py-1 text-sm text-slate-400 hover:bg-slate-100 hover:text-red-600"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-lg text-slate-600 hover:bg-slate-100 hover:text-red-700 sm:min-h-8 sm:min-w-8"
             aria-label={`Remove timing ${i + 1}`}
           >
             ×
@@ -190,40 +196,40 @@ function AppointmentRemindersForm({ settings }: { settings: AppointmentReminderS
     <form className="max-w-2xl space-y-6" onSubmit={handleSubmit}>
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <div className="flex items-start gap-3 rounded-md border border-slate-200 px-3 py-3">
+      <SettingsCard className="flex items-center gap-3">
         <input
           id="appointment-reminders-enabled"
           type="checkbox"
           checked={enabled}
           onChange={(e) => setEnabled(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-slate-300"
-          aria-label="Send automatic appointment reminders"
+          className="h-4 w-4 rounded border-slate-300"
         />
-        <label htmlFor="appointment-reminders-enabled" className="flex-1">
-          <p className="text-sm font-medium text-slate-700">Send automatic appointment reminders</p>
-          <p className="text-xs text-slate-500">
-            Customers get a reminder before their appointment, on the timings and channels below.
-          </p>
+        <label
+          htmlFor="appointment-reminders-enabled"
+          className="text-sm font-medium text-slate-900"
+        >
+          Send automatic appointment reminders
         </label>
-      </div>
+        <InfoTip label="automatic appointment reminders">
+          Customers get a reminder before their appointment, on the timings and channels below.
+        </InfoTip>
+      </SettingsCard>
 
-      <div>
-        <h2 className="text-sm font-semibold text-slate-900">When to remind</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          Add as many lead times as you like - e.g. a day before and again a couple of hours
-          before.
-        </p>
+      <SettingsCard>
+        <SectionHeading
+          title="When to remind"
+          info="Add as many lead times as you like - e.g. a day before and again a couple of hours before."
+        />
         <div className="mt-3">
           <TimingsEditor timings={timings} onChange={setTimings} />
         </div>
-      </div>
+      </SettingsCard>
 
-      <div>
-        <h2 className="text-sm font-semibold text-slate-900">How to remind</h2>
-        <p className="mt-1 text-xs text-slate-500">
-          The first available channel in this order that this customer has contact details for is
-          used. A channel only appears here once it's actually set up for your business.
-        </p>
+      <SettingsCard>
+        <SectionHeading
+          title="How to remind"
+          info="The first available channel in this order that this customer has contact details for is used. A channel only appears here once it's actually set up for your business."
+        />
         <div className="mt-3">
           <ChannelPicker
             available={settings.available_channels}
@@ -231,9 +237,9 @@ function AppointmentRemindersForm({ settings }: { settings: AppointmentReminderS
             onChange={setChannels}
           />
         </div>
-      </div>
+      </SettingsCard>
 
-      <div className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-600">
+      <div role="status" className="rounded-md bg-white px-3 py-2 text-sm text-slate-700 shadow-card">
         {enabled && enabledTimings.length > 0 && channels.length > 0 ? (
           <>
             Customers will be reminded {enabledTimings.sort((a, b) => b - a).join('h and ')}h
@@ -260,17 +266,19 @@ export function AppointmentRemindersSettings() {
 
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointment reminders</h1>
-      <p className="mt-1 mb-6 text-sm text-slate-500">
-        Automatic messages sent to customers before a booked appointment.
-      </p>
-      {isLoading || !settings ? (
-        <p className="text-sm text-slate-500">Loading…</p>
-      ) : isError ? (
-        <p className="text-sm text-red-600">Failed to load appointment reminder settings.</p>
-      ) : (
-        <AppointmentRemindersForm settings={settings} />
-      )}
+      <SettingsPageHeader
+        title="Appointment reminders"
+        description="Automatic messages sent to customers before a booked appointment."
+      />
+      <div className="mt-6">
+        {isLoading || !settings ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : isError ? (
+          <p className="text-sm text-red-600">Failed to load appointment reminder settings.</p>
+        ) : (
+          <AppointmentRemindersForm settings={settings} />
+        )}
+      </div>
     </>
   )
 }

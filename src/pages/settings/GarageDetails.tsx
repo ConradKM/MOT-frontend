@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useGarage, useUpdateGarage } from '../../api/queries'
 import type { GarageDetailsPatch } from '../../api/garage'
-import { BookingQrCard } from '../../components/BookingQrCard'
+import { Link } from 'react-router-dom'
+import { SettingsPageHeader } from '../../components/settings/SettingsUI'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import type { Garage } from '../../types'
 
@@ -85,11 +86,16 @@ export function GarageDetails() {
 
   return (
     <div className="max-w-xl">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Business details</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        The business information we hold for you. It is used across the app and for
-        customer communications. Only the business owner can change it.
-      </p>
+      <SettingsPageHeader
+        title="Business details"
+        description={
+          <>
+            The business information we hold for you. It is used across the app and for
+            customer communications. Only the business owner can change it. The public booking
+            slug and system settings are managed by the platform administrator.
+          </>
+        }
+      />
 
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
       {isError && (
@@ -141,12 +147,13 @@ export function GarageDetails() {
             </button>
           </form>
 
-          <p className="mt-3 text-xs text-slate-400">
-            The public booking slug and system settings are managed by the platform
-            administrator and can't be changed here.
+          <p className="mt-6 text-sm text-slate-700">
+            Your booking link and QR code are on{' '}
+            <Link to={`/${garage.id}/settings/share`} className="font-medium underline">
+              Share your business
+            </Link>
+            .
           </p>
-
-          <BookingQrCard garageId={garage.id} />
         </>
       )}
     </div>

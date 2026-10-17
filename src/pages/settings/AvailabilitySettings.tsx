@@ -16,6 +16,13 @@ import type {
 import { errorMessage, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { formatLongDate, todayIso } from '../../lib/datetime'
+import { percentToRatio, ratioToPercent } from '../../lib/limitedThreshold'
+import {
+  FieldLabel,
+  SectionHeading,
+  SettingsCard,
+  SettingsPageHeader,
+} from '../../components/settings/SettingsUI'
 
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -45,14 +52,14 @@ export function AvailabilitySettings() {
 
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Availability</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Controls the public booking calendar customers see for your business.
-      </p>
+      <SettingsPageHeader
+        title="Availability"
+        description="Controls the public booking calendar customers see for your business."
+      />
 
       <div className="mt-8 space-y-10">
-        <SlotRulesForm settings={data.settings} />
         <OpeningHoursForm openingHours={data.opening_hours} />
+        <SlotRulesForm settings={data.settings} />
         <ExceptionsSection exceptions={data.exceptions} />
       </div>
     </>
@@ -73,7 +80,7 @@ function SlotRulesForm({
     max_advance_days: String(settings.max_advance_days),
     capacity_per_slot:
       settings.capacity_per_slot === null ? '' : String(settings.capacity_per_slot),
-    limited_threshold_ratio: String(settings.limited_threshold_ratio),
+    limited_percent: ratioToPercent(settings.limited_threshold_ratio),
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -88,7 +95,7 @@ function SlotRulesForm({
       min_lead_time_hours: Number(form.min_lead_time_hours),
       max_advance_days: Number(form.max_advance_days),
       capacity_per_slot: form.capacity_per_slot === '' ? null : Number(form.capacity_per_slot),
-      limited_threshold_ratio: Number(form.limited_threshold_ratio),
+      limited_threshold_ratio: percentToRatio(form.limited_percent),
     }
     try {
       await update.mutateAsync(payload)
@@ -100,81 +107,127 @@ function SlotRulesForm({
 
   return (
     <form onSubmit={submit}>
-      <h2 className="text-sm font-semibold text-slate-900">Slot rules</h2>
-      <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="block text-sm text-slate-700">
-          Slot length (minutes)
-          <input
-            type="number"
-            min={5}
-            max={240}
-            value={form.slot_interval_minutes}
-            onChange={(e) => set('slot_interval_minutes', e.target.value)}
-            className={inputClass}
-          />
-          <span className="mt-1 block text-xs text-slate-500">
-            How often a bookable start time appears. Shorter (e.g. 5 minutes) packs the
-            calendar more tightly and shows customers a "choose a window, then a time"
-            picker; 30–60 works well if you'd rather keep a simple flat list.
-          </span>
-        </label>
-        <label className="block text-sm text-slate-700">
-          Default appointment length (minutes)
-          <input
-            type="number"
-            min={5}
-            value={form.default_appointment_minutes}
-            onChange={(e) => set('default_appointment_minutes', e.target.value)}
-            className={inputClass}
-          />
-        </label>
-        <label className="block text-sm text-slate-700">
-          Minimum notice (hours)
-          <input
-            type="number"
-            min={0}
-            value={form.min_lead_time_hours}
-            onChange={(e) => set('min_lead_time_hours', e.target.value)}
-            className={inputClass}
-          />
-        </label>
-        <label className="block text-sm text-slate-700">
-          Booking window (days ahead)
-          <input
-            type="number"
-            min={1}
-            value={form.max_advance_days}
-            onChange={(e) => set('max_advance_days', e.target.value)}
-            className={inputClass}
-          />
-        </label>
-        <label className="block text-sm text-slate-700">
-          Bookings per slot
-          <input
-            type="number"
-            min={1}
-            placeholder="Auto (number of employees)"
-            value={form.capacity_per_slot}
-            onChange={(e) => set('capacity_per_slot', e.target.value)}
-            className={inputClass}
-          />
-          <span className="mt-1 block text-xs text-slate-400">
-            Leave blank to use your employee count.
-          </span>
-        </label>
-        <label className="block text-sm text-slate-700">
-          "Limited" threshold (0–1)
-          <input
-            type="number"
-            min={0}
-            max={1}
-            step={0.05}
-            value={form.limited_threshold_ratio}
-            onChange={(e) => set('limited_threshold_ratio', e.target.value)}
-            className={inputClass}
-          />
-        </label>
-      </div>
+      <SectionHeading title="Slot rules" />
+      <SettingsCard className="mt-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <FieldLabel
+              htmlFor="slot-interval"
+              info={
+                <>
+                  How often a bookable start time appears. Shorter (e.g. 5 minutes) packs the
+                  calendar more tightly and shows customers a "choose a window, then a time"
+                  picker; 30-60 works well if you'd rather keep a simple flat list.
+                </>
+              }
+            >
+              Slot length (minutes)
+            </FieldLabel>
+            <input
+              id="slot-interval"
+              type="number"
+              min={5}
+              max={240}
+              value={form.slot_interval_minutes}
+              onChange={(e) => set('slot_interval_minutes', e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <FieldLabel
+              htmlFor="slot-default-length"
+              info="How long a booking lasts when its service doesn't set its own length."
+            >
+              Default appointment length (minutes)
+            </FieldLabel>
+            <input
+              id="slot-default-length"
+              type="number"
+              min={5}
+              value={form.default_appointment_minutes}
+              onChange={(e) => set('default_appointment_minutes', e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <FieldLabel
+              htmlFor="slot-lead-time"
+              info="How far ahead a customer must book. Times sooner than this aren't offered."
+            >
+              Minimum notice (hours)
+            </FieldLabel>
+            <input
+              id="slot-lead-time"
+              type="number"
+              min={0}
+              value={form.min_lead_time_hours}
+              onChange={(e) => set('min_lead_time_hours', e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <FieldLabel
+              htmlFor="slot-window"
+              info="How many days into the future customers can book."
+            >
+              Booking window (days ahead)
+            </FieldLabel>
+            <input
+              id="slot-window"
+              type="number"
+              min={1}
+              value={form.max_advance_days}
+              onChange={(e) => set('max_advance_days', e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <FieldLabel
+              htmlFor="slot-capacity"
+              info="How many bookings can share the same start time. Leave blank to use your employee count."
+            >
+              Bookings per slot
+            </FieldLabel>
+            <input
+              id="slot-capacity"
+              type="number"
+              min={1}
+              placeholder="Auto (number of employees)"
+              value={form.capacity_per_slot}
+              onChange={(e) => set('capacity_per_slot', e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <FieldLabel
+              htmlFor="slot-limited"
+              info={
+                <>
+                  Customers see a time marked "limited availability" once only a few of its places
+                  are left, which nudges them to book. For example, at 50% a slot that takes 4
+                  bookings shows as limited once 2 or fewer places are free.
+                </>
+              }
+            >
+              Show "limited availability" when
+            </FieldLabel>
+            <div className="mt-1 flex items-center gap-2 text-sm text-slate-700">
+              <input
+                id="slot-limited"
+                type="number"
+                min={0}
+                max={100}
+                step={5}
+                value={form.limited_percent}
+                onChange={(e) => set('limited_percent', e.target.value)}
+                aria-describedby="slot-limited-suffix"
+                className="w-24 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+              />
+              <span id="slot-limited-suffix">% or fewer of a time's places are free</span>
+            </div>
+          </div>
+        </div>
+      </SettingsCard>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <button
         type="submit"
@@ -233,11 +286,11 @@ function OpeningHoursForm({
 
   return (
     <form onSubmit={submit}>
-      <h2 className="text-sm font-semibold text-slate-900">Opening hours</h2>
-      <div className="mt-3 space-y-2">
+      <SectionHeading title="Opening hours" />
+      <SettingsCard className="mt-3 space-y-2">
         {rows.map((r) => (
           <div key={r.weekday} className="flex flex-wrap items-center gap-3 text-sm">
-            <span className="w-24 text-slate-700">{WEEKDAYS[r.weekday]}</span>
+            <span className="w-24 font-medium text-slate-900">{WEEKDAYS[r.weekday]}</span>
             <label className="flex items-center gap-1.5 text-slate-600">
               <input
                 type="checkbox"
@@ -251,19 +304,21 @@ function OpeningHoursForm({
               value={r.opens_at}
               disabled={r.is_closed}
               onChange={(e) => setRow(r.weekday, { opens_at: e.target.value })}
+              aria-label={`${WEEKDAYS[r.weekday]} opens`}
               className={`${timeClass} disabled:opacity-40`}
             />
-            <span className="text-slate-400">to</span>
+            <span className="text-slate-600">to</span>
             <input
               type="time"
               value={r.closes_at}
               disabled={r.is_closed}
               onChange={(e) => setRow(r.weekday, { closes_at: e.target.value })}
+              aria-label={`${WEEKDAYS[r.weekday]} closes`}
               className={`${timeClass} disabled:opacity-40`}
             />
           </div>
         ))}
-      </div>
+      </SettingsCard>
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       <button
         type="submit"
@@ -307,19 +362,19 @@ function ExceptionsSection({
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-slate-900">One-off closures</h2>
-      <p className="mt-1 text-xs text-slate-400">
-        Bank holidays or other days the garage is shut, on top of the weekly hours above.
-      </p>
+      <SectionHeading
+        title="One-off closures"
+        info="Bank holidays or other days you're shut, on top of the weekly opening hours."
+      />
 
-      <ul className="mt-3 space-y-1.5">
+      <ul className="mt-3 divide-y divide-slate-100 rounded-lg bg-white shadow-card">
         {exceptions.length === 0 && (
-          <li className="text-sm text-slate-400">No closures added.</li>
+          <li className="px-4 py-2.5 text-sm text-slate-600">No closures added.</li>
         )}
         {exceptions.map((exc) => (
           <li
             key={exc.id}
-            className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm"
+            className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
           >
             <span>
               {formatLongDate(exc.date)}
@@ -335,7 +390,7 @@ function ExceptionsSection({
                   showToast(ownerError(err))
                 }
               }}
-              className="text-xs font-medium text-slate-500 hover:text-red-600"
+              className="inline-flex min-h-11 items-center text-xs font-medium text-slate-700 hover:text-red-700 sm:min-h-0"
             >
               Remove
             </button>

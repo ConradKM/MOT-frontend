@@ -14,6 +14,13 @@ import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import type { AutomationSettings, MessageTemplate } from '../../api/communications'
 import { PhoneMenuPanel } from './PhoneMenuPanel'
+import { InfoTip } from '../../components/settings/InfoTip'
+import { SettingsTabs, useTabParam } from '../../components/settings/SettingsTabs'
+import {
+  SectionHeading,
+  SettingsCard,
+  SettingsPageHeader,
+} from '../../components/settings/SettingsUI'
 
 const TEMPLATE_LABELS: Record<string, string> = {
   booking_acknowledgement: 'Booking request received',
@@ -35,18 +42,18 @@ interface ToggleRowProps {
 
 function ToggleRow({ id, label, description, checked, onChange }: ToggleRowProps) {
   return (
-    <div className="flex items-start gap-3 rounded-md border border-slate-200 px-3 py-3">
+    <div className="flex items-center gap-3 px-4 py-3">
       <input
         id={id}
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 rounded border-slate-300"
+        className="h-4 w-4 shrink-0 rounded border-slate-300"
       />
-      <label htmlFor={id} className="flex-1">
-        <p className="text-sm font-medium text-slate-700">{label}</p>
-        <p className="text-xs text-slate-500">{description}</p>
+      <label htmlFor={id} className="text-sm font-medium text-slate-900">
+        {label}
       </label>
+      <InfoTip label={label}>{description}</InfoTip>
     </div>
   )
 }
@@ -77,43 +84,44 @@ function AutomationTogglesForm({ settings }: { settings: AutomationSettings }) {
   }
 
   return (
-    <form className="space-y-3" onSubmit={handleSubmit}>
+    <form className="space-y-4" onSubmit={handleSubmit}>
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <ToggleRow
-        id="conversation-automation"
-        label="Automated WhatsApp assistant"
-        description="Let the assistant answer bookings, availability, prices and simple questions automatically. Off by default - customers only get automated replies once you turn this on."
-        checked={form.conversation_automation_enabled}
-        onChange={(v) => setForm((f) => ({ ...f, conversation_automation_enabled: v }))}
-      />
-      <ToggleRow
-        id="booking-ack"
-        label="Booking request received"
-        description="Sends an acknowledgement the moment a customer submits a booking request."
-        checked={form.booking_ack_enabled}
-        onChange={(v) => setForm((f) => ({ ...f, booking_ack_enabled: v }))}
-      />
-      <ToggleRow
-        id="booking-confirmation"
-        label="Booking confirmed / declined / cancelled / rescheduled"
-        description="Sends a message whenever a booking request is approved or rejected, or an appointment is cancelled or rescheduled."
-        checked={form.booking_confirmation_enabled}
-        onChange={(v) => setForm((f) => ({ ...f, booking_confirmation_enabled: v }))}
-      />
-      <ToggleRow
-        id="missed-call-ack"
-        label="Missed call follow-up"
-        description="Sends a WhatsApp message when a call to your business goes unanswered."
-        checked={form.missed_call_ack_enabled}
-        onChange={(v) => setForm((f) => ({ ...f, missed_call_ack_enabled: v }))}
-      />
-      <p className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
-        Looking for appointment reminders? They have their own{' '}
-        <Link to={`/${garageId}/settings/reminders`} className="font-medium text-slate-700 underline">
+      <div className="divide-y divide-slate-100 rounded-lg bg-white shadow-card">
+        <ToggleRow
+          id="conversation-automation"
+          label="Automated WhatsApp assistant"
+          description="Let the assistant answer bookings, availability, prices and simple questions automatically. Off by default - customers only get automated replies once you turn this on."
+          checked={form.conversation_automation_enabled}
+          onChange={(v) => setForm((f) => ({ ...f, conversation_automation_enabled: v }))}
+        />
+        <ToggleRow
+          id="booking-ack"
+          label="Booking request received"
+          description="Sends an acknowledgement the moment a customer submits a booking request."
+          checked={form.booking_ack_enabled}
+          onChange={(v) => setForm((f) => ({ ...f, booking_ack_enabled: v }))}
+        />
+        <ToggleRow
+          id="booking-confirmation"
+          label="Booking confirmed / declined / cancelled / rescheduled"
+          description="Sends a message whenever a booking request is approved or rejected, or an appointment is cancelled or rescheduled."
+          checked={form.booking_confirmation_enabled}
+          onChange={(v) => setForm((f) => ({ ...f, booking_confirmation_enabled: v }))}
+        />
+        <ToggleRow
+          id="missed-call-ack"
+          label="Missed call follow-up"
+          description="Sends a WhatsApp message when a call to your business goes unanswered."
+          checked={form.missed_call_ack_enabled}
+          onChange={(v) => setForm((f) => ({ ...f, missed_call_ack_enabled: v }))}
+        />
+      </div>
+      <p className="text-sm text-slate-700">
+        Appointment reminders live on their own page:{' '}
+        <Link to={`/${garageId}/settings/reminders`} className="font-medium underline">
           Appointment Reminders
-        </Link>{' '}
-        page, with support for multiple timings and channels.
+        </Link>
       </p>
 
       <button
@@ -179,11 +187,11 @@ function TemplateEditor({ template }: { template: MessageTemplate }) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-200 p-4">
+    <SettingsCard>
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-slate-900">
+        <label htmlFor={`template-${template.key}`} className="text-base font-semibold text-slate-900">
           {TEMPLATE_LABELS[template.key] ?? template.key}
-        </p>
+        </label>
         {template.is_custom && (
           <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
             Customised
@@ -194,20 +202,15 @@ function TemplateEditor({ template }: { template: MessageTemplate }) {
       {error && <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
       <textarea
+        id={`template-${template.key}`}
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={3}
         className="mt-3 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
       />
-      <p className="mt-1 text-xs text-slate-400">
-        You can use {'{{business_name}}'}, {'{{customer_first_name}}'},{' '}
-        {'{{appointment_type}}'}, {'{{appointment_date}}'} and {'{{appointment_time}}'}. Anything
-        else is left as plain text.
-      </p>
-
       {previewText && (
-        <div className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          <p className="text-xs font-medium uppercase text-slate-400">Preview</p>
+        <div className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700" role="status">
+          <p className="text-xs font-medium uppercase text-slate-600">Preview</p>
           {previewText}
         </div>
       )}
@@ -240,14 +243,27 @@ function TemplateEditor({ template }: { template: MessageTemplate }) {
           </button>
         )}
       </div>
-    </div>
+    </SettingsCard>
   )
 }
+
+const TABS = [
+  { key: 'automation', label: 'Automated messages' },
+  { key: 'phone-menu', label: 'Phone menu' },
+  { key: 'templates', label: 'Message templates' },
+] as const
+
+type TabKey = (typeof TABS)[number]['key']
+const TAB_KEYS = TABS.map((t) => t.key)
 
 export function CommunicationsAutomationSettings() {
   const { data: settings, isLoading: settingsLoading } = useAutomationSettings()
   const { data: templatesData, isLoading: templatesLoading } = useMessageTemplates()
   const { data: garage } = useGarage()
+
+  // `#phone-menu` was the Phone menu section's anchor before the tabs; it
+  // still opens that tab.
+  const [tab, setTab] = useTabParam<TabKey>(TAB_KEYS, { 'phone-menu': 'phone-menu' })
 
   if (settingsLoading || templatesLoading || !settings) {
     return (
@@ -257,37 +273,54 @@ export function CommunicationsAutomationSettings() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Communications automation</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Choose which automated messages your business sends, and customise their wording. This
-        never touches your phone/WhatsApp connection details, which stay with the CoMaz OS
-        team.
-      </p>
+      <SettingsPageHeader
+        title="Communications automation"
+        description={
+          <>
+            Choose which automated messages your business sends, and customise their wording.
+            This never touches your phone/WhatsApp connection details, which stay with the CoMaz
+            OS team.
+          </>
+        }
+      />
 
       <div className="mt-6">
-        <AutomationTogglesForm settings={settings} />
-      </div>
-
-      <h2 id="phone-menu" className="mt-10 text-lg font-semibold text-slate-900">
-        Phone menu
-      </h2>
-      <p className="mt-1 text-sm text-slate-500">
-        What callers hear first, and where each keypad option takes them - for example 1 for the
-        booking assistant, 2 to speak to your team.
-      </p>
-      <div className="mt-4">
-        <PhoneMenuPanel businessName={garage?.name} />
-      </div>
-
-      <h2 className="mt-10 font-display text-lg font-semibold tracking-tight text-slate-900">Message templates</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        The exact wording sent for each automated message. Leave any of these as they are to
-        use CoMaz OS's default wording.
-      </p>
-      <div className="mt-4 space-y-4">
-        {(templatesData?.items ?? []).map((template) => (
-          <TemplateEditor key={template.key} template={template} />
-        ))}
+        <SettingsTabs tabs={TABS} active={tab} onChange={setTab} label="Communications automation">
+          {tab === 'automation' && <AutomationTogglesForm settings={settings} />}
+          {tab === 'phone-menu' && (
+            <>
+              <SectionHeading
+                id="phone-menu"
+                title="Phone menu"
+                info="What callers hear first, and where each keypad option takes them - for example 1 for the booking assistant, 2 to speak to your team."
+              />
+              <SettingsCard className="mt-3">
+                <PhoneMenuPanel businessName={garage?.name} />
+              </SettingsCard>
+            </>
+          )}
+          {tab === 'templates' && (
+            <>
+              <SectionHeading
+                title="Message templates"
+                info={
+                  <>
+                    The exact wording sent for each automated message. Leave any as they are to
+                    use CoMaz OS's default wording. You can use {'{{business_name}}'},{' '}
+                    {'{{customer_first_name}}'}, {'{{appointment_type}}'},{' '}
+                    {'{{appointment_date}}'} and {'{{appointment_time}}'}; anything else is left
+                    as plain text.
+                  </>
+                }
+              />
+              <div className="mt-3 space-y-4">
+                {(templatesData?.items ?? []).map((template) => (
+                  <TemplateEditor key={template.key} template={template} />
+                ))}
+              </div>
+            </>
+          )}
+        </SettingsTabs>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { server } from '../../test/msw/server'
@@ -37,19 +37,25 @@ function activeProvider(provider: string) {
   )
 }
 
-async function openSquare(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('radio', { name: /Square/ }))
-}
+/** Both providers are always on screen, side by side. */
+const card = (provider: 'stripe' | 'square') => screen.getByTestId(`payments-card-${provider}`)
+const findCard = (provider: 'stripe' | 'square') => screen.findByTestId(`payments-card-${provider}`)
 
 afterEach(() => vi.restoreAllMocks())
 
 describe('PaymentsSettings', () => {
-  it('keeps the Stripe card as before, with Stripe active by default', async () => {
+  it('shows Stripe and Square side by side, with Stripe active by default', async () => {
     renderSettings()
     expect(await screen.findByText('Stripe setup is incomplete')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Connect Stripe' })).toBeInTheDocument()
-    expect(await screen.findByText('Stripe takes your online deposits.')).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /Stripe/ })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('heading', { name: 'Stripe' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Square' })).toBeInTheDocument()
+    expect(within(card('stripe')).getByRole('button', { name: 'Connect Stripe' })).toBeInTheDocument()
+    expect(
+      await within(card('stripe')).findByText('Stripe takes your online deposits.'),
+    ).toBeInTheDocument()
+    expect(
+      within(card('square')).getByRole('button', { name: 'Use Square for online deposits' }),
+    ).toBeInTheDocument()
   })
 
   it('shows Not connected and starts Square OAuth by redirecting to the returned URL', async () => {
@@ -62,9 +68,8 @@ describe('PaymentsSettings', () => {
     )
     const user = userEvent.setup()
     renderSettings()
-    await openSquare(user)
 
-    expect(await screen.findByText('Not connected')).toBeInTheDocument()
+    expect(await within(await findCard('square')).findByText('Not connected')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Connect Square' }))
     await waitFor(() =>
       expect(assign).toHaveBeenCalledWith('https://connect.squareupsandbox.com/oauth2/authorize?x=1'),
@@ -81,6 +86,7 @@ describe('PaymentsSettings', () => {
     expect(screen.getByText('Main garage')).toBeInTheDocument()
     expect(screen.getByText('Sandbox (test payments only)')).toBeInTheDocument()
     expect(screen.getByText('Square takes your online deposits.')).toBeInTheDocument()
+    expect(within(card('square')).getByText('Active')).toBeInTheDocument()
     await expectNoA11yViolations(container)
   })
 
@@ -96,7 +102,7 @@ describe('PaymentsSettings', () => {
     // Lands on the Square card, shows the informational notice, but the
     // state itself is the API's ("Not connected"), not "connected".
     expect(await screen.findByText(/Square connection was cancelled/)).toBeInTheDocument()
-    expect(await screen.findByText('Not connected')).toBeInTheDocument()
+    expect(await within(card('square')).findByText('Not connected')).toBeInTheDocument()
     expect(calls).toBeGreaterThan(0)
   })
 
@@ -122,7 +128,6 @@ describe('PaymentsSettings', () => {
     )
     const user = userEvent.setup()
     renderSettings()
-    await openSquare(user)
 
     expect(await screen.findByText('Choose a location to finish setup')).toBeInTheDocument()
     const select = screen.getByLabelText('Location that takes deposits')
@@ -138,10 +143,8 @@ describe('PaymentsSettings', () => {
     ['ERROR', /can't reach your Square account/],
   ] as const)('shows Needs attention with Reconnect for %s', async (status, text) => {
     squareStatus(makeSquareStatus({ status, merchant_id: 'MLMERCHANT1' }))
-    const user = userEvent.setup()
     renderSettings()
-    await openSquare(user)
-    expect(await screen.findByText('Needs attention')).toBeInTheDocument()
+    expect(await within(await findCard('square')).findByText('Needs attention')).toBeInTheDocument()
     expect(screen.getByText(text)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reconnect Square' })).toBeInTheDocument()
   })
@@ -160,10 +163,9 @@ describe('PaymentsSettings', () => {
     )
     const user = userEvent.setup()
     renderSettings()
-    await openSquare(user)
     await user.click(await screen.findByRole('button', { name: 'Disconnect' }))
     expect(await screen.findByText('Square disconnected.')).toBeInTheDocument()
-    expect(await screen.findByText('Not connected')).toBeInTheDocument()
+    expect(await within(card('square')).findByText('Not connected')).toBeInTheDocument()
   })
 
   it('surfaces the 409 when a payment is in progress and the owner tries to switch', async () => {
@@ -178,7 +180,6 @@ describe('PaymentsSettings', () => {
     )
     const user = userEvent.setup()
     renderSettings()
-    await openSquare(user)
     await user.click(await screen.findByRole('button', { name: 'Use Square for online deposits' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       "A customer is paying a deposit right now, so the provider can't be changed",
@@ -201,7 +202,6 @@ describe('PaymentsSettings', () => {
     )
     const user = userEvent.setup()
     renderSettings()
-    await openSquare(user)
     await user.click(await screen.findByRole('button', { name: 'Use Square for online deposits' }))
     await waitFor(() => expect(sent).toEqual({ provider: 'square' }))
     expect(await screen.findByText('Square takes your online deposits.')).toBeInTheDocument()
@@ -209,9 +209,7 @@ describe('PaymentsSettings', () => {
 
   it('treats a 403 as owner-only', async () => {
     squareStatus({ code: 403, status: 'Forbidden', message: 'Owner role required.' }, 403)
-    const user = userEvent.setup()
     renderSettings()
-    await openSquare(user)
     expect(
       await screen.findByText('Only the business owner can manage payment settings.'),
     ).toBeInTheDocument()
@@ -219,10 +217,46 @@ describe('PaymentsSettings', () => {
 
   it('explains when CoMaz has not configured Square yet', async () => {
     squareStatus(makeSquareStatus({ deployment_configured: false }))
-    const user = userEvent.setup()
     renderSettings()
-    await openSquare(user)
     expect(await screen.findByText(/Square isn't available on CoMaz yet/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Connect Square' })).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['not connected', makeSquareStatus({ status: 'NOT_CONNECTED' }), 'stripe', 'Not connected'],
+    ['connected but not active', makeConnectedSquareStatus(), 'stripe', 'Connected'],
+    ['connected and active', makeConnectedSquareStatus(), 'square', 'Active'],
+    [
+      'connected without a location',
+      makeConnectedSquareStatus({ location_id: null, location_name: null, ready: false }),
+      'stripe',
+      'Needs attention',
+    ],
+    ['revoked', makeSquareStatus({ status: 'REVOKED', merchant_id: 'M1' }), 'stripe', 'Needs attention'],
+  ] as const)('badges a Square account that is %s', async (_, body, provider, badge) => {
+    activeProvider(provider)
+    squareStatus(body)
+    renderSettings()
+    expect(await within(await findCard('square')).findByText(badge)).toBeInTheDocument()
+  })
+
+  it.each([
+    ['no account yet', { stripe_account_id: null, stripe_charges_enabled: false }, 'Not connected'],
+    ['setup incomplete', { stripe_account_id: 'acct_1', stripe_charges_enabled: false }, 'Needs attention'],
+    ['ready and active', { stripe_account_id: 'acct_1', stripe_charges_enabled: true }, 'Active'],
+  ] as const)('badges a Stripe account with %s', async (_, patch, badge) => {
+    server.use(
+      http.get('*/api/payments/stripe/status', () =>
+        HttpResponse.json({
+          stripe_onboarding_complete: false,
+          stripe_payouts_enabled: false,
+          apple_pay_status: null,
+          apple_pay_status_details: null,
+          ...patch,
+        }),
+      ),
+    )
+    renderSettings()
+    expect(await within(await findCard('stripe')).findByText(badge)).toBeInTheDocument()
   })
 })

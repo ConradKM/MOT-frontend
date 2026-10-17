@@ -1,4 +1,10 @@
 import { useState } from 'react'
+import { SettingsTabs, useTabParam } from '../../components/settings/SettingsTabs'
+import {
+  SectionHeading,
+  SettingsCard,
+  SettingsPageHeader,
+} from '../../components/settings/SettingsUI'
 import { useToast } from '../../components/Toast'
 import { errorMessage, isApiError } from '../../lib/errors'
 import {
@@ -12,26 +18,25 @@ import {
 } from '../../api/queries'
 import { GroupsPanel } from './bookingWorkflow/GroupsPanel'
 import { WorkflowPanel } from './bookingWorkflow/WorkflowPanel'
-import { ShareLinksPanel } from './bookingWorkflow/ShareLinksPanel'
 
 /**
  * Settings › Booking Workflow.
  *
- * Three things a business controls about how customers book, kept on one
- * page because they are the same decision seen from three angles: what is on
- * offer and how it looks, what the customer is asked, and where the link
- * points.
+ * Two things a business controls about how customers book, kept on one page
+ * because they are the same decision seen from two angles: what is on offer
+ * and how it looks, and what the customer is asked. (Where the links point
+ * lives on the Share your business page.)
  */
 const TABS = [
   { key: 'groups', label: 'Services & groups' },
   { key: 'workflow', label: 'What you ask' },
-  { key: 'links', label: 'Share links' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
+const TAB_KEYS = TABS.map((t) => t.key)
 
 export function BookingWorkflowSettings() {
-  const [tab, setTab] = useState<TabKey>('groups')
+  const [tab, setTab] = useTabParam<TabKey>(TAB_KEYS)
 
   const groups = useAppointmentTypeGroups()
   const services = useAppointmentTypes()
@@ -45,10 +50,10 @@ export function BookingWorkflowSettings() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="font-display text-xl font-semibold tracking-tight text-slate-900">Booking Workflow</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        What customers can book, how it's presented, and what you ask them.
-      </p>
+      <SettingsPageHeader
+        title="Booking Workflow"
+        description="What customers can book, how it's presented, and what you ask them."
+      />
 
       {forbidden && (
         <p className="mt-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -56,59 +61,51 @@ export function BookingWorkflowSettings() {
         </p>
       )}
 
-      <div className="mt-6 flex gap-1 border-b border-slate-200">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            aria-current={tab === t.key ? 'page' : undefined}
-            className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-              tab === t.key
-                ? 'border-slate-900 text-slate-900'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
+      <SettingsCard as="section" aria-labelledby="booking-approval-heading" className="mt-6">
+        <SectionHeading
+          as="h3"
+          id="booking-approval-heading"
+          title="Booking request approval"
+          info="When enabled, a request is accepted only if its requested slot still has capacity and an active employee can be assigned without a clash. Otherwise it stays pending for staff review. Existing bookings and deposit/payment holds are not changed."
+        />
+        <div className="mt-3 flex items-center gap-3">
+          <input
+            id="auto-accept-booking-requests"
+            type="checkbox"
+            checked={garage.data?.auto_accept_booking_requests ?? false}
+            disabled={garage.isLoading || autoAccept.isPending}
+            onChange={(event) => autoAccept.mutate(event.target.checked)}
+            className="h-4 w-4"
+          />
+          <label
+            htmlFor="auto-accept-booking-requests"
+            className="text-sm font-medium text-slate-900"
           >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-6">
-        <section className="mb-6 rounded-lg bg-white shadow-card p-4">
-          <h2 className="text-sm font-semibold text-slate-900">Booking request approval</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            When enabled, a request is accepted only if its requested slot still has capacity and an active employee can be assigned without a clash. Otherwise it stays pending for staff review.
-          </p>
-          <label className="mt-3 flex items-start gap-3 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={garage.data?.auto_accept_booking_requests ?? false}
-              disabled={garage.isLoading || autoAccept.isPending}
-              onChange={(event) => autoAccept.mutate(event.target.checked)}
-              className="mt-0.5 h-4 w-4"
-            />
-            <span><strong>Auto-accept available booking requests</strong><br />Existing bookings and deposit/payment holds are not changed.</span>
+            Auto-accept available booking requests
           </label>
-          {autoAccept.isError && <p className="mt-2 text-sm text-red-600">{errorMessage(autoAccept.error)}</p>}
-        </section>
-        {tab === 'groups' && (
-          <GroupsPanel
-            groups={groups.data ?? []}
-            services={services.data ?? []}
-            loading={groups.isLoading || services.isLoading}
-          />
+        </div>
+        {autoAccept.isError && (
+          <p className="mt-2 text-sm text-red-600">{errorMessage(autoAccept.error)}</p>
         )}
-        {tab === 'workflow' && (
-          <WorkflowPanel
-            sections={sections.data ?? []}
-            services={services.data ?? []}
-            loading={sections.isLoading}
-          />
-        )}
-        {tab === 'links' && (
-          <ShareLinksPanel groups={groups.data ?? []} services={services.data ?? []} />
-        )}
+      </SettingsCard>
+
+      <div className="mt-8">
+        <SettingsTabs tabs={TABS} active={tab} onChange={setTab} label="Booking workflow">
+          {tab === 'groups' && (
+            <GroupsPanel
+              groups={groups.data ?? []}
+              services={services.data ?? []}
+              loading={groups.isLoading || services.isLoading}
+            />
+          )}
+          {tab === 'workflow' && (
+            <WorkflowPanel
+              sections={sections.data ?? []}
+              services={services.data ?? []}
+              loading={sections.isLoading}
+            />
+          )}
+        </SettingsTabs>
       </div>
     </div>
   )
@@ -140,12 +137,12 @@ export function PresetPicker() {
   }
 
   return (
-    <div className="rounded-md border border-dashed border-slate-300 p-4">
-      <p className="text-sm font-medium text-slate-900">Start from a template</p>
-      <p className="mt-1 text-sm text-slate-500">
-        You don't ask customers anything beyond their name and contact details yet. Pick a starting
-        point if one fits — everything it adds is yours to edit or delete.
-      </p>
+    <SettingsCard>
+      <SectionHeading
+        as="h3"
+        title="Start from a template"
+        info="You don't ask customers anything beyond their name and contact details yet. Pick a starting point if one fits — everything it adds is yours to edit or delete."
+      />
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <label className="sr-only" htmlFor="workflow-preset">
           Template
@@ -172,7 +169,7 @@ export function PresetPicker() {
           {applyPreset.isPending ? 'Adding…' : 'Use this template'}
         </button>
       </div>
-    </div>
+    </SettingsCard>
   )
 }
 

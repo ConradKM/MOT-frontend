@@ -74,6 +74,7 @@ export const BOOKING_THEME_PRESETS: { name: string; background: string; text: st
   { name: 'Cream', background: '#fdf6e3', text: '#3b2f2f' },
   { name: 'Mint', background: '#ecfdf5', text: '#064e3b' },
   { name: 'Lemon', background: '#fefce8', text: '#1e3a8a' },
+  { name: 'Black & white', background: '#000000', text: '#ffffff' },
 ]
 
 export interface BookingColors {

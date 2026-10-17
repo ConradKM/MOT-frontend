@@ -62,7 +62,7 @@ describe('BookingAppearanceSettings', () => {
     renderSettings()
     expect(await screen.findByLabelText('Page background')).toHaveValue('#f4f4f4')
     expect(screen.getByLabelText('Page text')).toHaveValue('#242424')
-    expect(screen.getByText(/cards and forms\s+stay white/)).toBeInTheDocument()
+    expect(screen.getByText(/cards and forms\s+stay white/)).toBeVisible()
     expect(screen.getByText('Your pages use the default colours.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Preview real page/ })).toHaveAttribute(
       'href',
@@ -77,13 +77,40 @@ describe('BookingAppearanceSettings', () => {
     expect(preview().style.getPropertyValue('--page-bg')).toBe('#0b1f3a')
   })
 
-  it('updates the contrast readout and the preview live', async () => {
+  it('rates readability in plain words, with a live sample and the ratio in a tip', async () => {
     renderSettings()
     await setHex('Page background', '#0b1f3a')
     await setHex('Page text', '#f5f7fa')
 
-    expect(screen.getByTestId('contrast-readout')).toHaveTextContent('Contrast 15.3:1, passes')
+    const readout = screen.getByTestId('contrast-readout')
+    expect(readout).toHaveTextContent('Easy to read')
+    expect(readout).not.toHaveTextContent(/:1/)
+    expect(readout).toHaveAttribute('aria-live', 'polite')
+    expect(screen.getByTestId('readability-sample')).toHaveStyle({
+      backgroundColor: '#0b1f3a',
+      color: '#f5f7fa',
+    })
+    expect(screen.getByRole('button', { name: 'About readability' })).toHaveAccessibleDescription(
+      /Contrast ratio 15\.3:1/,
+    )
     expect(preview().style.getPropertyValue('--page-fg')).toBe('#f5f7fa')
+  })
+
+  it('calls a pair between the AA bar and 7:1 "Readable"', async () => {
+    renderSettings()
+    await setHex('Page background', '#ffffff')
+    await setHex('Page text', '#666666')
+    expect(screen.getByTestId('contrast-readout')).toHaveTextContent('Readable')
+    expect(screen.getByRole('button', { name: 'Save colours' })).toBeEnabled()
+  })
+
+  it('suggests the fix in the right direction for a dark page', async () => {
+    renderSettings()
+    await setHex('Page background', '#333333')
+    await setHex('Page text', '#555555')
+    expect(screen.getByTestId('contrast-readout')).toHaveTextContent(
+      'Hard to read: try a darker background or lighter text.',
+    )
   })
 
   it('keeps the colour picker in sync with the hex box', async () => {
@@ -98,11 +125,11 @@ describe('BookingAppearanceSettings', () => {
     await setHex('Page text', '#777777')
 
     expect(screen.getByTestId('contrast-readout')).toHaveTextContent(
-      'Contrast 4.4:1, too low: needs at least 4.5:1',
+      'Hard to read: try a lighter background or darker text.',
     )
     const save = screen.getByRole('button', { name: 'Save colours' })
     expect(save).toBeDisabled()
-    expect(save).toHaveAccessibleDescription(/contrast is at least 4.5:1/)
+    expect(save).toHaveAccessibleDescription(/until the text is easy enough to read/)
     // A failing pair previews as the real page would render it: the default.
     expect(preview()).toHaveAttribute('data-booking-theme', 'default')
   })
@@ -179,5 +206,16 @@ describe('BookingAppearanceSettings', () => {
     const { container } = renderSettings()
     await screen.findByLabelText('Page background')
     await expectNoA11yViolations(container)
+  })
+})
+
+describe('BookingAppearanceSettings — Black & white preset', () => {
+  it('applies a black page with white text', async () => {
+    const user = userEvent.setup()
+    renderSettings()
+    await user.click(await screen.findByRole('button', { name: 'Black & white' }))
+    expect(screen.getByLabelText('Page background')).toHaveValue('#000000')
+    expect(screen.getByLabelText('Page text')).toHaveValue('#ffffff')
+    expect(screen.getByTestId('contrast-readout')).toHaveTextContent('Easy to read')
   })
 })

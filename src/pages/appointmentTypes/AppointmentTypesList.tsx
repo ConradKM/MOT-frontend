@@ -12,6 +12,14 @@ import type { AppointmentTypeInput } from '../../api/appointmentTypes'
 import { Disclosure } from '../../components/Disclosure'
 import { BulkAddServicesDialog } from '../../components/import/BulkImportDialogs'
 import { useIsOwner } from '../../hooks/useIsOwner'
+import {
+  ExpandableRow,
+  ExpandToggle,
+  SettingsTable,
+  Td,
+  Th,
+} from '../../components/settings/ExpandableRow'
+import { SettingsPageHeader } from '../../components/settings/SettingsUI'
 import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
@@ -266,7 +274,7 @@ function AddAppointmentTypeForm() {
   )
 }
 
-function EditRow({ type, onDone }: { type: AppointmentType; onDone: () => void }) {
+function EditTypePanel({ type, onDone }: { type: AppointmentType; onDone: () => void }) {
   const update = useUpdateAppointmentType()
   const { showToast } = useToast()
   const [values, setValues] = useState<FormValues>({
@@ -301,55 +309,80 @@ function EditRow({ type, onDone }: { type: AppointmentType; onDone: () => void }
   }
 
   return (
-    <tr className="border-b border-slate-100 bg-slate-50 last:border-0">
-      <td colSpan={5} className="px-4 py-4">
-        <div className="space-y-3">
-          {formError && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
-          )}
-          <TypeFields
-            values={values}
-            onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
-            errors={errors}
-          />
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={save}
-              disabled={update.isPending}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-            >
-              {update.isPending ? 'Saving…' : 'Save'}
-            </button>
-            <button
-              type="button"
-              onClick={onDone}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-white"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </td>
-    </tr>
+    <div className="max-w-2xl space-y-3">
+      {formError && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
+      )}
+      <TypeFields
+        values={values}
+        onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+        errors={errors}
+      />
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={save}
+          disabled={update.isPending}
+          className="min-h-11 rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 sm:min-h-0"
+        >
+          {update.isPending ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="min-h-11 rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:min-h-0"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const ROW_LINK =
+  'inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-slate-900 hover:underline sm:min-h-0 sm:py-1'
+
+/** One checklist link per service: owners build or edit it (the backend's
+ * checklist write routes are owner-only); everyone else can view one that
+ * exists. Nothing while the template loads, so the label never flips. */
+function ChecklistLink({ type }: { type: AppointmentType }) {
+  const garageId = useGarageId()
+  const isOwner = useIsOwner()
+  const { data: template, isLoading } = useChecklistTemplate(type.id)
+  if (isLoading) return null
+  const base = `/${garageId}/appointment-types/${type.id}/checklist`
+  if (isOwner) {
+    return (
+      <Link to={`${base}/build`} className={ROW_LINK}>
+        {template ? 'Edit checklist' : 'Build checklist'}
+      </Link>
+    )
+  }
+  if (!template) return null
+  return (
+    <Link to={base} className={ROW_LINK}>
+      View checklist
+    </Link>
   )
 }
 
 function AppointmentTypeRow({
   type,
   groupName,
-  onEdit,
+  expanded,
+  onToggle,
+  onClose,
 }: {
   type: AppointmentType
   /** Resolved by the parent so every row doesn't refetch the group list. */
   groupName: string | null
-  onEdit: () => void
+  expanded: boolean
+  onToggle: () => void
+  onClose: () => void
 }) {
   const garageId = useGarageId()
-  const { data: template, isLoading } = useChecklistTemplate(type.id)
   const remove = useDeleteAppointmentType()
   const { showToast } = useToast()
-  const hasTemplate = !!template
 
   const handleDelete = async () => {
     if (!window.confirm(`Delete "${type.name}"? This can't be undone.`)) return
@@ -368,67 +401,61 @@ function AppointmentTypeRow({
   }
 
   return (
-    <tr className="border-b border-slate-100 last:border-0">
-      <td className="px-4 py-2">
-        <p className="font-medium text-slate-900">{type.name}</p>
-        {type.description && <p className="text-xs text-slate-500">{type.description}</p>}
-      </td>
-      <td className="px-4 py-2 text-slate-600">
-        {groupName ?? <span className="text-slate-400">Ungrouped</span>}
-      </td>
-      <td className="px-4 py-2 text-slate-600">
-        {type.base_price != null ? `£${type.base_price}` : '—'}
-        {type.default_duration_minutes != null ? ` · ${type.default_duration_minutes}m` : ''}
-        {type.deposit_required && (
-          <span className="ml-2 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">
-            Deposit: {type.deposit_type === 'PERCENTAGE' ? `${type.deposit_value}%` : `£${type.deposit_value}`}
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-2">
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeStatusClasses[type.status]}`}
-        >
-          {type.status}
-        </span>
-      </td>
-      <td className="px-4 py-2 text-right">
-        <div className="flex flex-wrap justify-end gap-3 text-sm font-medium">
-          {!isLoading && hasTemplate && (
-            <Link
-              to={`/${garageId}/appointment-types/${type.id}/checklist`}
-              className="text-slate-600 hover:underline"
+    <ExpandableRow
+      colSpan={5}
+      expanded={expanded}
+      onClose={onClose}
+      label={`Edit ${type.name}`}
+      summary={(toggle) => (
+        <>
+          <Td>
+            <p className="font-medium text-slate-900">{type.name}</p>
+            {type.description && <p className="text-xs text-slate-600">{type.description}</p>}
+          </Td>
+          <Td className="text-slate-700">
+            {groupName ?? <span className="text-slate-500">Ungrouped</span>}
+          </Td>
+          <Td className="text-slate-700">
+            {type.base_price != null ? `£${type.base_price}` : '—'}
+            {type.default_duration_minutes != null ? ` · ${type.default_duration_minutes}m` : ''}
+            {type.deposit_required && (
+              <span className="mt-1 inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700 sm:ml-2">
+                Deposit:{' '}
+                {type.deposit_type === 'PERCENTAGE'
+                  ? `${type.deposit_value}%`
+                  : `£${type.deposit_value}`}
+              </span>
+            )}
+          </Td>
+          <Td>
+            <span
+              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${typeStatusClasses[type.status]}`}
             >
-              View checklist
-            </Link>
-          )}
-          {!isLoading && (
-            <Link
-              to={`/${garageId}/appointment-types/${type.id}/checklist/build`}
-              className="text-slate-900 hover:underline"
-            >
-              {hasTemplate ? 'Edit checklist' : 'Build checklist'}
-            </Link>
-          )}
-          <Link
-            to={`/${garageId}/appointment-types/${type.id}/add-ons`}
-            className="text-slate-900 hover:underline"
-          >
-            Add-ons
-          </Link>
-          <button onClick={onEdit} className="text-slate-600 hover:underline">
-            Edit
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={remove.isPending}
-            className="text-red-600 hover:underline disabled:opacity-50"
-          >
-            Delete
-          </button>
-        </div>
-      </td>
-    </tr>
+              {type.status}
+            </span>
+          </Td>
+          <Td className="text-right">
+            <div className="flex flex-wrap items-center justify-end gap-x-1">
+              <ChecklistLink type={type} />
+              <Link to={`/${garageId}/appointment-types/${type.id}/add-ons`} className={ROW_LINK}>
+                Add-ons
+              </Link>
+              <ExpandToggle {...toggle} onClick={onToggle} />
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={remove.isPending}
+                className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-red-700 hover:underline disabled:opacity-50 sm:min-h-0 sm:py-1"
+              >
+                Delete
+              </button>
+            </div>
+          </Td>
+        </>
+      )}
+    >
+      <EditTypePanel type={type} onDone={onClose} />
+    </ExpandableRow>
   )
 }
 
@@ -449,61 +476,67 @@ export function AppointmentTypesList() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Appointment Types</h1>
-        {isOwner ? (
-          <button
-            type="button"
-            onClick={() => setBulkOpen(true)}
-            className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Bulk add (JSON)
-          </button>
-        ) : null}
-      </div>
-      <p className="mt-1 text-sm text-slate-500">
-        The services your business offers. Each type can have one checklist that staff work
-        through, and appears in the public booking form while it's <strong>ACTIVE</strong>.
-      </p>
-      <p className="mt-1 text-sm text-slate-500">
-        Grouping, pictures and the questions customers are asked live under{' '}
-        <Link to={`/${garageId}/settings/booking-workflow`} className="underline">
-          Booking Workflow
-        </Link>
-        .
-      </p>
+      <SettingsPageHeader
+        title="Appointment Types"
+        description={
+          <>
+            The services your business offers. Each type can have one checklist that staff work
+            through, and appears in the public booking form while it's <strong>ACTIVE</strong>.
+            Grouping, pictures and the questions customers are asked live under{' '}
+            <Link to={`/${garageId}/settings/booking-workflow`} className="underline">
+              Booking Workflow
+            </Link>
+            .
+          </>
+        }
+        actions={
+          isOwner ? (
+            <button
+              type="button"
+              onClick={() => setBulkOpen(true)}
+              className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Bulk add (JSON)
+            </button>
+          ) : null
+        }
+      />
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow-card">
+      <div className="mt-6">
         {isLoading ? (
-          <p className="px-4 py-3 text-sm text-slate-500">Loading…</p>
+          <p className="rounded-lg bg-white px-4 py-3 text-sm text-slate-600 shadow-card">
+            Loading…
+          </p>
         ) : types && types.length > 0 ? (
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+          <SettingsTable
+            label="Appointment types"
+            minWidth="min-w-[48rem]"
+            columns={[undefined, 'w-28 lg:w-32', 'w-40', 'w-28', 'w-56 lg:w-72']}
+            head={
               <tr>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Group</th>
-                <th className="px-4 py-2 font-medium">Price / duration</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium" />
+                <Th>Name</Th>
+                <Th>Group</Th>
+                <Th>Price / duration</Th>
+                <Th>Status</Th>
+                <Th>
+                  <span className="sr-only">Actions</span>
+                </Th>
               </tr>
-            </thead>
-            <tbody>
-              {types.map((type) =>
-                editingId === type.id ? (
-                  <EditRow key={type.id} type={type} onDone={() => setEditingId(null)} />
-                ) : (
-                  <AppointmentTypeRow
-                    key={type.id}
-                    type={type}
-                    groupName={type.group_id ? (groupNames.get(type.group_id) ?? null) : null}
-                    onEdit={() => setEditingId(type.id)}
-                  />
-                ),
-              )}
-            </tbody>
-          </table>
+            }
+          >
+            {types.map((type) => (
+              <AppointmentTypeRow
+                key={type.id}
+                type={type}
+                groupName={type.group_id ? (groupNames.get(type.group_id) ?? null) : null}
+                expanded={editingId === type.id}
+                onToggle={() => setEditingId(editingId === type.id ? null : type.id)}
+                onClose={() => setEditingId(null)}
+              />
+            ))}
+          </SettingsTable>
         ) : (
-          <p className="px-4 py-3 text-sm text-slate-500">
+          <p className="rounded-lg bg-white px-4 py-3 text-sm text-slate-600 shadow-card">
             No appointment types yet — add one below so customers have something to book.
           </p>
         )}

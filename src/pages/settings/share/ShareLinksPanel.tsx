@@ -23,16 +23,11 @@ export function ShareLinksPanel({
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-500">
-        Put any of these behind a button on your own website. Each one opens your booking page with
-        the choice already made.
-      </p>
-
       <LinkRow label="Your booking page" description="Everything you offer." url={bookingUrl(garageId)} />
 
       {groups.length > 0 && (
         <section>
-          <h2 className="text-sm font-semibold text-slate-900">Groups</h2>
+          <h3 className="text-base font-semibold text-slate-900">Groups</h3>
           <ul className="mt-2 space-y-2">
             {groups.map((group) => (
               <li key={group.id}>
@@ -52,9 +47,9 @@ export function ShareLinksPanel({
       )}
 
       <section>
-        <h2 className="text-sm font-semibold text-slate-900">Services</h2>
+        <h3 className="text-base font-semibold text-slate-900">Services</h3>
         {services.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-slate-600">
             Add a service on the Appointment Types page and its link will appear here.
           </p>
         ) : (
@@ -100,9 +95,9 @@ function LinkRow({
   }
 
   return (
-    <div className="rounded-md border border-slate-200 p-3">
+    <div className="rounded-lg bg-white p-3 shadow-card">
       <p className="text-sm font-medium text-slate-900">{label}</p>
-      <p className="text-xs text-slate-500">{description}</p>
+      <p className="text-xs text-slate-600">{description}</p>
       <div className="mt-2 flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded bg-slate-50 px-2 py-1 text-xs text-slate-700">
           {url}
@@ -110,7 +105,8 @@ function LinkRow({
         <button
           type="button"
           onClick={copy}
-          className="shrink-0 rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          aria-label={copied ? `Copied link for ${label}` : `Copy link for ${label}`}
+          className="min-h-11 shrink-0 rounded-md border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:min-h-0"
         >
           {copied ? 'Copied' : 'Copy'}
         </button>
