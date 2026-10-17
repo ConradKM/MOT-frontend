@@ -50,7 +50,9 @@ export function SettingsTable({
   label?: string
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg bg-white shadow-card">
+    // `relative` so absolutely positioned content (an sr-only header label)
+    // is clipped by this scroller instead of widening the page.
+    <div className="relative overflow-x-auto rounded-lg bg-white shadow-card">
       <table className={`w-full table-fixed text-left text-sm ${minWidth}`} aria-label={label}>
         <colgroup>
           {columns.map((c, i) => (

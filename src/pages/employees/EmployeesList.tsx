@@ -8,6 +8,15 @@ import {
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
 import { Disclosure } from '../../components/Disclosure'
+import {
+  ExpandableRow,
+  ExpandToggle,
+  SettingsTable,
+  Td,
+  Th,
+} from '../../components/settings/ExpandableRow'
+import { InfoTip } from '../../components/settings/InfoTip'
+import { SettingsPageHeader } from '../../components/settings/SettingsUI'
 import { employeeDisplayName } from '../../lib/employees'
 import type { Employee, Role } from '../../types'
 
@@ -48,7 +57,7 @@ function RoleTagPicker({
   )
 }
 
-function EditEmployeeRow({
+function EditEmployeePanel({
   employee,
   roles,
   onDone,
@@ -59,6 +68,7 @@ function EditEmployeeRow({
 }) {
   const updateMutation = useUpdateEmployee(employee.id)
   const { showToast } = useToast()
+  const idBase = `employee-${employee.id}`
 
   const [firstName, setFirstName] = useState(employee.first_name ?? '')
   const [lastName, setLastName] = useState(employee.last_name ?? '')
@@ -87,65 +97,72 @@ function EditEmployeeRow({
   }
 
   return (
-    <tr className="border-b border-slate-100 bg-slate-50 last:border-0">
-      <td colSpan={5} className="px-4 py-4">
-        <div className="space-y-3">
-          {formError && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700">First name</label>
-              <input
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700">Last name</label>
-              <input
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Roles</label>
-            <div className="mt-1">
-              <RoleTagPicker roles={roles} selectedIds={roleIds} onToggle={toggleRole} />
-            </div>
-          </div>
-          <div className="flex gap-3 pt-1">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={updateMutation.isPending}
-              className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-            >
-              {updateMutation.isPending ? 'Saving…' : 'Save'}
-            </button>
-            <button
-              type="button"
-              onClick={onDone}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-white"
-            >
-              Cancel
-            </button>
-          </div>
+    <div className="max-w-xl space-y-3">
+      {formError && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</p>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-slate-700" htmlFor={`${idBase}-first`}>
+            First name
+          </label>
+          <input
+            id={`${idBase}-first`}
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
         </div>
-      </td>
-    </tr>
+        <div>
+          <label className="block text-sm font-medium text-slate-700" htmlFor={`${idBase}-last`}>
+            Last name
+          </label>
+          <input
+            id={`${idBase}-last`}
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700" htmlFor={`${idBase}-email`}>
+          Email
+        </label>
+        <input
+          id={`${idBase}-email`}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="mt-1 w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+        />
+      </div>
+      <div role="group" aria-labelledby={`${idBase}-roles`}>
+        <p id={`${idBase}-roles`} className="block text-sm font-medium text-slate-700">
+          Roles
+        </p>
+        <div className="mt-1">
+          <RoleTagPicker roles={roles} selectedIds={roleIds} onToggle={toggleRole} />
+        </div>
+      </div>
+      <div className="flex gap-3 pt-1">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={updateMutation.isPending}
+          className="min-h-11 rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 sm:min-h-0"
+        >
+          {updateMutation.isPending ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={onDone}
+          className="min-h-11 rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:min-h-0"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -171,7 +188,7 @@ function ActivationToggle({ employee }: { employee: Employee }) {
       type="button"
       onClick={toggle}
       disabled={update.isPending}
-      className="text-sm font-medium text-slate-600 hover:underline disabled:opacity-50"
+      className="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-slate-700 hover:underline disabled:opacity-50 sm:min-h-0 sm:py-1"
     >
       {employee.is_active ? 'Deactivate' : 'Activate'}
     </button>
@@ -325,11 +342,15 @@ function AddEmployeeForm({ roles }: { roles: Role[] }) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700">Roles</label>
-          <div className="mt-1">
+          <div className="flex items-center gap-1">
+            <p id="new-employee-roles" className="text-sm font-medium text-slate-700">
+              Roles
+            </p>
+            <InfoTip label="Roles">Defaults to "STAFF" if none are picked.</InfoTip>
+          </div>
+          <div className="mt-1" role="group" aria-labelledby="new-employee-roles">
             <RoleTagPicker roles={roles} selectedIds={roleIds} onToggle={toggleRole} />
           </div>
-          <p className="mt-1 text-xs text-slate-400">Defaults to "STAFF" if none are picked.</p>
         </div>
 
         <button
@@ -356,40 +377,45 @@ export function EmployeesList() {
 
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Employees</h1>
-      <p className="mt-1 text-sm text-slate-500">Everyone with an account at your business.</p>
+      <SettingsPageHeader title="Employees" info="Everyone with an account at your business." />
 
-      <div className="mt-6 overflow-hidden rounded-lg bg-white shadow-card">
+      <div className="mt-6">
         {isLoading ? (
-          <p className="px-4 py-3 text-sm text-slate-500">Loading…</p>
+          <p className="rounded-lg bg-white px-4 py-3 text-sm text-slate-600 shadow-card">
+            Loading…
+          </p>
         ) : employees && employees.length > 0 ? (
           <>
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-500">
+            <SettingsTable
+              label="Employees"
+              minWidth="min-w-[48rem]"
+              columns={['w-1/5', undefined, 'w-1/5', 'w-28', 'w-52']}
+              head={
                 <tr>
-                  <th className="px-4 py-2 font-medium">Name</th>
-                  <th className="px-4 py-2 font-medium">Email</th>
-                  <th className="px-4 py-2 font-medium">Roles</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium" />
+                  <Th>Name</Th>
+                  <Th>Email</Th>
+                  <Th>Roles</Th>
+                  <Th>Status</Th>
+                  <Th>
+                    <span className="sr-only">Actions</span>
+                  </Th>
                 </tr>
-              </thead>
-              <tbody>
-                {visibleEmployees.map((e) =>
-                  editingId === e.id ? (
-                    <EditEmployeeRow
-                      key={e.id}
-                      employee={e}
-                      roles={roles ?? []}
-                      onDone={() => setEditingId(null)}
-                    />
-                  ) : (
-                    <tr key={e.id} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-2">
+              }
+            >
+              {visibleEmployees.map((e) => (
+                <ExpandableRow
+                  key={e.id}
+                  colSpan={5}
+                  expanded={editingId === e.id}
+                  onClose={() => setEditingId(null)}
+                  label={`Edit ${employeeDisplayName(e)}`}
+                  summary={(toggle) => (
+                    <>
+                      <Td>
                         <p className="font-medium text-slate-900">{employeeDisplayName(e)}</p>
-                      </td>
-                      <td className="px-4 py-2 text-slate-600">{e.email}</td>
-                      <td className="px-4 py-2">
+                      </Td>
+                      <Td className="text-slate-700">{e.email}</Td>
+                      <Td>
                         {e.roles.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {e.roles.map((r) => (
@@ -402,41 +428,46 @@ export function EmployeesList() {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-slate-400">No roles</span>
+                          <span className="text-slate-500">No roles</span>
                         )}
-                      </td>
-                      <td className="px-4 py-2">
+                      </Td>
+                      <Td>
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                             e.is_active
                               ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-slate-100 text-slate-500'
+                              : 'bg-slate-100 text-slate-600'
                           }`}
                         >
                           {e.is_active ? 'Active' : 'Inactive'}
                         </span>
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          <button
-                            onClick={() => setEditingId(e.id)}
-                            className="text-sm font-medium text-slate-600 hover:underline"
-                          >
-                            Edit
-                          </button>
+                      </Td>
+                      <Td className="text-right">
+                        <div className="flex items-center justify-end gap-x-1">
+                          <ExpandToggle
+                            {...toggle}
+                            onClick={() => setEditingId(editingId === e.id ? null : e.id)}
+                          />
                           <ActivationToggle employee={e} />
                         </div>
-                      </td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
+                      </Td>
+                    </>
+                  )}
+                >
+                  <EditEmployeePanel
+                    employee={e}
+                    roles={roles ?? []}
+                    onDone={() => setEditingId(null)}
+                  />
+                </ExpandableRow>
+              ))}
+            </SettingsTable>
             {hasMore && (
-              <div className="border-t border-slate-100 px-4 py-3">
+              <div className="mt-3">
                 <button
+                  type="button"
                   onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                  className="text-sm font-medium text-slate-600 hover:underline"
+                  className="min-h-11 text-sm font-medium text-slate-700 hover:underline"
                 >
                   Show 10 more ({(employees ?? []).length - visibleCount} remaining)
                 </button>
@@ -444,7 +475,9 @@ export function EmployeesList() {
             )}
           </>
         ) : (
-          <p className="px-4 py-3 text-sm text-slate-500">No employees yet.</p>
+          <p className="rounded-lg bg-white px-4 py-3 text-sm text-slate-600 shadow-card">
+            No employees yet.
+          </p>
         )}
       </div>
 
