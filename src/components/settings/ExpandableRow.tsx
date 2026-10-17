@@ -59,7 +59,9 @@ export function SettingsTable({
             <col key={i} className={c} />
           ))}
         </colgroup>
-        <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase text-slate-600">
+        {/* A dark header row: the page itself is light grey, so a light-grey
+            header would read as page showing through the card. */}
+        <thead className="bg-slate-800 text-xs uppercase tracking-wide text-white">
           {head}
         </thead>
         <tbody>{children}</tbody>
@@ -143,7 +145,9 @@ export function ExpandableRow({
     <>
       <tr
         data-expanded={expanded || undefined}
-        className={`border-b border-slate-100 last:border-0 ${expanded ? 'bg-slate-50' : ''}`}
+        className={`border-b border-slate-100 last:border-0 ${
+          expanded ? 'bg-white shadow-[inset_4px_0_0_var(--color-slate-900)]' : ''
+        }`}
       >
         {summary({
           ref: toggleRef,
@@ -152,7 +156,7 @@ export function ExpandableRow({
         })}
       </tr>
       {expanded && (
-        <tr className="border-b border-slate-100 bg-slate-50 last:border-0">
+        <tr className="border-b border-slate-100 bg-white last:border-0">
           <td colSpan={colSpan} className="p-2 sm:p-3">
             <div
               ref={panelRef}
