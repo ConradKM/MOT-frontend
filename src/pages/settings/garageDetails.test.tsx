@@ -83,10 +83,11 @@ describe('GarageDetails', () => {
 
   it('notes that the slug and system settings are platform-managed', async () => {
     render()
-    // In the title's tip rather than a permanent footnote.
+    // Part of the page description under the title, not a separate footnote.
     expect(
-      await screen.findByRole('button', { name: 'About Business details' }),
-    ).toHaveAccessibleDescription(/managed by the platform administrator/i)
+      await screen.findByText(/managed by the platform administrator/i),
+    ).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'About Business details' })).toBeNull()
   })
 
   it('points to the Share page for the booking link, rather than repeating it', async () => {

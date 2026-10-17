@@ -39,14 +39,15 @@ export function WalkInQueueSettings() {
     <>
       <SettingsPageHeader
         title="Walk-in Queue"
-        info="How walk-in waits are estimated, and time you keep free for walk-ins. Open and close the queue itself from the Queue page."
-        actions={
-          <Link
-            to={`/${garageId}/queue`}
-            className="inline-flex min-h-11 items-center text-sm font-medium text-slate-700 underline sm:min-h-0"
-          >
-            Open the Queue page
-          </Link>
+        description={
+          <>
+            How walk-in waits are estimated, and time you keep free for walk-ins. Open and close
+            the queue itself from the{' '}
+            <Link to={`/${garageId}/queue`} className="underline">
+              Queue
+            </Link>{' '}
+            page.
+          </>
         }
       />
 

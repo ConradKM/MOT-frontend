@@ -27,7 +27,7 @@ export function TermsSettings() {
     <div className="max-w-2xl">
       <SettingsPageHeader
         title="Terms & Conditions"
-        info="Customers must accept these before booking - online, in the walk-in queue, and for bookings made by WhatsApp, text or phone. Only the business owner can change them."
+        description="Customers must accept these before booking - online, in the walk-in queue, and for bookings made by WhatsApp, text or phone. Only the business owner can change them."
       />
 
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading…</p>}

@@ -29,11 +29,10 @@ function renderPage() {
 const rowFor = async (label: string) => (await screen.findByText(label)).closest('tr')!
 
 describe('AppointmentStatusesList', () => {
-  it('explains the page in a tip beside the title', async () => {
+  it('keeps the page description visible under the title, not in a tip', async () => {
     renderPage()
-    expect(
-      await screen.findByRole('button', { name: 'About Appointment Statuses' }),
-    ).toHaveAccessibleDescription(/seven built-in ones can be renamed/)
+    expect(await screen.findByText(/seven built-in ones can be renamed/)).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'About Appointment Statuses' })).toBeNull()
   })
 
   it('opens the editor beneath the row and closes it again with Escape', async () => {

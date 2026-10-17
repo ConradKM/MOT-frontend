@@ -268,7 +268,7 @@ export function AppointmentRemindersSettings() {
     <>
       <SettingsPageHeader
         title="Appointment reminders"
-        info="Automatic messages sent to customers before a booked appointment."
+        description="Automatic messages sent to customers before a booked appointment."
       />
       <div className="mt-6">
         {isLoading || !settings ? (

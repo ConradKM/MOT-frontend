@@ -259,7 +259,10 @@ test.describe('every settings page is readable and accessible', () => {
     const row = page.getByRole('row', { name: /MOT test/ })
     await row.getByRole('button', { name: 'Edit' }).click()
     await expect(page.getByRole('region', { name: 'Edit MOT test' })).toBeVisible()
-    await page.getByRole('button', { name: 'About Appointment Types' }).hover()
+    expect((await contrastAndA11y(page)).join('\n\n')).toBe('')
+
+    await openSettings(page, '/g1/settings/availability')
+    await page.getByRole('button', { name: 'About Slot length (minutes)' }).hover()
     await expect(page.getByRole('tooltip')).toBeVisible()
     expect((await contrastAndA11y(page)).join('\n\n')).toBe('')
   })

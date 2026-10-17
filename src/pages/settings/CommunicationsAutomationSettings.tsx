@@ -275,7 +275,7 @@ export function CommunicationsAutomationSettings() {
     <div className="max-w-2xl">
       <SettingsPageHeader
         title="Communications automation"
-        info={
+        description={
           <>
             Choose which automated messages your business sends, and customise their wording.
             This never touches your phone/WhatsApp connection details, which stay with the CoMaz

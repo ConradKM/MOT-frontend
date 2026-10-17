@@ -38,7 +38,7 @@ export function BookingAppearanceSettings() {
     <div className="max-w-4xl">
       <SettingsPageHeader
         title="Booking page appearance"
-        info={
+        description={
           <>
             Choose the colours customers see on your booking page, walk-in queue, terms page and
             customer account. This changes the page background and the text on it; cards and

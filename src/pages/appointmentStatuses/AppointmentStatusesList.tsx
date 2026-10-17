@@ -199,7 +199,7 @@ export function AppointmentStatusesList() {
     <>
       <SettingsPageHeader
         title="Appointment Statuses"
-        info="The labels and colours used for appointment statuses across the app. The seven built-in ones can be renamed and recoloured; you can add your own too."
+        description="The labels and colours used for appointment statuses across the app. The seven built-in ones can be renamed and recoloured; you can add your own too."
       />
 
       <div className="mt-6">

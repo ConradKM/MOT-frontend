@@ -6,7 +6,7 @@ export function RolesList() {
     <>
       <SettingsPageHeader
         title="Roles"
-        info={
+        description={
           <>
             Tags you can assign to employees. "OWNER" is protected - every business has one
             and it can't be renamed or deleted.

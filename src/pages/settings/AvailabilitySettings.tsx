@@ -54,7 +54,7 @@ export function AvailabilitySettings() {
     <>
       <SettingsPageHeader
         title="Availability"
-        info="Controls the public booking calendar customers see for your business."
+        description="Controls the public booking calendar customers see for your business."
       />
 
       <div className="mt-8 space-y-10">

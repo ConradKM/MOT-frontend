@@ -25,7 +25,7 @@ export function ShareSettings() {
     <div className="max-w-3xl">
       <SettingsPageHeader
         title="Share your business"
-        info="Links and QR codes customers use to find you: your booking page, links straight to one service or group, the walk-in queue and your terms."
+        description="Links and QR codes customers use to find you: your booking page, links straight to one service or group, the walk-in queue and your terms."
       />
 
       <div className="mt-8 space-y-10">

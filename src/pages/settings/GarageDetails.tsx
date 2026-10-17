@@ -88,7 +88,7 @@ export function GarageDetails() {
     <div className="max-w-xl">
       <SettingsPageHeader
         title="Business details"
-        info={
+        description={
           <>
             The business information we hold for you. It is used across the app and for
             customer communications. Only the business owner can change it. The public booking

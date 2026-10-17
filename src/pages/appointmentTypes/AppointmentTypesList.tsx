@@ -478,31 +478,27 @@ export function AppointmentTypesList() {
     <>
       <SettingsPageHeader
         title="Appointment Types"
-        info={
+        description={
           <>
             The services your business offers. Each type can have one checklist that staff work
-            through, and appears in the public booking form while it's ACTIVE. Grouping,
-            pictures and the questions customers are asked live under Booking Workflow.
+            through, and appears in the public booking form while it's <strong>ACTIVE</strong>.
+            Grouping, pictures and the questions customers are asked live under{' '}
+            <Link to={`/${garageId}/settings/booking-workflow`} className="underline">
+              Booking Workflow
+            </Link>
+            .
           </>
         }
         actions={
-          <>
-            <Link
-              to={`/${garageId}/settings/booking-workflow`}
-              className="inline-flex min-h-11 items-center px-1 text-sm font-medium text-slate-700 underline"
+          isOwner ? (
+            <button
+              type="button"
+              onClick={() => setBulkOpen(true)}
+              className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              Grouping &amp; questions
-            </Link>
-            {isOwner ? (
-              <button
-                type="button"
-                onClick={() => setBulkOpen(true)}
-                className="min-h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-              >
-                Bulk add (JSON)
-              </button>
-            ) : null}
-          </>
+              Bulk add (JSON)
+            </button>
+          ) : null
         }
       />
 

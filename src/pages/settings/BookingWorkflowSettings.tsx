@@ -52,7 +52,7 @@ export function BookingWorkflowSettings() {
     <div className="max-w-3xl">
       <SettingsPageHeader
         title="Booking Workflow"
-        info="What customers can book, how it's presented, and what you ask them."
+        description="What customers can book, how it's presented, and what you ask them."
       />
 
       {forbidden && (

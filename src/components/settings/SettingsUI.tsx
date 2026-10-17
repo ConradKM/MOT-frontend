@@ -10,10 +10,12 @@
  *   field label         text-sm  font-medium     FieldLabel
  *   body                text-sm
  *
- * Explanations live in an InfoTip beside the name they explain, never as a
- * permanent paragraph. What stays on screen is what the user must see to
- * avoid getting stuck: validation errors, blocking/warning messages, and
- * state such as "Only an owner can change this".
+ * A page's one-line description stays visible under its title. Every other
+ * explanation - for a section, card or field - lives in an InfoTip beside the
+ * name it explains, never as a permanent paragraph. What else stays on
+ * screen is what the user must see to avoid getting stuck: validation
+ * errors, blocking/warning messages, and state such as "Only an owner can
+ * change this".
  */
 import type { HTMLAttributes, ReactNode } from 'react'
 import { useId } from 'react'
@@ -21,21 +23,22 @@ import { InfoTip } from './InfoTip'
 
 export function SettingsPageHeader({
   title,
-  info,
+  description,
   actions,
 }: {
   title: string
-  /** The page's one-line explanation, shown in a tip beside the title. */
-  info?: ReactNode
+  /** The page's description, shown under the title - the one explanation
+   * that stays on screen rather than going into a tip. */
+  description?: ReactNode
   actions?: ReactNode
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0 max-w-2xl">
         <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
           {title}
         </h1>
-        {info && <InfoTip label={title}>{info}</InfoTip>}
+        {description && <p className="mt-1 text-sm text-slate-600">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>

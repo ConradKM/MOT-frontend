@@ -64,7 +64,7 @@ export function PaymentsSettings() {
     <div className="max-w-4xl">
       <SettingsPageHeader
         title="Payments"
-        info="Choose Stripe or Square so customers can securely pay booking deposits to your business."
+        description="Choose Stripe or Square so customers can securely pay booking deposits to your business."
       />
       {providerQuery.isError && (
         <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">

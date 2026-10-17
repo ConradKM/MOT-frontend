@@ -62,9 +62,7 @@ describe('BookingAppearanceSettings', () => {
     renderSettings()
     expect(await screen.findByLabelText('Page background')).toHaveValue('#f4f4f4')
     expect(screen.getByLabelText('Page text')).toHaveValue('#242424')
-    expect(
-      screen.getByRole('button', { name: 'About Booking page appearance' }),
-    ).toHaveAccessibleDescription(/cards and forms stay white/)
+    expect(screen.getByText(/cards and forms\s+stay white/)).toBeVisible()
     expect(screen.getByText('Your pages use the default colours.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Preview real page/ })).toHaveAttribute(
       'href',

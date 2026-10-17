@@ -9,7 +9,7 @@ export function CustomerSaleReminders() {
     <div>
       <SettingsPageHeader
         title="Customer & sale reminders"
-        info="Reminders tied to a customer or a due date, rather than a specific booked appointment."
+        description="Reminders tied to a customer or a due date, rather than a specific booked appointment."
       />
       <p className="mt-6 rounded-lg bg-white px-4 py-6 text-center text-sm text-slate-600 shadow-card">
         No customer or sale reminders are available yet.

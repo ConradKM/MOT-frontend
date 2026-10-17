@@ -377,7 +377,7 @@ export function EmployeesList() {
 
   return (
     <>
-      <SettingsPageHeader title="Employees" info="Everyone with an account at your business." />
+      <SettingsPageHeader title="Employees" description="Everyone with an account at your business." />
 
       <div className="mt-6">
         {isLoading ? (
