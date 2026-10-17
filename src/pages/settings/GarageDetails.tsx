@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useGarage, useUpdateGarage } from '../../api/queries'
 import type { GarageDetailsPatch } from '../../api/garage'
-import { BookingQrCard } from '../../components/BookingQrCard'
+import { Link } from 'react-router-dom'
 import { SettingsPageHeader } from '../../components/settings/SettingsUI'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import type { Garage } from '../../types'
@@ -147,7 +147,13 @@ export function GarageDetails() {
             </button>
           </form>
 
-          <BookingQrCard garageId={garage.id} />
+          <p className="mt-6 text-sm text-slate-700">
+            Your booking link and QR code are on{' '}
+            <Link to={`/${garage.id}/settings/share`} className="font-medium underline">
+              Share your business
+            </Link>
+            .
+          </p>
         </>
       )}
     </div>

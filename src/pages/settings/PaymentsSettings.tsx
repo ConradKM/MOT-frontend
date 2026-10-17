@@ -1,4 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import {
+  CircleCheck,
+  CircleDashed,
+  Link2,
+  TriangleAlert,
+  type LucideIcon,
+} from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import {
   getStripeConnectStatus,
@@ -16,6 +23,8 @@ import {
   useStartSquareConnect,
 } from '../../api/queries'
 import { useToast } from '../../components/Toast'
+import { InfoTip } from '../../components/settings/InfoTip'
+import { SettingsPageHeader } from '../../components/settings/SettingsUI'
 import { errorMessage, isApiError } from '../../lib/errors'
 
 const PROVIDER_LABELS: Record<SelectablePaymentProvider, string> = {
@@ -29,64 +38,102 @@ function describeError(err: unknown): string {
   return isApiError(err) && err.code === 403 ? OWNER_ONLY : errorMessage(err)
 }
 
-/** Owner-facing payments settings: which provider takes this business's
- * online deposits, and the connection for each. The API determines the
- * tenant from the access token; this page never sends a garage, connected-
- * account or merchant id supplied by the browser. */
+type ProviderBadge = 'active' | 'connected' | 'not_connected' | 'needs_attention'
+
+const BADGES: Record<ProviderBadge, { label: string; className: string; Icon: LucideIcon }> = {
+  active: { label: 'Active', className: 'bg-emerald-100 text-emerald-800', Icon: CircleCheck },
+  connected: { label: 'Connected', className: 'bg-sky-100 text-sky-800', Icon: Link2 },
+  not_connected: { label: 'Not connected', className: 'bg-slate-100 text-slate-700', Icon: CircleDashed },
+  needs_attention: {
+    label: 'Needs attention',
+    className: 'bg-amber-100 text-amber-900',
+    Icon: TriangleAlert,
+  },
+}
+
+/** Owner-facing payments settings: Stripe and Square side by side, each with
+ * its status and its own actions, and a clear mark on the one that takes
+ * this business's online deposits. The API determines the tenant from the
+ * access token; this page never sends a garage, connected-account or
+ * merchant id supplied by the browser. */
 export function PaymentsSettings() {
-  const [searchParams] = useSearchParams()
   const providerQuery = usePaymentProvider()
   const active = providerQuery.data?.provider
-  // Which card is on screen. Viewing a card never changes anything; making
-  // it the active provider is an explicit button, so an owner can connect
-  // Square fully before switching deposits over to it.
-  const [returnedFromSquare] = useState(() => Boolean(searchParams.get('square')))
-  const [picked, setPicked] = useState<SelectablePaymentProvider | null>(null)
-  const viewing: SelectablePaymentProvider =
-    picked ?? (returnedFromSquare || active === 'square' ? 'square' : 'stripe')
 
   return (
-    <div className="max-w-2xl">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Payments</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Choose Stripe or Square so customers can securely pay booking deposits to your business.
-      </p>
-
-      <div
-        role="radiogroup"
-        aria-label="Payment provider"
-        className="mt-6 inline-flex rounded-lg bg-slate-100 p-1"
-      >
-        {(['stripe', 'square'] as const).map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="radio"
-            aria-checked={viewing === name}
-            onClick={() => setPicked(name)}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium ${
-              viewing === name ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600'
-            }`}
-          >
-            {PROVIDER_LABELS[name]}
-            {active === name && <span className="ml-2 text-xs text-emerald-700">Active</span>}
-          </button>
-        ))}
-      </div>
+    <div className="max-w-4xl">
+      <SettingsPageHeader
+        title="Payments"
+        info="Choose Stripe or Square so customers can securely pay booking deposits to your business."
+      />
       {providerQuery.isError && (
         <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {describeError(providerQuery.error)}
         </p>
       )}
 
-      <ActiveProviderBar provider={viewing} active={active} />
-
-      {viewing === 'stripe' ? <StripeConnectCard /> : <SquareConnectCard />}
+      <div className="mt-6 grid items-start gap-4 md:grid-cols-2">
+        <StripeConnectCard active={active} />
+        <SquareConnectCard active={active} />
+      </div>
     </div>
   )
 }
 
-function ActiveProviderBar({
+/**
+ * The provider's brand mark. Official logo files belong in
+ * src/assets/payments/ (stripe.svg, square.svg), used unmodified with their
+ * brand guidelines; until they are supplied this is a neutral text
+ * wordmark - never a drawn approximation of the logo.
+ */
+function ProviderLogo({ provider }: { provider: SelectablePaymentProvider }) {
+  return (
+    <span className="font-display text-xl font-semibold tracking-tight text-slate-900">
+      {PROVIDER_LABELS[provider]}
+    </span>
+  )
+}
+
+function ProviderCard({
+  provider,
+  active,
+  badge,
+  children,
+}: {
+  provider: SelectablePaymentProvider
+  active: string | undefined
+  badge: ProviderBadge | null
+  children: ReactNode
+}) {
+  const isActive = active === provider
+  const headingId = `payments-${provider}-heading`
+  const shown = badge ? BADGES[badge] : null
+  return (
+    <section
+      aria-labelledby={headingId}
+      data-testid={`payments-card-${provider}`}
+      className={`rounded-lg bg-white p-5 shadow-card ${isActive ? 'ring-2 ring-slate-900' : ''}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id={headingId}>
+          <ProviderLogo provider={provider} />
+        </h2>
+        {shown && (
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${shown.className}`}
+          >
+            <shown.Icon className="h-3.5 w-3.5" aria-hidden="true" />
+            {shown.label}
+          </span>
+        )}
+      </div>
+      <div className="mt-4">{children}</div>
+      <UseForDeposits provider={provider} active={active} />
+    </section>
+  )
+}
+
+function UseForDeposits({
   provider,
   active,
 }: {
@@ -100,7 +147,8 @@ function ActiveProviderBar({
 
   if (active === provider) {
     return (
-      <p className="mt-4 text-sm text-slate-600">
+      <p className="mt-5 flex items-center gap-2 border-t border-slate-100 pt-4 text-sm font-medium text-slate-900">
+        <CircleCheck className="h-4 w-4 text-emerald-700" aria-hidden="true" />
         {PROVIDER_LABELS[provider]} takes your online deposits.
       </p>
     )
@@ -121,18 +169,22 @@ function ActiveProviderBar({
   }
 
   return (
-    <div className="mt-4">
-      <button
-        type="button"
-        onClick={() => void choose()}
-        disabled={setProvider.isPending}
-        className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
-      >
-        {setProvider.isPending ? 'Switching…' : `Use ${PROVIDER_LABELS[provider]} for online deposits`}
-      </button>
-      <p className="mt-1 text-xs text-slate-500">
-        Earlier deposits are always refunded through the provider that took them.
-      </p>
+    <div className="mt-5 border-t border-slate-100 pt-4">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => void choose()}
+          disabled={setProvider.isPending}
+          className={SECONDARY_BUTTON}
+        >
+          {setProvider.isPending
+            ? 'Switching…'
+            : `Use ${PROVIDER_LABELS[provider]} for online deposits`}
+        </button>
+        <InfoTip label="switching provider">
+          Earlier deposits are always refunded through the provider that took them.
+        </InfoTip>
+      </div>
       {error && (
         <p role="alert" className="mt-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
           {error}
@@ -142,9 +194,14 @@ function ActiveProviderBar({
   )
 }
 
+const PRIMARY_BUTTON =
+  'min-h-11 rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50'
+const SECONDARY_BUTTON =
+  'min-h-11 rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50'
+
 /** Stripe-hosted Connect onboarding - unchanged behaviour from before
  * Square existed. */
-function StripeConnectCard() {
+function StripeConnectCard({ active }: { active: string | undefined }) {
   const [status, setStatus] = useState<StripeConnectStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -173,13 +230,22 @@ function StripeConnectCard() {
   }
 
   const ready = Boolean(status?.stripe_charges_enabled)
+  const badge: ProviderBadge | null = loading
+    ? null
+    : ready
+      ? active === 'stripe'
+        ? 'active'
+        : 'connected'
+      : status?.stripe_account_id
+        ? 'needs_attention'
+        : 'not_connected'
   return (
-    <div className="mt-6 rounded-lg bg-white shadow-card p-5">
+    <ProviderCard provider="stripe" active={active} badge={badge}>
       {loading ? (
         <p className="text-sm text-slate-500">Checking Stripe connection…</p>
       ) : (
         <>
-          <p className={`text-sm font-medium ${ready ? 'text-emerald-700' : 'text-amber-700'}`}>
+          <p className="text-sm font-medium text-slate-900">
             {ready ? 'Ready to take online payments' : 'Stripe setup is incomplete'}
           </p>
           <p className="mt-2 text-sm text-slate-600">
@@ -191,11 +257,11 @@ function StripeConnectCard() {
           </p>
           {status?.stripe_account_id && (
             <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-              <div><dt className="text-slate-500">Onboarding</dt><dd>{status.stripe_onboarding_complete ? 'Complete' : 'In progress'}</dd></div>
-              <div><dt className="text-slate-500">Payouts</dt><dd>{status.stripe_payouts_enabled ? 'Enabled' : 'Not enabled'}</dd></div>
+              <div><dt className="text-slate-600">Onboarding</dt><dd>{status.stripe_onboarding_complete ? 'Complete' : 'In progress'}</dd></div>
+              <div><dt className="text-slate-600">Payouts</dt><dd>{status.stripe_payouts_enabled ? 'Enabled' : 'Not enabled'}</dd></div>
               {status.apple_pay_status && (
                 <div>
-                  <dt className="text-slate-500">Apple Pay</dt>
+                  <dt className="text-slate-600">Apple Pay</dt>
                   <dd>
                     {status.apple_pay_status === 'active'
                       ? 'Active'
@@ -207,16 +273,16 @@ function StripeConnectCard() {
               )}
             </dl>
           )}
-          <div className="mt-5 flex gap-3">
-            <button onClick={() => void connect()} disabled={connecting} className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={() => void connect()} disabled={connecting} className={PRIMARY_BUTTON}>
               {connecting ? 'Opening Stripe…' : status?.stripe_account_id ? 'Continue Stripe setup' : 'Connect Stripe'}
             </button>
-            <button onClick={refresh} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">Refresh status</button>
+            <button onClick={refresh} className={SECONDARY_BUTTON}>Refresh status</button>
           </div>
         </>
       )}
       {error && <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-    </div>
+    </ProviderCard>
   )
 }
 
@@ -229,7 +295,7 @@ const SQUARE_RETURN_MESSAGES: Record<string, string> = {
   not_configured: "Square can't be connected on CoMaz right now. Please contact CoMaz support.",
 }
 
-function SquareConnectCard() {
+function SquareConnectCard({ active }: { active: string | undefined }) {
   const [searchParams, setSearchParams] = useSearchParams()
   const status = useSquareStatus()
   const connect = useStartSquareConnect()
@@ -284,8 +350,18 @@ function SquareConnectCard() {
   }
 
   const data = status.data
+  const badge: ProviderBadge | null =
+    status.isLoading || status.isError || !data
+      ? null
+      : data.status === 'NOT_CONNECTED'
+        ? 'not_connected'
+        : data.status === 'REVOKED' || data.status === 'ERROR' || !data.ready
+          ? 'needs_attention'
+          : active === 'square'
+            ? 'active'
+            : 'connected'
   return (
-    <div className="mt-6 rounded-lg bg-white shadow-card p-5">
+    <ProviderCard provider="square" active={active} badge={badge}>
       {returnNotice && (
         <p className="mb-4 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">{returnNotice}</p>
       )}
@@ -301,8 +377,7 @@ function SquareConnectCard() {
         </p>
       ) : data.status === 'NOT_CONNECTED' ? (
         <>
-          <p className="text-sm font-medium text-amber-700">Not connected</p>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="text-sm text-slate-700">
             Connect your Square account to take card deposits. Payments go straight to your
             Square account.
           </p>
@@ -310,7 +385,7 @@ function SquareConnectCard() {
             <button
               onClick={() => void startConnect()}
               disabled={connect.isPending}
-              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className={PRIMARY_BUTTON}
             >
               {connect.isPending ? 'Opening Square…' : 'Connect Square'}
             </button>
@@ -318,18 +393,17 @@ function SquareConnectCard() {
         </>
       ) : data.status === 'REVOKED' || data.status === 'ERROR' ? (
         <>
-          <p className="text-sm font-medium text-red-700">Needs attention</p>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="text-sm text-slate-700">
             {data.status === 'REVOKED'
               ? "CoMaz's access to your Square account was removed, so online deposits are paused."
               : "We can't reach your Square account right now, so online deposits are paused."}{' '}
             Reconnect Square to start taking deposits again.
           </p>
-          <div className="mt-5 flex gap-3">
+          <div className="mt-5 flex flex-wrap gap-3">
             <button
               onClick={() => void startConnect()}
               disabled={connect.isPending}
-              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className={PRIMARY_BUTTON}
             >
               {connect.isPending ? 'Opening Square…' : 'Reconnect Square'}
             </button>
@@ -348,7 +422,7 @@ function SquareConnectCard() {
           {error}
         </p>
       )}
-    </div>
+    </ProviderCard>
   )
 }
 
@@ -357,7 +431,7 @@ function DisconnectButton({ onClick, pending }: { onClick: () => void; pending: 
     <button
       onClick={onClick}
       disabled={pending}
-      className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50"
+      className={SECONDARY_BUTTON}
     >
       {pending ? 'Disconnecting…' : 'Disconnect'}
     </button>
@@ -391,21 +465,21 @@ function ConnectedSquare({
 
   return (
     <>
-      <p className={`text-sm font-medium ${data.ready ? 'text-emerald-700' : 'text-amber-700'}`}>
+      <p className="text-sm font-medium text-slate-900">
         {data.ready ? 'Ready to take online payments' : 'Choose a location to finish setup'}
       </p>
       <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
         <div>
-          <dt className="text-slate-500">Square account</dt>
+          <dt className="text-slate-600">Square account</dt>
           <dd>{data.merchant_name ?? 'Connected'}</dd>
         </div>
         <div>
-          <dt className="text-slate-500">Location</dt>
+          <dt className="text-slate-600">Location</dt>
           <dd>{data.location_name ?? 'Not chosen'}</dd>
         </div>
         {data.environment === 'sandbox' && (
           <div>
-            <dt className="text-slate-500">Mode</dt>
+            <dt className="text-slate-600">Mode</dt>
             <dd>Sandbox (test payments only)</dd>
           </div>
         )}
@@ -422,7 +496,7 @@ function ConnectedSquare({
               locations in the Square Dashboard, then refresh this page.
             </p>
           ) : (
-            <div className="mt-1 flex gap-3">
+            <div className="mt-1 flex flex-wrap gap-3">
               <select
                 id="square-location"
                 value={choice}
@@ -441,7 +515,7 @@ function ConnectedSquare({
               <button
                 onClick={() => void saveLocation()}
                 disabled={!choice || choice === data.location_id || setLocation.isPending}
-                className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className={PRIMARY_BUTTON}
               >
                 {setLocation.isPending ? 'Saving…' : 'Save location'}
               </button>

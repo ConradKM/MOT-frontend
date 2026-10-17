@@ -215,6 +215,9 @@ const QueueStatus = lazy(() =>
 const QueueDashboard = lazy(() =>
   import('./pages/queue/QueueDashboard').then((m) => ({ default: m.QueueDashboard })),
 )
+const ShareSettings = lazy(() =>
+  import('./pages/settings/ShareSettings').then((m) => ({ default: m.ShareSettings })),
+)
 const WalkInQueueSettings = lazy(() =>
   import('./pages/settings/WalkInQueueSettings').then((m) => ({
     default: m.WalkInQueueSettings,
@@ -332,6 +335,7 @@ export default function App() {
             <Route path="settings" element={<SettingsLayout />}>
               <Route index element={<Navigate to="garage-details" replace />} />
               <Route path="garage-details" element={<GarageDetails />} />
+              <Route path="share" element={<ShareSettings />} />
               <Route path="availability" element={<AvailabilitySettings />} />
               <Route path="appointment-types" element={<AppointmentTypesList />} />
               <Route path="appointment-statuses" element={<AppointmentStatusesList />} />

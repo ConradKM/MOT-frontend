@@ -119,6 +119,7 @@ describe('settings routes', () => {
 
   it.each([
     ['/g1/settings/garage-details', 'Business details'],
+    ['/g1/settings/share', 'Share your business'],
     ['/g1/settings/availability', 'Availability'],
     ['/g1/settings/appointment-types', 'Appointment Types'],
     ['/g1/settings/appointment-statuses', 'Appointment Statuses'],
