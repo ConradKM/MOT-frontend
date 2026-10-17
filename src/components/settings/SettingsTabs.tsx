@@ -1,5 +1,5 @@
 import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 
 export interface SettingsTab {
   key: string
@@ -9,11 +9,16 @@ export interface SettingsTab {
 /**
  * The active tab, kept in the URL (`?tab=key`) so a tab can be deep-linked
  * and the back button steps between tabs. An unknown or missing value falls
- * back to the first tab.
+ * back to a hash alias, then to the first tab.
  */
-export function useTabParam<K extends string>(keys: readonly K[]): [K, (key: K) => void] {
+export function useTabParam<K extends string>(
+  keys: readonly K[],
+  /** Old in-page anchors (`#phone-menu`) that should still land on a tab. */
+  hashAliases: Record<string, K> = {},
+): [K, (key: K) => void] {
   const [params, setParams] = useSearchParams()
-  const raw = params.get('tab')
+  const { hash } = useLocation()
+  const raw = params.get('tab') ?? hashAliases[hash.replace(/^#/, '')] ?? null
   const active = (keys as readonly string[]).includes(raw ?? '') ? (raw as K) : keys[0]
   const setActive = (key: K) => {
     setParams((prev) => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '../../components/Toast'
+import { InfoTip } from '../../components/settings/InfoTip'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useUpdateVoiceMenu, useVoiceMenu } from '../../api/voiceMenuQueries'
 import type {
@@ -130,23 +131,22 @@ export function PhoneMenuPanel({ businessName }: { businessName?: string }) {
     <div className="space-y-4">
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <label className="flex items-start gap-3 rounded-md border border-slate-200 px-3 py-3">
+      <div className="flex items-center gap-3 rounded-md border border-slate-200 px-3 py-3">
         <input
+          id="phone-menu-enabled"
           type="checkbox"
-          className="mt-0.5 h-4 w-4 rounded border-slate-300"
+          className="h-4 w-4 rounded border-slate-300"
           checked={form.enabled}
           onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
         />
-        <span>
-          <span className="block text-sm font-medium text-slate-700">
-            Play a phone menu when customers call
-          </span>
-          <span className="block text-xs text-slate-500">
-            Callers hear your greeting and choose an option on their keypad before anything else
-            happens. Off: calls work exactly as they do today.
-          </span>
-        </span>
-      </label>
+        <label htmlFor="phone-menu-enabled" className="text-sm font-medium text-slate-900">
+          Play a phone menu when customers call
+        </label>
+        <InfoTip label="the phone menu">
+          Callers hear your greeting and choose an option on their keypad before anything else
+          happens. Off: calls work exactly as they do today.
+        </InfoTip>
+      </div>
 
       {aiChosen && !data.ai_available && (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -330,9 +330,12 @@ export function PhoneMenuPanel({ businessName }: { businessName?: string }) {
             <span className="mt-1 block text-xs text-red-600">{errorsByField.fallback_target}</span>
           )}
         </label>
-        <p className="text-xs text-slate-500">
-          If the assistant can't help or stops working mid-call, the caller is put through to a
-          person the same way. If nobody answers, we log a callback request for your team.
+        <p className="flex items-center gap-1 text-xs text-slate-600">
+          What if nobody answers?
+          <InfoTip label="what happens if nobody answers">
+            If the assistant can't help or stops working mid-call, the caller is put through to a
+            person the same way. If nobody answers, we log a callback request for your team.
+          </InfoTip>
         </p>
       </fieldset>
 

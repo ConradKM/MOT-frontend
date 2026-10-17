@@ -68,6 +68,48 @@ export function SettingsTable({
   )
 }
 
+/**
+ * Focus for anything that expands an editor in place: into the first field
+ * when it opens, back to the control that opened it when it closes. Shared
+ * by ExpandableRow and the card/heading editors that follow the same rule.
+ */
+export function useExpandFocus(
+  expanded: boolean,
+  panelRef: RefObject<HTMLElement | null>,
+  toggleRef: RefObject<HTMLElement | null>,
+) {
+  const wasExpanded = useRef(expanded)
+  useEffect(() => {
+    if (expanded && !wasExpanded.current) {
+      panelRef.current
+        ?.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])',
+        )
+        ?.focus()
+    } else if (!expanded && wasExpanded.current) {
+      // Only reclaim focus that the closing panel took with it - not focus
+      // the user has since moved to another row's Edit button.
+      const active = document.activeElement
+      if (!active || active === document.body) toggleRef.current?.focus()
+    }
+    wasExpanded.current = expanded
+  }, [expanded, panelRef, toggleRef])
+}
+
+/** Escape closes an expanded editor - and only that editor. */
+export function closeOnEscape(onClose: () => void) {
+  return (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation()
+      onClose()
+    }
+  }
+}
+
+/** The white, left-accented surface an expanded editor sits on. */
+export const EXPAND_PANEL_CLASS =
+  'min-w-0 animate-step-in rounded-lg border-l-4 border-slate-900 bg-white p-4 shadow-card'
+
 export interface ExpandToggleProps {
   ref: RefObject<HTMLButtonElement | null>
   'aria-expanded': boolean
@@ -94,30 +136,8 @@ export function ExpandableRow({
   const panelId = useId()
   const toggleRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
-  const wasExpanded = useRef(expanded)
-
-  useEffect(() => {
-    if (expanded && !wasExpanded.current) {
-      panelRef.current
-        ?.querySelector<HTMLElement>(
-          'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])',
-        )
-        ?.focus()
-    } else if (!expanded && wasExpanded.current) {
-      // Only reclaim focus that the closing panel took with it - not focus
-      // the user has since moved to another row's Edit button.
-      const active = document.activeElement
-      if (!active || active === document.body) toggleRef.current?.focus()
-    }
-    wasExpanded.current = expanded
-  }, [expanded])
-
-  const onKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.stopPropagation()
-      onClose()
-    }
-  }
+  useExpandFocus(expanded, panelRef, toggleRef)
+  const onKeyDown = closeOnEscape(onClose)
 
   return (
     <>
@@ -140,7 +160,7 @@ export function ExpandableRow({
               role="region"
               aria-label={label}
               onKeyDown={onKeyDown}
-              className="min-w-0 animate-step-in rounded-lg border-l-4 border-slate-900 bg-white p-4 shadow-card"
+              className={EXPAND_PANEL_CLASS}
             >
               {children}
             </div>

@@ -82,6 +82,15 @@
   --color-slate-700: #101010;
 }
 
+/* ...except a booking-page preview (Booking Page Appearance), which must look
+ * exactly like the customer's page: the original ramp from @theme above. */
+.settings-scope [data-booking-theme] {
+  --color-slate-400: #898989;
+  --color-slate-500: #6b7280;
+  --color-slate-600: #4f4f4f;
+  --color-slate-700: #383838;
+}
+
 @layer base {
   body {
     @apply bg-slate-50 text-slate-800 antialiased;

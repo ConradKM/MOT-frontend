@@ -49,7 +49,9 @@ describe('AppointmentRemindersSettings', () => {
   it('never offers a channel the business is not configured for', async () => {
     render()
     await screen.findByLabelText('Timing 1 hours before')
-    expect(screen.getByText('SMS').closest('label')).toHaveClass('bg-slate-50')
+    expect(screen.getByText('SMS').closest('label')).toHaveTextContent(
+      'Not set up for your business yet',
+    )
     expect(screen.getByRole('checkbox', { name: 'SMS' })).toBeDisabled()
     expect(screen.getByRole('checkbox', { name: 'Email' })).not.toBeDisabled()
   })

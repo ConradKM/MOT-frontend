@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { ArrowDown, ArrowUp } from 'lucide-react'
 import type { AppointmentType } from '../../../types'
 import type {
   BookingFieldType,
@@ -21,6 +22,13 @@ import { errorMessage } from '../../../lib/errors'
 import { Disclosure } from '../../../components/Disclosure'
 import { PresetPicker } from '../BookingWorkflowSettings'
 import { VehicleDetailsCard } from './VehicleDetailsCard'
+import {
+  ExpandToggle,
+  closeOnEscape,
+  useExpandFocus,
+} from '../../../components/settings/ExpandableRow'
+import { InfoTip } from '../../../components/settings/InfoTip'
+import { SectionHeading, SettingsCard } from '../../../components/settings/SettingsUI'
 
 const inputClass =
   'w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-500 focus:outline-none'
@@ -89,18 +97,21 @@ export function WorkflowPanel({
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm text-slate-500">
-          Every booking asks for a name, email and mobile number — we need those to set up the
-          customer's account and send their confirmation, so they're always there. Everything else
-          is up to you.
-        </p>
-      </div>
+      <SectionHeading
+        title="Questions customers answer"
+        info={
+          <>
+            Every booking asks for a name, email and mobile number — we need those to set up the
+            customer's account and send their confirmation, so they're always there. Everything
+            else is up to you.
+          </>
+        }
+      />
 
       <label className="block">
         <span className="block text-sm font-medium text-slate-700">Editing</span>
         <select
-          className={`mt-1 ${inputClass}`}
+          className={`mt-1 bg-white ${inputClass}`}
           value={scope}
           onChange={(e) => setScope(e.target.value)}
         >
@@ -114,7 +125,7 @@ export function WorkflowPanel({
       </label>
 
       {scope !== '' && inScope.length === 0 && (
-        <p className="rounded-md border border-dashed border-slate-300 px-3 py-4 text-sm text-slate-500">
+        <p className="rounded-md bg-amber-50 px-3 py-3 text-sm text-amber-900">
           This service uses your default questions. Add a section here and it will use these
           instead — <strong>not</strong> as well, so include anything from the default you still
           want to ask.
@@ -158,6 +169,107 @@ function SectionRow({
   isLast: boolean
   onMove: (direction: -1 | 1) => void
 }) {
+  const [editing, setEditing] = useState(false)
+  const editRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  useExpandFocus(editing, panelRef, editRef)
+  const headingId = `flow-section-${section.id}`
+
+  return (
+    <li>
+      <SettingsCard as="section" aria-labelledby={headingId}>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 id={headingId} className="text-base font-semibold text-slate-900">
+                {section.title}
+              </h3>
+              {!section.is_active && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  Paused
+                </span>
+              )}
+            </div>
+            {section.description && (
+              <p className="mt-0.5 text-sm text-slate-700">{section.description}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              aria-label="Move up"
+              disabled={isFirst}
+              onClick={() => onMove(-1)}
+              className={MOVE_BUTTON}
+            >
+              <ArrowUp className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label="Move down"
+              disabled={isLast}
+              onClick={() => onMove(1)}
+              className={MOVE_BUTTON}
+            >
+              <ArrowDown className="h-4 w-4" aria-hidden="true" />
+            </button>
+            {!editing && (
+              <ExpandToggle
+                ref={editRef}
+                aria-expanded={false}
+                aria-controls={undefined}
+                onClick={() => setEditing(true)}
+                label="Edit"
+              />
+            )}
+          </div>
+        </div>
+
+        {editing ? (
+          <div
+            ref={panelRef}
+            role="region"
+            aria-label={`Edit ${section.title}`}
+            onKeyDown={closeOnEscape(() => setEditing(false))}
+            className="mt-4 border-t border-slate-100 pt-4"
+          >
+            <SectionEditor section={section} onDone={() => setEditing(false)} />
+          </div>
+        ) : (
+          <QuestionSummary fields={section.fields} />
+        )}
+      </SettingsCard>
+    </li>
+  )
+}
+
+const MOVE_BUTTON =
+  'inline-flex min-h-11 w-11 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40 sm:min-h-8 sm:w-8'
+
+/** A section's questions, read-only: what the customer is asked and how. */
+function QuestionSummary({ fields }: { fields: BookingFlowField[] }) {
+  if (fields.length === 0) {
+    return <p className="mt-3 text-sm text-slate-600">No questions in this section yet.</p>
+  }
+  return (
+    <ul className="mt-3 divide-y divide-slate-100 border-t border-slate-100">
+      {fields.map((field) => (
+        <li key={field.id} className="flex flex-wrap items-baseline justify-between gap-x-3 py-2">
+          <span className="text-sm font-medium text-slate-900">{field.label}</span>
+          <span className="text-xs text-slate-700">
+            {FIELD_TYPES.find((t) => t.value === field.field_type)?.label ?? field.field_type}
+            {field.is_required && ' · Required'}
+            {OPTION_TYPES.includes(field.field_type) &&
+              field.options.length > 0 &&
+              ` · ${field.options.join(', ')}`}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function SectionEditor({ section, onDone }: { section: BookingFlowSection; onDone: () => void }) {
   const [title, setTitle] = useState(section.title)
   const [description, setDescription] = useState(section.description ?? '')
   const [isActive, setIsActive] = useState(section.is_active)
@@ -174,6 +286,10 @@ function SectionRow({
     isActive !== section.is_active
 
   const save = async () => {
+    if (!dirty) {
+      onDone()
+      return
+    }
     try {
       await update.mutateAsync({
         id: section.id,
@@ -184,6 +300,7 @@ function SectionRow({
         },
       })
       showToast('Section saved.', 'success')
+      onDone()
     } catch (err) {
       showToast(errorMessage(err))
     }
@@ -203,66 +320,45 @@ function SectionRow({
   }
 
   return (
-    <li className="rounded-lg border border-slate-200 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-3">
-          <label className="block">
-            <span className="block text-sm font-medium text-slate-700">Section heading</span>
-            <input
-              className={`mt-1 ${inputClass}`}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          <label className="block">
-            <span className="block text-sm font-medium text-slate-700">
-              Intro <span className="font-normal text-slate-400">(optional)</span>
-            </span>
-            <input
-              className={`mt-1 ${inputClass}`}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300"
-            />
-            Ask this section
-            <span className="text-xs text-slate-400">
-              (turn off to pause it without losing what's already been answered)
-            </span>
-          </label>
-        </div>
-
-        <div className="flex shrink-0 flex-col gap-1">
-          <button
-            type="button"
-            aria-label="Move up"
-            disabled={isFirst}
-            onClick={() => onMove(-1)}
-            className="rounded border border-slate-200 px-2 text-slate-500 disabled:opacity-30"
-          >
-            ▲
-          </button>
-          <button
-            type="button"
-            aria-label="Move down"
-            disabled={isLast}
-            onClick={() => onMove(1)}
-            className="rounded border border-slate-200 px-2 text-slate-500 disabled:opacity-30"
-          >
-            ▼
-          </button>
+    <div className="space-y-4">
+      <div className="space-y-3">
+        <label className="block">
+          <span className="block text-sm font-medium text-slate-700">Section heading</span>
+          <input
+            className={`mt-1 ${inputClass}`}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <label className="block">
+          <span className="block text-sm font-medium text-slate-700">
+            Intro <span className="font-normal text-slate-600">(optional)</span>
+          </span>
+          <input
+            className={`mt-1 ${inputClass}`}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </label>
+        <div className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            id={`section-active-${section.id}`}
+            type="checkbox"
+            checked={isActive}
+            onChange={(e) => setIsActive(e.target.checked)}
+            className="h-4 w-4 rounded border-slate-300"
+          />
+          <label htmlFor={`section-active-${section.id}`}>Ask this section</label>
+          <InfoTip label="pausing a section">
+            Turn off to pause it without losing what's already been answered.
+          </InfoTip>
         </div>
       </div>
 
-      <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+      <div className="space-y-2 border-t border-slate-100 pt-4">
+        <p className="text-sm font-medium text-slate-900">Questions</p>
         {section.fields.length === 0 && (
-          <p className="text-sm text-slate-400">No questions in this section yet.</p>
+          <p className="text-sm text-slate-600">No questions in this section yet.</p>
         )}
         {section.fields.map((field, i) => (
           <FieldRow
@@ -276,19 +372,28 @@ function SectionRow({
         <AddFieldForm sectionId={section.id} nextOrder={section.fields.length} />
       </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3">
-        <button
-          type="button"
-          onClick={save}
-          disabled={!dirty || update.isPending}
-          className="rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
-        >
-          {update.isPending ? 'Saving…' : 'Save section'}
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={save}
+            disabled={update.isPending}
+            className="min-h-11 rounded-md bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40 sm:min-h-0"
+          >
+            {update.isPending ? 'Saving…' : 'Save section'}
+          </button>
+          <button
+            type="button"
+            onClick={onDone}
+            className="min-h-11 rounded-md border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50 sm:min-h-0"
+          >
+            Cancel
+          </button>
+        </div>
 
         {confirmingDelete ? (
-          <span className="flex items-center gap-2 text-xs">
-            <span className="text-slate-600">Delete this section and its questions?</span>
+          <span className="flex items-center gap-3 text-sm">
+            <span className="text-slate-700">Delete this section and its questions?</span>
             <button
               type="button"
               onClick={async () => {
@@ -299,29 +404,29 @@ function SectionRow({
                   showToast(errorMessage(err))
                 }
               }}
-              className="font-medium text-red-600 hover:text-red-700"
+              className="min-h-11 font-medium text-red-700 hover:text-red-800 sm:min-h-0"
             >
               Delete
             </button>
             <button
               type="button"
               onClick={() => setConfirmingDelete(false)}
-              className="text-slate-500"
+              className="min-h-11 text-slate-700 sm:min-h-0"
             >
-              Cancel
+              Keep it
             </button>
           </span>
         ) : (
           <button
             type="button"
             onClick={() => setConfirmingDelete(true)}
-            className="text-xs font-medium text-slate-500 hover:text-red-600"
+            className="min-h-11 text-sm font-medium text-slate-700 hover:text-red-700 sm:min-h-0"
           >
             Delete section
           </button>
         )}
       </div>
-    </li>
+    </div>
   )
 }
 
@@ -390,7 +495,7 @@ function FieldRow({
   }
 
   return (
-    <div className="rounded-md border border-slate-200 bg-slate-50/60 p-3">
+    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="grid gap-2 sm:grid-cols-2">
@@ -523,24 +628,24 @@ function FieldRow({
           )}
         </div>
 
-        <div className="flex shrink-0 flex-col gap-1">
+        <div className="flex shrink-0 gap-1">
           <button
             type="button"
             aria-label="Move up"
             disabled={isFirst}
             onClick={() => onMove(-1)}
-            className="rounded border border-slate-200 px-2 text-slate-500 disabled:opacity-30"
+            className={MOVE_BUTTON}
           >
-            ▲
+            <ArrowUp className="h-4 w-4" aria-hidden="true" />
           </button>
           <button
             type="button"
             aria-label="Move down"
             disabled={isLast}
             onClick={() => onMove(1)}
-            className="rounded border border-slate-200 px-2 text-slate-500 disabled:opacity-30"
+            className={MOVE_BUTTON}
           >
-            ▼
+            <ArrowDown className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>

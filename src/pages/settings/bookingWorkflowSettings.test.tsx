@@ -19,14 +19,16 @@ vi.mock('../../api/appointmentTypeGroups')
 vi.mock('../../api/bookingFlow')
 vi.mock('../../api/appointmentTypes')
 
-function render() {
+function render(route = '/g1/settings/booking-workflow') {
   return renderWithAppProviders(
     <Routes>
       <Route path="/:garageId/settings/booking-workflow" element={<BookingWorkflowSettings />} />
     </Routes>,
-    { route: '/g1/settings/booking-workflow' },
+    { route },
   )
 }
+
+const tableNamed = (name: string) => screen.getByRole('table', { name })
 
 beforeEach(() => {
   vi.mocked(groupsApi.listAppointmentTypeGroups).mockResolvedValue([])
@@ -44,6 +46,44 @@ describe('Booking Workflow settings — services & groups', () => {
     expect(await screen.findByText(/No groups yet/)).toBeInTheDocument()
   })
 
+  it('shows one table of every service when there are no groups', async () => {
+    vi.mocked(appointmentTypesApi.listAppointmentTypes).mockResolvedValue([
+      makeAppointmentType({ id: 'at1', name: 'MOT test' }),
+      makeAppointmentType({ id: 'at2', name: 'Valet' }),
+    ])
+    render()
+
+    await screen.findByText('MOT test')
+    expect(screen.getAllByRole('table')).toHaveLength(1)
+    expect(within(tableNamed('Services')).getByText('Valet')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Ungrouped services' })).not.toBeInTheDocument()
+  })
+
+  it('shows a table per group, then the ungrouped services', async () => {
+    vi.mocked(groupsApi.listAppointmentTypeGroups).mockResolvedValue([
+      makeAppointmentTypeGroup({ id: 'grp1', name: 'Servicing' }),
+      makeAppointmentTypeGroup({ id: 'grp2', name: 'Repairs', order: 1 }),
+    ])
+    vi.mocked(appointmentTypesApi.listAppointmentTypes).mockResolvedValue([
+      makeAppointmentType({ id: 'at1', name: 'MOT test', group_id: 'grp1' }),
+      makeAppointmentType({ id: 'at2', name: 'Clutch', group_id: 'grp2' }),
+      makeAppointmentType({ id: 'at3', name: 'Valet', group_id: null }),
+    ])
+    render()
+
+    expect(await screen.findByRole('heading', { name: 'Servicing' })).toBeInTheDocument()
+    expect(within(tableNamed('Servicing services')).getByText('MOT test')).toBeInTheDocument()
+    expect(within(tableNamed('Repairs services')).getByText('Clutch')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Ungrouped services' })).toBeInTheDocument()
+    expect(within(tableNamed('Ungrouped services')).getByText('Valet')).toBeInTheDocument()
+    // "Add group" comes last, after the ungrouped table.
+    const addGroup = screen.getByRole('button', { name: 'Add group' })
+    expect(
+      tableNamed('Ungrouped services').compareDocumentPosition(addGroup) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
   it('creates a group with the next order, so it lands at the end', async () => {
     vi.mocked(groupsApi.listAppointmentTypeGroups).mockResolvedValue([
       makeAppointmentTypeGroup({ id: 'grp1', name: 'Servicing' }),
@@ -54,7 +94,8 @@ describe('Booking Workflow settings — services & groups', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: /Add a group/ }))
+    await user.click(await screen.findByRole('button', { name: 'Add group' }))
+    expect(screen.getByLabelText('Group name')).toHaveFocus()
     await user.type(screen.getByLabelText('Group name'), 'Repairs')
     await user.click(screen.getByRole('button', { name: 'Add' }))
 
@@ -78,6 +119,7 @@ describe('Booking Workflow settings — services & groups', () => {
     const user = userEvent.setup()
     render()
 
+    await user.click(await screen.findByRole('button', { name: 'Edit group' }))
     await user.selectOptions(
       await screen.findByLabelText('Show as'),
       'Same as the rest of the business',
@@ -133,7 +175,9 @@ describe('Booking Workflow settings — services & groups', () => {
     const user = userEvent.setup()
     render()
 
-    await user.selectOptions(await screen.findByLabelText('Group for MOT test'), 'Repairs')
+    const row = (await screen.findByText('MOT test')).closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'Edit' }))
+    await user.selectOptions(screen.getByLabelText('Group for MOT test'), 'Repairs')
 
     await waitFor(() =>
       expect(appointmentTypesApi.updateAppointmentType).toHaveBeenCalledWith('at1', {
@@ -149,11 +193,18 @@ describe('Booking Workflow settings — services & groups', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'Remove group' }))
+    await user.click(await screen.findByRole('button', { name: 'Edit group' }))
+    await user.click(screen.getByRole('button', { name: 'Remove group' }))
 
     expect(screen.getByText('Remove this group?')).toBeInTheDocument()
   })
 })
+
+/** Sections are read-only summaries until their Edit is pressed. */
+async function openSection(user: ReturnType<typeof userEvent.setup>, title = 'About your visit') {
+  const card = (await screen.findByRole('heading', { name: title })).closest('section')!
+  await user.click(within(card).getByRole('button', { name: 'Edit' }))
+}
 
 describe('Booking Workflow settings — what you ask', () => {
   const SECTION = makeFlowSection({
@@ -166,7 +217,7 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
 
     expect(screen.getByText(/name, email and mobile number/)).toBeInTheDocument()
   })
@@ -178,7 +229,7 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
 
     expect(await screen.findByText(/Start from a template/)).toBeInTheDocument()
   })
@@ -191,8 +242,8 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
-    await screen.findByDisplayValue('About your visit')
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
+    await screen.findByRole('heading', { name: 'About your visit' })
 
     expect(screen.queryByText(/Start from a template/)).not.toBeInTheDocument()
   })
@@ -202,7 +253,7 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
     await user.selectOptions(screen.getByLabelText('Editing'), 'Only when booking: MOT test')
 
     // "instead, not as well" is the whole warning - a regex for /not/ alone
@@ -217,7 +268,7 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
     await user.selectOptions(screen.getByLabelText('Editing'), 'Only when booking: MOT test')
     await user.click(screen.getByRole('button', { name: /Add a section/ }))
     await user.type(screen.getByLabelText('Section heading'), 'Just for MOTs')
@@ -239,7 +290,8 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
+    await openSection(user)
     await user.click(await screen.findByLabelText('Must be answered'))
 
     expect(screen.getByText(/WhatsApp or the phone can't ask this/)).toBeInTheDocument()
@@ -250,7 +302,8 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
+    await openSection(user)
     await user.selectOptions(await screen.findByLabelText('Answer type'), 'Choose one')
 
     expect(screen.getByText(/nothing for the customer to pick/)).toBeInTheDocument()
@@ -264,7 +317,8 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
+    await openSection(user)
     await user.selectOptions(
       await screen.findByLabelText(/Also save this answer/),
       "The item's year",
@@ -285,7 +339,8 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
+    await openSection(user)
     await user.selectOptions(
       await screen.findByLabelText(/Also save this answer/),
       'Just keep the answer',
@@ -305,40 +360,51 @@ describe('Booking Workflow settings — what you ask', () => {
     const user = userEvent.setup()
     render()
 
-    await user.click(await screen.findByRole('button', { name: 'What you ask' }))
+    await user.click(await screen.findByRole('tab', { name: 'What you ask' }))
+    await openSection(user)
     await user.click(await screen.findByRole('button', { name: 'Delete section' }))
 
     expect(screen.getByText(/Delete this section and its questions\?/)).toBeInTheDocument()
   })
 })
 
-describe('Booking Workflow settings — share links', () => {
-  it('gives a link per service and per group', async () => {
-    vi.mocked(groupsApi.listAppointmentTypeGroups).mockResolvedValue([
-      makeAppointmentTypeGroup({ id: 'grp1', name: 'Servicing' }),
-    ])
-    const user = userEvent.setup()
+describe('Booking Workflow settings — tabs', () => {
+  it('has two tabs - share links moved to the Share your business page', async () => {
     render()
-
-    await user.click(await screen.findByRole('button', { name: 'Share links' }))
-
-    expect(screen.getByText(/\?service=at1$/)).toBeInTheDocument()
-    expect(screen.getByText(/\?group=grp1$/)).toBeInTheDocument()
+    const tabs = await screen.findAllByRole('tab')
+    expect(tabs.map((t) => t.textContent)).toEqual(['Services & groups', 'What you ask'])
   })
 
-  it('says a one-service group skips straight to the calendar', async () => {
-    vi.mocked(groupsApi.listAppointmentTypeGroups).mockResolvedValue([
-      makeAppointmentTypeGroup({ id: 'grp1', name: 'Servicing' }),
-    ])
-    vi.mocked(appointmentTypesApi.listAppointmentTypes).mockResolvedValue([
-      makeAppointmentType({ id: 'at1', group_id: 'grp1' }),
+  it('opens the tab named in the URL', async () => {
+    render('/g1/settings/booking-workflow?tab=workflow')
+    expect(await screen.findByRole('tab', { name: 'What you ask' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('shows a section read-only until Edit, then nothing else is editable', async () => {
+    vi.mocked(bookingFlowApi.listBookingFlowSections).mockResolvedValue([
+      makeFlowSection({
+        id: 'sec1',
+        title: 'About your visit',
+        fields: [makeFlowField({ id: 'fld1', label: 'Hair length', is_required: true })],
+      }),
     ])
     const user = userEvent.setup()
-    render()
+    render('/g1/settings/booking-workflow?tab=workflow')
 
-    await user.click(await screen.findByRole('button', { name: 'Share links' }))
+    const card = (await screen.findByRole('heading', { name: 'About your visit' })).closest(
+      'section',
+    )!
+    expect(within(card).getByText('Hair length')).toBeInTheDocument()
+    expect(within(card).getByText(/Required/)).toBeInTheDocument()
+    expect(within(card).queryByRole('textbox')).not.toBeInTheDocument()
 
-    expect(screen.getByText(/Only one service in this group/)).toBeInTheDocument()
+    await user.click(within(card).getByRole('button', { name: 'Edit' }))
+    expect(within(card).getByLabelText('Section heading')).toHaveFocus()
+    await user.click(within(card).getByRole('button', { name: 'Cancel' }))
+    expect(within(card).queryByRole('textbox')).not.toBeInTheDocument()
   })
 })
 
