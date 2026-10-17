@@ -515,7 +515,7 @@ export function AppointmentTypesList() {
           <SettingsTable
             label="Appointment types"
             minWidth="min-w-[48rem]"
-            columns={[undefined, 'w-32', 'w-40', 'w-28', 'w-72']}
+            columns={[undefined, 'w-28 lg:w-32', 'w-40', 'w-28', 'w-56 lg:w-72']}
             head={
               <tr>
                 <Th>Name</Th>
