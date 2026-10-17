@@ -83,9 +83,10 @@ describe('GarageDetails', () => {
 
   it('notes that the slug and system settings are platform-managed', async () => {
     render()
+    // In the title's tip rather than a permanent footnote.
     expect(
-      await screen.findByText(/managed by the platform administrator/i),
-    ).toBeInTheDocument()
+      await screen.findByRole('button', { name: 'About Business details' }),
+    ).toHaveAccessibleDescription(/managed by the platform administrator/i)
   })
 
   it('shows the public booking link and a QR code with PNG/SVG download', async () => {

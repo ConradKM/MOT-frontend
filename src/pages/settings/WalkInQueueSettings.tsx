@@ -10,6 +10,8 @@ import {
 } from '../../api/queries'
 import type { AverageMode, QueueSettings, ReservedWindow } from '../../api/queue'
 import { BookingQrCard } from '../../components/BookingQrCard'
+import { InfoTip } from '../../components/settings/InfoTip'
+import { FieldLabel, SectionHeading, SettingsPageHeader } from '../../components/settings/SettingsUI'
 import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
 import { queueUrl } from '../../lib/bookingUrl'
@@ -35,15 +37,18 @@ export function WalkInQueueSettings() {
 
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Walk-in Queue</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        How walk-in waits are estimated, and time you keep free for walk-ins. Open and close the
-        queue itself from the{' '}
-        <Link to={`/${garageId}/queue`} className="underline">
-          Queue
-        </Link>{' '}
-        page.
-      </p>
+      <SettingsPageHeader
+        title="Walk-in Queue"
+        info="How walk-in waits are estimated, and time you keep free for walk-ins. Open and close the queue itself from the Queue page."
+        actions={
+          <Link
+            to={`/${garageId}/queue`}
+            className="inline-flex min-h-11 items-center text-sm font-medium text-slate-700 underline sm:min-h-0"
+          >
+            Open the Queue page
+          </Link>
+        }
+      />
 
       {isLoading || !data ? (
         <p className="mt-8 text-sm text-slate-500">Loading…</p>
@@ -87,11 +92,10 @@ function JoinFieldsForm({ settings }: { settings: QueueSettings }) {
     showToast('Customer details settings saved.', 'success')
   }
   return <section>
-    <h2 className="text-sm font-semibold text-slate-900">Customer details when joining</h2>
-    <p className="mt-1 text-xs text-slate-500">Only ask for information this business needs. A required field is always enabled.</p>
-    <div className="mt-3 space-y-2">
-      {fields.map(({ key, label, enabled, required }, index) => <div key={key} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm">
-        <span>{label}</span><div className="flex gap-4">
+    <SectionHeading title="Customer details when joining" info="Only ask for information this business needs. A required field is always enabled." />
+    <div className="mt-3 divide-y divide-slate-100 rounded-lg bg-white shadow-card">
+      {fields.map(({ key, label, enabled, required }, index) => <div key={key} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 text-sm">
+        <span className="font-medium text-slate-900">{label}</span><div className="flex gap-4">
           <label><input type="checkbox" checked={enabled} onChange={(e) => setFields((all) => all.map((f, i) => i === index ? { ...f, enabled: e.target.checked, required: e.target.checked && f.required } : f))} /> Enabled</label>
           <label className={!enabled ? 'text-slate-400' : ''}><input type="checkbox" disabled={!enabled} checked={required} onChange={(e) => setFields((all) => all.map((f, i) => i === index ? { ...f, required: e.target.checked } : f))} /> Required</label>
         </div></div>)}
@@ -139,20 +143,30 @@ function EstimatesForm({ settings }: { settings: QueueSettings }) {
 
   return (
     <form onSubmit={submit}>
-      <h2 className="text-sm font-semibold text-slate-900">Wait estimates</h2>
-      <p className="mt-1 text-xs text-slate-500">
-        Estimates count everyone ahead in the queue <em>and</em> today's booked appointments,
-        across the {settings.capacity} {settings.capacity === 1 ? 'customer' : 'customers'} you
-        can serve at once. That number is shared with your booking calendar — change it under
-        "Bookings per slot" in{' '}
+      <SectionHeading
+        title="Wait estimates"
+        info={
+          <>
+            Estimates count everyone ahead in the queue and today's booked appointments, across
+            the customers you can serve at once. That number is shared with your booking
+            calendar - change it under "Bookings per slot" in Availability.
+          </>
+        }
+      />
+      <p className="mt-1 text-sm text-slate-600">
+        Serving {settings.capacity} {settings.capacity === 1 ? 'customer' : 'customers'} at once ·{' '}
         <Link to={`/${garageId}/settings/availability`} className="underline">
-          Availability
+          Change in Availability
         </Link>
-        .
       </p>
 
       <fieldset className="mt-4 space-y-2 text-sm text-slate-700">
-        <legend className="text-sm text-slate-700">How long a walk-in usually takes</legend>
+        <legend className="flex items-center gap-1 text-sm font-medium text-slate-700">
+          How long a walk-in usually takes
+          <InfoTip label="walk-in length">
+            When a customer picks a service, that service's own length is used instead.
+          </InfoTip>
+        </legend>
         <label className="flex items-start gap-2">
           <input
             type="radio"
@@ -193,16 +207,22 @@ function EstimatesForm({ settings }: { settings: QueueSettings }) {
             />
           </label>
         )}
-        <p className="text-xs text-slate-500">
-          When a customer picks a service, that service's own length is used instead. Currently
-          estimating {average.effective_minutes} min for everyone else.
+        <p className="text-xs text-slate-600">
+          Currently estimating {average.effective_minutes} min for anyone who hasn't picked a
+          service.
         </p>
       </fieldset>
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className="block text-sm text-slate-700">
-          Skip a called customer after (minutes)
+        <div>
+          <FieldLabel
+            htmlFor="queue-timeout"
+            info="If they don't come forward in time they're marked a no-show and the next person is called. Leave blank to never skip automatically."
+          >
+            Skip a called customer after (minutes)
+          </FieldLabel>
           <input
+            id="queue-timeout"
             type="number"
             min={1}
             max={120}
@@ -211,14 +231,16 @@ function EstimatesForm({ settings }: { settings: QueueSettings }) {
             onChange={(e) => setTimeoutMinutes(e.target.value)}
             className={inputClass}
           />
-          <span className="mt-1 block text-xs text-slate-500">
-            If they don't come forward in time they're marked a no-show and the next person is
-            called. Leave blank to never skip automatically.
-          </span>
-        </label>
-        <label className="block text-sm text-slate-700">
-          Record walk-ins as
+        </div>
+        <div>
+          <FieldLabel
+            htmlFor="queue-default-type"
+            info="The service on a walk-in's appointment when they didn't choose one."
+          >
+            Record walk-ins as
+          </FieldLabel>
           <select
+            id="queue-default-type"
             value={defaultType}
             onChange={(e) => setDefaultType(e.target.value)}
             className={inputClass}
@@ -230,10 +252,7 @@ function EstimatesForm({ settings }: { settings: QueueSettings }) {
               </option>
             ))}
           </select>
-          <span className="mt-1 block text-xs text-slate-500">
-            The service on a walk-in's appointment when they didn't choose one.
-          </span>
-        </label>
+        </div>
       </div>
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -293,19 +312,17 @@ function ReservedWindowsSection({ capacity }: { capacity: number }) {
 
   return (
     <div>
-      <h2 className="text-sm font-semibold text-slate-900">Time kept free for walk-ins</h2>
-      <p className="mt-1 text-xs text-slate-500">
-        During these windows, online booking only offers what's left after the places you keep
-        back, so a busy booking day can't crowd out walk-ins. Reserving all {capacity} makes the
-        window walk-in only. Staff can still book into it by hand.
-      </p>
+      <SectionHeading
+        title="Time kept free for walk-ins"
+        info={`During these windows, online booking only offers what's left after the places you keep back, so a busy booking day can't crowd out walk-ins. Reserving all ${capacity} makes the window walk-in only. Staff can still book into it by hand.`}
+      />
 
-      <ul className="mt-3 space-y-1.5">
-        {windows.length === 0 && <li className="text-sm text-slate-400">No time reserved.</li>}
+      <ul className="mt-3 divide-y divide-slate-100 rounded-lg bg-white shadow-card">
+        {windows.length === 0 && <li className="px-4 py-2.5 text-sm text-slate-500">No time reserved.</li>}
         {windows.map((w) => (
           <li
             key={w.id}
-            className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm"
+            className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
           >
             <span>
               {describeWindow(w)}

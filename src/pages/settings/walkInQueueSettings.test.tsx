@@ -25,8 +25,8 @@ describe('WalkInQueueSettings', () => {
     expect(
       await screen.findByText(/Currently 35 min — the typical length of your last 9/),
     ).toBeInTheDocument()
-    const explainer = screen.getByText(/across the 2 customers you can serve at once/)
-    expect(within(explainer).getByRole('link', { name: 'Availability' })).toHaveAttribute(
+    const explainer = screen.getByText(/Serving 2 customers at once/)
+    expect(within(explainer).getByRole('link', { name: 'Change in Availability' })).toHaveAttribute(
       'href',
       '/g1/settings/availability',
     )
@@ -58,7 +58,7 @@ describe('WalkInQueueSettings', () => {
     renderSettings()
     await user.click(await screen.findByLabelText('Set it myself'))
     await user.type(screen.getByLabelText('Minutes per walk-in'), '25')
-    const timeout = screen.getByLabelText(/Skip a called customer after/)
+    const timeout = screen.getByLabelText(/Skip a called customer after/, { selector: 'input' })
     await user.clear(timeout)
     await user.click(screen.getByRole('button', { name: 'Save' }))
 

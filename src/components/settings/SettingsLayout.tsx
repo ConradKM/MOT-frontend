@@ -71,7 +71,7 @@ export function SettingsLayout() {
   const garageId = useGarageId()
 
   return (
-    <div className="flex flex-col gap-8 sm:flex-row">
+    <div className="settings-scope flex flex-col gap-8 sm:flex-row">
       <nav
         aria-label="Settings"
         className="flex shrink-0 flex-row items-center gap-1 overflow-x-auto sm:w-52 sm:flex-col sm:items-stretch"
