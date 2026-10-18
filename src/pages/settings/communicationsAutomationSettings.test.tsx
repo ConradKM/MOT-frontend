@@ -26,7 +26,10 @@ const TEMPLATE: communicationsApi.MessageTemplate = {
   is_custom: false,
 }
 
-function render(templates: communicationsApi.MessageTemplate[] = [{ ...TEMPLATE }]) {
+function render(
+  templates: communicationsApi.MessageTemplate[] = [{ ...TEMPLATE }],
+  route = '/g/settings/communications-automation',
+) {
   vi.mocked(communicationsApi.getAutomationSettings).mockResolvedValue({ ...SETTINGS })
   vi.mocked(communicationsApi.listTemplates).mockResolvedValue({ items: templates })
   return renderWithProviders(
@@ -38,7 +41,7 @@ function render(templates: communicationsApi.MessageTemplate[] = [{ ...TEMPLATE 
         />
       </Routes>
     </ToastProvider>,
-    { route: '/g/settings/communications-automation' },
+    { route },
   )
 }
 
@@ -96,9 +99,10 @@ describe('CommunicationsAutomationSettings', () => {
       is_custom: true,
     })
     const user = userEvent.setup()
-    render()
+    render(undefined, '/g/settings/communications-automation?tab=templates')
 
-    const textarea = await screen.findByDisplayValue(TEMPLATE.body)
+    const textarea = await screen.findByRole('textbox', { name: 'Booking request received' })
+    expect(textarea).toHaveValue(TEMPLATE.body)
     await user.clear(textarea)
     // userEvent.type() treats `{` (not `}`) as special-key syntax - `{{` is
     // the escape for one literal `{`, so this actually types
@@ -118,9 +122,43 @@ describe('CommunicationsAutomationSettings', () => {
   })
 
   it('offers to reset only once a template is customised', async () => {
-    render([{ ...TEMPLATE, body: 'Custom text', is_custom: true }])
+    render(
+      [{ ...TEMPLATE, body: 'Custom text', is_custom: true }],
+      '/g/settings/communications-automation?tab=templates',
+    )
 
     expect(await screen.findByText('Customised')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /reset to default/i })).toBeInTheDocument()
+  })
+
+  it('splits the page into tabs, opening on the automated messages', async () => {
+    const user = userEvent.setup()
+    render()
+    expect(await screen.findByRole('tab', { name: 'Automated messages' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('checkbox', { name: /booking request received/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Message templates' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Message templates' }))
+    expect(screen.getByRole('heading', { name: 'Message templates' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: /booking request received/i })).toBeNull()
+  })
+
+  it('keeps the old #phone-menu link working by opening the Phone menu tab', async () => {
+    render(undefined, '/g/settings/communications-automation#phone-menu')
+    expect(await screen.findByRole('tab', { name: 'Phone menu' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    expect(screen.getByRole('heading', { name: 'Phone menu' })).toHaveAttribute('id', 'phone-menu')
+  })
+
+  it('moves each toggle\'s explanation into a tip', async () => {
+    render()
+    expect(
+      await screen.findByRole('button', { name: 'About Missed call follow-up' }),
+    ).toHaveAccessibleDescription(/when a call to your business goes unanswered/)
   })
 })

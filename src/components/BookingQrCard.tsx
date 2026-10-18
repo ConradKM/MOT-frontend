@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import QRCode from 'qrcode'
 import { bookingUrl } from '../lib/bookingUrl'
 import { saveBlob } from '../lib/download'
+import { SectionHeading } from './settings/SettingsUI'
 
 interface BookingQrCardProps {
   garageId: string
@@ -15,6 +16,8 @@ interface BookingQrCardProps {
   filenameStem?: string
   /** Accessible name of the QR image. */
   qrLabel?: string
+  headingLevel?: 'h2' | 'h3'
+  className?: string
 }
 
 /**
@@ -32,6 +35,8 @@ export function BookingQrCard({
   description = 'Share this link or print the QR code so customers can book with you directly. It stays the same for the life of your business.',
   filenameStem = 'booking-qr',
   qrLabel = 'Booking link QR code',
+  headingLevel = 'h2',
+  className = 'mt-8',
 }: BookingQrCardProps) {
   const url = urlOverride ?? bookingUrl(garageId)
   const [svg, setSvg] = useState<string | null>(null)
@@ -91,11 +96,10 @@ export function BookingQrCard({
   }
 
   return (
-    <section className="mt-8">
-      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-      <p className="mt-1 text-sm text-slate-500">{description}</p>
+    <section className={className}>
+      <SectionHeading title={title} info={description} as={headingLevel} />
 
-      <div className="mt-4 flex flex-col gap-4 rounded-lg bg-white shadow-card p-4 sm:flex-row sm:items-center">
+      <div className="mt-3 flex flex-col gap-4 rounded-lg bg-white shadow-card p-4 sm:flex-row sm:items-center">
         {svg ? (
           <div
             ref={svgWrapRef}
@@ -123,7 +127,7 @@ export function BookingQrCard({
             <button
               type="button"
               onClick={copyLink}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              className="min-h-11 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 sm:min-h-0"
             >
               Copy link
             </button>
@@ -131,7 +135,7 @@ export function BookingQrCard({
               type="button"
               onClick={downloadPng}
               disabled={!svg}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="min-h-11 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0"
             >
               Download PNG
             </button>
@@ -139,7 +143,7 @@ export function BookingQrCard({
               type="button"
               onClick={downloadSvg}
               disabled={!svg}
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+              className="min-h-11 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0"
             >
               Download SVG
             </button>

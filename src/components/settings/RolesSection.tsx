@@ -59,12 +59,7 @@ export function RolesSection() {
 
   return (
     <div>
-      <p className="text-sm text-slate-500">
-        Tags you can assign to employees. "OWNER" is protected — every garage has one and it
-        can't be renamed or deleted.
-      </p>
-
-      <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
+      <div className="overflow-hidden rounded-lg bg-white shadow-card">
         {isLoading && <p className="p-4 text-sm text-slate-500">Loading…</p>}
         {roles && roles.length === 0 && (
           <p className="p-4 text-sm text-slate-500">No roles yet.</p>
@@ -88,8 +83,13 @@ export function RolesSection() {
                       className="flex-1 rounded-md border border-slate-300 px-2 py-1 text-sm focus:border-slate-500 focus:outline-none"
                     />
                   ) : (
-                    <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800">
-                      {role.name}
+                    <span className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-800">
+                        {role.name}
+                      </span>
+                      {protectedRole && (
+                        <span className="text-xs text-slate-500">Protected - can't be renamed or deleted</span>
+                      )}
                     </span>
                   )}
 
@@ -141,6 +141,7 @@ export function RolesSection() {
             value={newRoleName}
             onChange={(e) => setNewRoleName(e.target.value)}
             placeholder="New role name"
+            aria-label="New role name"
             className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
           />
           {createError && <p className="mt-1 text-sm text-red-600">{createError}</p>}

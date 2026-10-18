@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import type { GarageTerms } from '../../api/terms'
 import { useGarageTerms, useUpdateGarageTerms } from '../../api/queries'
 import { BookingQrCard } from '../../components/BookingQrCard'
+import { InfoTip } from '../../components/settings/InfoTip'
+import { FieldLabel, SettingsPageHeader } from '../../components/settings/SettingsUI'
 import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
 import { termsUrl } from '../../lib/bookingUrl'
@@ -23,13 +25,10 @@ export function TermsSettings() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
-        Terms &amp; Conditions
-      </h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Customers must accept these before booking - online, in the walk-in queue, and for
-        bookings made by WhatsApp, text or phone. Only the business owner can change them.
-      </p>
+      <SettingsPageHeader
+        title="Terms & Conditions"
+        description="Customers must accept these before booking - online, in the walk-in queue, and for bookings made by WhatsApp, text or phone. Only the business owner can change them."
+      />
 
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
       {isError && <p className="mt-6 text-sm text-red-600">Failed to load your terms.</p>}
@@ -81,18 +80,18 @@ function TermsForm({ data }: { data: GarageTerms }) {
           </p>
         )}
         <div>
-          <label htmlFor="terms-text" className="block text-sm font-medium text-slate-700">
+          <FieldLabel
+            htmlFor="terms-text"
+            info="Customers must accept these before booking. Leave empty to turn this off."
+          >
             Terms and conditions
-          </label>
-          <p id="terms-help" className="mt-0.5 text-xs text-slate-500">
-            Customers must accept these before booking. Leave empty to turn this off.
-          </p>
+          </FieldLabel>
           <textarea
             id="terms-text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             rows={16}
-            aria-describedby="terms-help terms-count"
+            aria-describedby="terms-count"
             aria-invalid={tooLong || undefined}
             className="mt-2 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm leading-relaxed focus:border-slate-500 focus:outline-none"
           />
@@ -113,10 +112,13 @@ function TermsForm({ data }: { data: GarageTerms }) {
             {update.isPending ? 'Saving…' : 'Save'}
           </button>
           {data.terms_version != null && data.terms_updated_at && (
-            <p className="text-xs text-slate-500">
+            <p className="flex items-center gap-1 text-xs text-slate-600">
               Version {data.terms_version}, in effect since{' '}
-              {formatDateTime(data.terms_updated_at)}. Editing the wording creates a new
-              version; past bookings keep the one they accepted.
+              {formatDateTime(data.terms_updated_at)}.
+              <InfoTip label="terms versions">
+                Editing the wording creates a new version; past bookings keep the one they
+                accepted.
+              </InfoTip>
             </p>
           )}
         </div>

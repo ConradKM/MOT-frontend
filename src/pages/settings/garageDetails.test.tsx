@@ -83,23 +83,19 @@ describe('GarageDetails', () => {
 
   it('notes that the slug and system settings are platform-managed', async () => {
     render()
+    // Part of the page description under the title, not a separate footnote.
     expect(
       await screen.findByText(/managed by the platform administrator/i),
-    ).toBeInTheDocument()
+    ).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'About Business details' })).toBeNull()
   })
 
-  it('shows the public booking link and a QR code with PNG/SVG download', async () => {
+  it('points to the Share page for the booking link, rather than repeating it', async () => {
     render()
-
-    expect(
-      await screen.findByText('https://app.comaz.co.uk/book/g'),
-    ).toBeInTheDocument()
-
-    const qr = await screen.findByLabelText('Booking link QR code')
-    await waitFor(() => expect(qr.querySelector('svg')).not.toBeNull())
-
-    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Download PNG' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Download SVG' })).toBeEnabled()
+    expect(await screen.findByRole('link', { name: 'Share your business' })).toHaveAttribute(
+      'href',
+      '/g/settings/share',
+    )
+    expect(screen.queryByLabelText('Booking link QR code')).not.toBeInTheDocument()
   })
 })

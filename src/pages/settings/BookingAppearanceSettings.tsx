@@ -7,7 +7,15 @@ import { useToast } from '../../components/Toast'
 import { useGarageId } from '../../hooks/useGarageId'
 import { BOOKING_THEME_PRESETS, DEFAULT_BACKGROUND, DEFAULT_TEXT } from '../../lib/bookingTheme'
 import { bookingUrl } from '../../lib/bookingUrl'
-import { MIN_CONTRAST_RATIO, contrastRatio, formatRatio, isHexColor } from '../../lib/contrast'
+import {
+  MIN_CONTRAST_RATIO,
+  contrastRatio,
+  formatRatio,
+  isHexColor,
+  relativeLuminance,
+} from '../../lib/contrast'
+import { InfoTip } from '../../components/settings/InfoTip'
+import { SettingsPageHeader } from '../../components/settings/SettingsUI'
 import { errorMessage, isApiError } from '../../lib/errors'
 import type { Garage } from '../../types'
 
@@ -28,14 +36,17 @@ export function BookingAppearanceSettings() {
 
   return (
     <div className="max-w-4xl">
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">
-        Booking page appearance
-      </h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Choose the colours customers see on your booking page, walk-in queue, terms page and
-        customer account. This changes the page background and the text on it; cards and forms
-        stay white so they are always easy to fill in. Only the business owner can change this.
-      </p>
+      <SettingsPageHeader
+        title="Booking page appearance"
+        description={
+          <>
+            Choose the colours customers see on your booking page, walk-in queue, terms page and
+            customer account. This changes the page background and the text on it; cards and
+            forms stay white so they are always easy to fill in. Only the business owner can
+            change this.
+          </>
+        }
+      />
 
       {isLoading && <p className="mt-6 text-sm text-slate-500">Loading…</p>}
       {isError && <p className="mt-6 text-sm text-red-600">Failed to load your settings.</p>}
@@ -109,7 +120,7 @@ function AppearanceForm({ garage }: { garage: Garage }) {
         <ColorField id="booking-bg" label="Page background" value={background} onChange={setBackground} />
         <ColorField id="booking-text" label="Page text" value={text} onChange={setText} />
 
-        <ContrastReadout ratio={ratio} />
+        <ReadabilityRating background={background} text={text} ratio={ratio} />
 
         <fieldset>
           <legend className="text-sm font-medium text-slate-700">Presets</legend>
@@ -119,7 +130,7 @@ function AppearanceForm({ garage }: { garage: Garage }) {
                 key={p.name}
                 type="button"
                 onClick={() => applyPreset(p)}
-                className="flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                className="flex min-h-11 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 sm:min-h-0"
               >
                 <span
                   aria-hidden="true"
@@ -158,7 +169,7 @@ function AppearanceForm({ garage }: { garage: Garage }) {
           {!passes && (
             <p id="booking-save-blocked" className="w-full text-xs text-slate-500">
               {bothHex
-                ? `Saving is turned off until the text and background contrast is at least ${MIN_CONTRAST_RATIO}:1.`
+                ? 'Saving is turned off until the text is easy enough to read on the background.'
                 : 'Saving is turned off until both colours are 6-digit hex values like #1a2b3c.'}
             </p>
           )}
@@ -170,7 +181,7 @@ function AppearanceForm({ garage }: { garage: Garage }) {
 
       <section aria-labelledby="booking-preview-heading">
         <div className="flex items-center justify-between gap-3">
-          <h2 id="booking-preview-heading" className="text-sm font-medium text-slate-700">
+          <h2 id="booking-preview-heading" className="text-lg font-semibold text-slate-900">
             Preview
           </h2>
           <a
@@ -184,7 +195,7 @@ function AppearanceForm({ garage }: { garage: Garage }) {
             <span className="sr-only">(opens in a new tab)</span>
           </a>
         </div>
-        <div className="mt-2 overflow-hidden rounded-lg border border-slate-200" data-testid="booking-preview">
+        <div className="mt-2 overflow-hidden rounded-lg shadow-card" data-testid="booking-preview">
           <BookingThemeScope background={background} text={text} className="p-5">
             <div className="mb-5 flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-slate-900 text-sm font-semibold text-white">
@@ -266,24 +277,66 @@ function ColorField({
   )
 }
 
-function ContrastReadout({ ratio }: { ratio: number | null }) {
+/** What to try when the pair is too close: move whichever is darker darker
+ * and the other lighter. */
+function improveHint(background: string, text: string): string {
+  return relativeLuminance(background) >= relativeLuminance(text)
+    ? 'try a lighter background or darker text'
+    : 'try a darker background or lighter text'
+}
+
+/**
+ * The readability of the chosen pair in plain words, with a sample in the
+ * real colours. The ratio itself is in a tip for anyone who wants it. The
+ * bar is the server's (MIN_CONTRAST_RATIO, 422 below it); "Easy to read"
+ * is the stricter 7:1 level. Never colour alone: icon + words, announced.
+ */
+function ReadabilityRating({
+  background,
+  text,
+  ratio,
+}: {
+  background: string
+  text: string
+  ratio: number | null
+}) {
   if (ratio === null) return null
   const passes = ratio >= MIN_CONTRAST_RATIO
+  const easy = ratio >= 7
   const Icon = passes ? CircleCheck : CircleAlert
+  const label = easy ? 'Easy to read' : passes ? 'Readable' : 'Hard to read'
 
   return (
-    <p
-      role="status"
-      aria-live="polite"
-      data-testid="contrast-readout"
-      className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
-        passes ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'
-      }`}
-    >
-      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-      {passes
-        ? `Contrast ${formatRatio(ratio)}, passes (needs at least ${MIN_CONTRAST_RATIO}:1).`
-        : `Contrast ${formatRatio(ratio)}, too low: needs at least ${MIN_CONTRAST_RATIO}:1 so customers can read it.`}
-    </p>
+    <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <p
+          role="status"
+          aria-live="polite"
+          data-testid="contrast-readout"
+          className={`flex flex-1 items-center gap-2 rounded-md px-3 py-2 text-sm ${
+            passes ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'
+          }`}
+        >
+          <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>
+            <strong className="font-semibold">{label}</strong>
+            {!passes && `: ${improveHint(background, text)}.`}
+            {passes && !easy && ': most customers will read it comfortably.'}
+          </span>
+        </p>
+        <InfoTip label="readability">
+          Contrast ratio {formatRatio(ratio)}. Customer pages need at least {MIN_CONTRAST_RATIO}:1
+          (the WCAG AA level); 7:1 or more is easy for almost everyone.
+        </InfoTip>
+      </div>
+      <div
+        data-testid="readability-sample"
+        className="rounded-md px-3 py-2 text-sm shadow-card"
+        style={{ backgroundColor: background, color: text }}
+      >
+        <span className="font-semibold">Sample:</span> Book your next appointment in under a
+        minute.
+      </div>
+    </div>
   )
 }

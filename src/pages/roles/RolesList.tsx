@@ -1,10 +1,19 @@
 import { RolesSection } from '../../components/settings/RolesSection'
+import { SettingsPageHeader } from '../../components/settings/SettingsUI'
 
 export function RolesList() {
   return (
     <>
-      <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Roles</h1>
-      <div className="mt-4">
+      <SettingsPageHeader
+        title="Roles"
+        description={
+          <>
+            Tags you can assign to employees. "OWNER" is protected - every business has one
+            and it can't be renamed or deleted.
+          </>
+        }
+      />
+      <div className="mt-6">
         <RolesSection />
       </div>
     </>

@@ -65,6 +65,32 @@
   --color-page-control: var(--page-control, transparent);
 }
 
+/* Settings pages only (SettingsLayout's root): the muted greys step darker so
+ * secondary text stays clearly legible on the grey page, while keeping a
+ * hierarchy - headings and labels carry weight, not just darkness. Measured
+ * against the page background (#f4f4f4) with src/lib/contrast.ts:
+ *   slate-400 #898989 3.2:1  ->  #4f4f4f 7.5:1
+ *   slate-500 #6b7280 4.4:1  ->  #383838 10.7:1
+ *   slate-600 #4f4f4f        ->  #242424 (was slate-800)
+ *   slate-700 #383838        ->  #101010 (was slate-900)
+ * Utilities read var(--color-slate-*), so no class changes are needed and
+ * the rest of the app (staff chrome, public pages) is untouched. */
+.settings-scope {
+  --color-slate-400: #4f4f4f;
+  --color-slate-500: #383838;
+  --color-slate-600: #242424;
+  --color-slate-700: #101010;
+}
+
+/* ...except a booking-page preview (Booking Page Appearance), which must look
+ * exactly like the customer's page: the original ramp from @theme above. */
+.settings-scope [data-booking-theme] {
+  --color-slate-400: #898989;
+  --color-slate-500: #6b7280;
+  --color-slate-600: #4f4f4f;
+  --color-slate-700: #383838;
+}
+
 @layer base {
   body {
     @apply bg-slate-50 text-slate-800 antialiased;

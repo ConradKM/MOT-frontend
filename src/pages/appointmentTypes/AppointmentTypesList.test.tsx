@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { server } from '../../test/msw/server'
-import { makeAppointmentType } from '../../test/fixtures'
+import { makeAppointmentType, makeEmployee, makeRole } from '../../test/fixtures'
 import { renderWithAppProviders, signInAsStaff } from '../../test/utils'
 import { AppointmentTypesList } from './AppointmentTypesList'
 
@@ -147,5 +147,103 @@ describe('AppointmentTypesList — deposit settings', () => {
     await user.click(submitButton())
 
     await waitFor(() => expect(screen.getByText('Deposit: £20.00')).toBeInTheDocument())
+  })
+})
+
+describe('AppointmentTypesList — checklist link', () => {
+  function serveTemplate(exists: boolean) {
+    server.use(
+      http.get('*/api/appointment-types/:id/checklist-template', () =>
+        exists
+          ? HttpResponse.json({ id: 'ct1', appointment_type_id: 'at1', items: [] })
+          : HttpResponse.json({ message: 'Not found' }, { status: 404 }),
+      ),
+    )
+  }
+  function serveEmployeeRole(role: string) {
+    server.use(
+      http.get('*/api/employees/', () =>
+        HttpResponse.json([makeEmployee({ roles: [makeRole({ name: role })] })]),
+      ),
+    )
+  }
+
+  it('offers an owner "Edit checklist" when one exists, and nothing else checklist-related', async () => {
+    serveTypes()
+    serveTemplate(true)
+    renderPage()
+    const link = await screen.findByRole('link', { name: 'Edit checklist' })
+    expect(link).toHaveAttribute('href', '/g1/appointment-types/at1/checklist/build')
+    expect(screen.queryByRole('link', { name: 'View checklist' })).not.toBeInTheDocument()
+  })
+
+  it('offers an owner "Build checklist" when none exists yet', async () => {
+    serveTypes()
+    serveTemplate(false)
+    renderPage()
+    expect(await screen.findByRole('link', { name: 'Build checklist' })).toHaveAttribute(
+      'href',
+      '/g1/appointment-types/at1/checklist/build',
+    )
+  })
+
+  it('offers a non-owner only "View checklist", and only when one exists', async () => {
+    serveTypes()
+    serveTemplate(true)
+    serveEmployeeRole('STAFF')
+    renderPage()
+    expect(await screen.findByRole('link', { name: 'View checklist' })).toHaveAttribute(
+      'href',
+      '/g1/appointment-types/at1/checklist',
+    )
+    expect(screen.queryByRole('link', { name: /Edit checklist|Build checklist/ })).not.toBeInTheDocument()
+  })
+
+  it('shows a non-owner no checklist link when there is no checklist', async () => {
+    serveTypes()
+    serveTemplate(false)
+    serveEmployeeRole('STAFF')
+    renderPage()
+    await screen.findByRole('link', { name: 'Add-ons' })
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: /checklist/i })).not.toBeInTheDocument(),
+    )
+  })
+})
+
+describe('AppointmentTypesList — editing', () => {
+  it('opens the edit form beneath the row, leaving the row in place', async () => {
+    serveTypes([makeAppointmentType({ id: 'at1', name: 'MOT test' })])
+    const user = userEvent.setup()
+    renderPage()
+
+    const name = await screen.findByText('MOT test')
+    const row = name.closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'Edit' }))
+
+    const panel = screen.getByRole('region', { name: 'Edit MOT test' })
+    expect(name).toBeInTheDocument()
+    expect(row.nextElementSibling).toContainElement(panel)
+    expect(within(panel).getAllByRole('textbox')[0]).toHaveFocus()
+
+    await user.click(within(row).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('region', { name: 'Edit MOT test' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the owner-only message visible when a save is refused', async () => {
+    serveTypes([makeAppointmentType({ id: 'at1', name: 'MOT test' })])
+    server.use(
+      http.patch('*/api/appointment-types/:id', () =>
+        HttpResponse.json({ message: 'Forbidden' }, { status: 403 }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const row = (await screen.findByText('MOT test')).closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(
+      await screen.findByText('Only the business owner can edit appointment types.'),
+    ).toBeInTheDocument()
   })
 })
