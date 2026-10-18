@@ -655,9 +655,9 @@ export function BookingRequestsList() {
     <div>
       <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900">Booking requests</h1>
       <p className="mt-1 text-sm text-slate-500">
-        Requests submitted through your public booking page. Approving one creates the customer,
-        vehicle and appointment. Requests left unreviewed past their preferred time expire
-        automatically.
+        Requests submitted through your public booking page. The customer and vehicle are saved when
+        the request is submitted; approving one creates the appointment. Requests left unreviewed past their
+        preferred time expire automatically.
       </p>
 
       {garage?.auto_accept_booking_requests && (
