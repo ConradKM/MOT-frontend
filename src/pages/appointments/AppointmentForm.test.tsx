@@ -566,3 +566,140 @@ describe('AppointmentForm — add-ons', () => {
     ])
   })
 })
+
+describe('AppointmentForm — discount code', () => {
+  const summary = () => screen.getByTestId('appointment-live-summary')
+
+  function servePreview(handler: Parameters<typeof http.post>[1]) {
+    const seen: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/loyalty/evaluate', async (info) => {
+        seen.push((await info.request.clone().json()) as Record<string, unknown>)
+        return handler(info)
+      }),
+    )
+    return seen
+  }
+
+  it('needs a customer first, then applies a code with the server’s price', async () => {
+    serveLookups()
+    const seen = servePreview(() =>
+      HttpResponse.json({
+        code: 'SUMMER10',
+        discount_type: 'PERCENTAGE',
+        discount_value: '10.00',
+        original_total: '54.85',
+        discount_amount: '5.49',
+        new_total: '49.36',
+      }),
+    )
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.post('*/api/appointments/', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(makeAppointment())
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm()
+    await screen.findByRole('combobox', { name: 'Employee' })
+
+    await user.type(screen.getByLabelText(/Discount code/), 'summer10')
+    await user.click(screen.getByRole('button', { name: 'Apply' }))
+    expect(await screen.findByText(/Choose the customer first/)).toBeInTheDocument()
+    expect(seen).toHaveLength(0)
+
+    await choose(user, 'Employee', /greg@bennett.example/)
+    await choose(user, 'Customer', /Oliver Bennett/)
+    await user.click(screen.getByRole('button', { name: 'Apply' }))
+
+    expect(await screen.findByText('applied')).toBeInTheDocument()
+    expect(seen[0]).toMatchObject({ code: 'SUMMER10', customer_id: 'c1', appointment_type_id: 'at1' })
+    expect(summary()).toHaveTextContent('£54.85 £49.36')
+    expect(summary()).toHaveTextContent('Discount SUMMER10−£5.49')
+
+    await user.type(screen.getByLabelText('Start'), '2026-09-14T09:00')
+    await overrideEnd(user, '2026-09-14T10:00')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('heading', { name: 'Diary' })).toBeInTheDocument()
+    expect(body.discount_code).toBe('SUMMER10')
+    expect(body).not.toHaveProperty('price_at_booking')
+  })
+
+  it('shows why a code was refused', async () => {
+    serveLookups()
+    servePreview(() =>
+      HttpResponse.json(
+        {
+          code: 422,
+          message: 'This loyalty code belongs to a different customer.',
+          errors: { reason: 'wrong_customer' },
+        },
+        { status: 422 },
+      ),
+    )
+    const user = userEvent.setup()
+    renderForm()
+    await screen.findByRole('combobox', { name: 'Employee' })
+    await choose(user, 'Customer', /Nadia Okafor/)
+    await user.type(screen.getByLabelText(/Discount code/), 'LOYAL-ABCDEFGH')
+    await user.click(screen.getByRole('button', { name: 'Apply' }))
+    expect(
+      await screen.findByText('This loyalty code belongs to a different customer.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('applied')).not.toBeInTheDocument()
+  })
+
+  const DISCOUNTED = makeAppointment({
+    id: 'a1',
+    customer_id: 'c1',
+    appointment_type_id: 'at1',
+    price_at_booking: '90.00',
+    price_before_discount: '100.00',
+    discount_code: 'SUMMER10',
+    discount_type: 'PERCENTAGE',
+    discount_value: '10.00',
+    discount_amount: '10.00',
+  })
+
+  it('shows a saved discount and leaves it alone on an unrelated edit', async () => {
+    serveLookups([DISCOUNTED])
+    const seen = servePreview(() => HttpResponse.json({}))
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.patch('*/api/appointments/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(DISCOUNTED)
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm('/g1/appointments/a1/edit')
+    await waitFor(() => expect(summary()).toHaveTextContent('£100.00 £90.00'))
+    expect(summary()).toHaveTextContent('Discount SUMMER10−£10.00')
+
+    await user.type(screen.getByLabelText('Notes'), 'x')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('heading', { name: 'Diary' })).toBeInTheDocument()
+    expect(body).not.toHaveProperty('discount_code')
+    expect(seen).toHaveLength(0)
+  })
+
+  it('removes a saved discount explicitly', async () => {
+    serveLookups([DISCOUNTED])
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.patch('*/api/appointments/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(DISCOUNTED)
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm('/g1/appointments/a1/edit')
+    await user.click(await screen.findByRole('button', { name: 'Remove' }))
+    // Back to the price before the discount - not the discounted one.
+    expect(summary()).toHaveTextContent('Price£100.00')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('heading', { name: 'Diary' })).toBeInTheDocument()
+    expect(body.discount_code).toBeNull()
+  })
+})

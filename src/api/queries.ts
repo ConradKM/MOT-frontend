@@ -29,6 +29,7 @@ import * as appointmentStatusesApi from './appointmentStatuses'
 import * as calendarExportApi from './calendarExport'
 import * as bulkImportApi from './bulkImport'
 import * as paymentsApi from './payments'
+import * as loyaltyApi from './loyalty'
 import { getCustomerAccessToken } from './customerTokens'
 import type { BookingRequestStatus } from './bookingRequests'
 import type { CustomerInput } from './customers'
@@ -1537,4 +1538,85 @@ export function useDisconnectSquare() {
       qc.invalidateQueries({ queryKey: ['paymentProvider'] })
     },
   })
+}
+
+// Loyalty rewards & discount codes
+export function useLoyaltySettings() {
+  return useQuery({ queryKey: ['loyaltySettings'], queryFn: loyaltyApi.getLoyaltySettings })
+}
+
+export function useUpdateLoyaltySettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: loyaltyApi.LoyaltySettings) => loyaltyApi.updateLoyaltySettings(data),
+    onSuccess: (settings) => {
+      qc.setQueryData(['loyaltySettings'], settings)
+      qc.invalidateQueries({ queryKey: ['customerLoyalty'] })
+    },
+  })
+}
+
+export function useDiscountCodes(params: loyaltyApi.DiscountCodeListParams) {
+  return useQuery({
+    queryKey: ['discountCodes', params],
+    queryFn: () => loyaltyApi.listDiscountCodes(params),
+    placeholderData: (previous) => previous,
+  })
+}
+
+function invalidateDiscountCodes(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: ['discountCodes'] })
+  qc.invalidateQueries({ queryKey: ['customerLoyalty'] })
+}
+
+export function useCreateDiscountCode() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: loyaltyApi.DiscountCodeCreateInput) => loyaltyApi.createDiscountCode(data),
+    onSuccess: () => invalidateDiscountCodes(qc),
+  })
+}
+
+export function useUpdateDiscountCode() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: loyaltyApi.DiscountCodeUpdateInput }) =>
+      loyaltyApi.updateDiscountCode(id, data),
+    onSuccess: () => invalidateDiscountCodes(qc),
+  })
+}
+
+export function useResendDiscountCodeEmail() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => loyaltyApi.resendDiscountCodeEmail(id),
+    onSuccess: () => invalidateDiscountCodes(qc),
+  })
+}
+
+export function usePreviewDiscount() {
+  return useMutation({
+    mutationFn: (data: loyaltyApi.DiscountPreviewInput) => loyaltyApi.previewDiscount(data),
+  })
+}
+
+export function useCustomerLoyalty(customerId: string | undefined) {
+  return useQuery({
+    queryKey: ['customerLoyalty', customerId],
+    queryFn: () => loyaltyApi.getCustomerLoyalty(customerId as string),
+    enabled: Boolean(customerId),
+  })
+}
+
+export function useUnsubscribePreview(token: string | null) {
+  return useQuery({
+    queryKey: ['unsubscribePreview', token],
+    queryFn: () => loyaltyApi.previewUnsubscribe(token as string),
+    enabled: Boolean(token),
+    retry: false,
+  })
+}
+
+export function useUnsubscribe() {
+  return useMutation({ mutationFn: (token: string) => loyaltyApi.unsubscribe(token) })
 }

@@ -332,3 +332,43 @@ describe('CustomerForm — editing', () => {
     expect(posts).toBe(0)
   })
 })
+
+describe('CustomerForm — marketing email opt-out', () => {
+  it('loads the opt-out and lets staff switch it off again', async () => {
+    let patchBody: Record<string, unknown> = {}
+    server.use(
+      http.get('*/api/customers/:id', () =>
+        HttpResponse.json(makeCustomer({ id: 'c1', marketing_email_opt_out: true })),
+      ),
+      http.patch('*/api/customers/:id', async ({ request }) => {
+        patchBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(makeCustomer({ id: 'c1' }))
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm('/g1/customers/c1/edit')
+    const box = screen.getByRole('checkbox', { name: "Don't send offers by email" })
+    await waitFor(() => expect(box).toBeChecked())
+    await user.click(box)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await screen.findByRole('heading', { name: 'Customer detail' })
+    expect(patchBody.marketing_email_opt_out).toBe(false)
+  })
+
+  it('records it for a new customer who asked not to get offers', async () => {
+    let body: Record<string, unknown> = {}
+    server.use(
+      http.post('*/api/customers/', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(makeCustomer())
+      }),
+    )
+    const user = userEvent.setup()
+    renderForm()
+    await fillRequired(user)
+    await user.click(screen.getByRole('checkbox', { name: "Don't send offers by email" }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await screen.findByRole('heading', { name: 'Customer detail' })
+    expect(body.marketing_email_opt_out).toBe(true)
+  })
+})

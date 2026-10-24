@@ -4,7 +4,7 @@ import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { server } from '../../test/msw/server'
-import { makeCustomer, makeVehicle } from '../../test/fixtures'
+import { makeCustomer, makeCustomerLoyalty, makeLoyaltyCode, makeVehicle } from '../../test/fixtures'
 import { renderWithAppProviders, signInAsStaff } from '../../test/utils'
 import { CustomerDetail } from './CustomerDetail'
 import { expectNoA11yViolations } from '../../test/a11y'
@@ -236,5 +236,41 @@ describe('CustomerDetail — accessibility', () => {
     const { container } = renderDetail()
     await screen.findByRole('heading', { name: 'Oliver Bennett' })
     await expectNoA11yViolations(container)
+  })
+})
+
+describe('CustomerDetail — loyalty', () => {
+  it('shows completed visits, the next reward and issued codes', async () => {
+    serveCustomer()
+    server.use(
+      http.get('*/api/loyalty/customers/:id', () =>
+        HttpResponse.json(
+          makeCustomerLoyalty({
+            completed_visits: 9,
+            visits_to_next_reward: 1,
+            codes: [makeLoyaltyCode({ status: 'USED' })],
+          }),
+        ),
+      ),
+    )
+    renderDetail()
+    const heading = await screen.findByRole('heading', { name: 'Loyalty' })
+    const panel = heading.parentElement?.parentElement as HTMLElement
+    expect(await within(panel).findByText('9')).toBeInTheDocument()
+    expect(within(panel).getByText('On the next completed visit')).toBeInTheDocument()
+    expect(within(panel).getByText('LOYAL-7KQ2M9XA')).toBeInTheDocument()
+    expect(within(panel).getByText('Used')).toBeInTheDocument()
+  })
+
+  it('says so when the programme is off', async () => {
+    serveCustomer()
+    server.use(
+      http.get('*/api/loyalty/customers/:id', () =>
+        HttpResponse.json(makeCustomerLoyalty({ enabled: false, visits_to_next_reward: null })),
+      ),
+    )
+    renderDetail()
+    expect(await screen.findByText('Loyalty programme is off')).toBeInTheDocument()
+    expect(screen.getByText('No codes issued yet.')).toBeInTheDocument()
   })
 })

@@ -691,7 +691,9 @@ describe('BookingRequestsList — add-ons', () => {
     await user.click(await screen.findByRole('button', { name: 'View' }))
 
     expect(screen.getByText('2× Key cut (+10 min · +£15.00)')).toBeInTheDocument()
-    expect(screen.getByText(/£130\.00/)).toBeInTheDocument()
+    // Quoted in both the summary row and the details - never the bare
+    // catalogue price.
+    expect(screen.getAllByText(/£130\.00/)).toHaveLength(2)
     // 130 - 30 deposit, not 100 (the bare catalogue price) - 30.
     expect(screen.getByText(/Remaining balance/)).toHaveTextContent('£100.00')
   })
