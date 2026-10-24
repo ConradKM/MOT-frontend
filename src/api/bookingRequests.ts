@@ -97,8 +97,14 @@ export interface BookingRequest {
   /** What the customer actually saw/chose at submission time - stays
    * accurate even if the type is edited or deleted afterwards. */
   requested_duration_minutes: number | null
-  /** Includes the add-ons' price deltas (see add_ons). */
+  /** Includes the add-ons' price deltas (see add_ons), and is already
+   * discounted when the customer applied a code (see discount_code). */
   requested_price: string | null
+  /** A discount code applied at checkout, frozen at submission. Null
+   * without one; absent from an older API. */
+  discount_code?: string | null
+  discount_amount?: string | null
+  price_before_discount?: string | null
   /** What the customer added on the booking page, snapshotted. Absent from
    * records served by an older API. */
   add_ons?: AppliedAddOn[]

@@ -66,6 +66,10 @@ export interface Customer {
   is_active: boolean
   /** Future SMS use - not actionable anywhere yet. */
   sms_opt_out: boolean
+  /** Opted out of promotional email (the loyalty reward email) - by the
+   * customer's unsubscribe link or by staff. Transactional email is
+   * unaffected. Absent from an older API. */
+  marketing_email_opt_out?: boolean
   created_at: string
   updated_at: string
 }
@@ -231,6 +235,14 @@ export interface Appointment {
   /** Add-ons applied to this appointment; their deltas are already included
    * in price_at_booking. Absent from records served by an older API. */
   applied_add_ons?: AppliedAddOn[]
+  /** A discount code applied to this booking, frozen with it: price_at_booking
+   * is then the discounted price and price_before_discount the total before
+   * it. All null without a code; absent from an older API. */
+  discount_code?: string | null
+  discount_type?: 'PERCENTAGE' | 'FIXED' | null
+  discount_value?: string | null
+  discount_amount?: string | null
+  price_before_discount?: string | null
   created_at: string
   updated_at: string
 }

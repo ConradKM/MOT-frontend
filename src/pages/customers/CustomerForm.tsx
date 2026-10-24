@@ -24,6 +24,7 @@ export function CustomerForm() {
   // ("Add customer") - only relevant for a brand new customer.
   const [phone, setPhone] = useState(() => (isEdit ? '' : (searchParams.get('phone') ?? '')))
   const [notes, setNotes] = useState('')
+  const [marketingOptOut, setMarketingOptOut] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -34,6 +35,7 @@ export function CustomerForm() {
       setEmail(existing.email ?? '')
       setPhone(existing.phone ?? '')
       setNotes(existing.notes ?? '')
+      setMarketingOptOut(existing.marketing_email_opt_out ?? false)
     }
   }, [existing])
 
@@ -49,6 +51,9 @@ export function CustomerForm() {
       email: email || null,
       phone: phone || null,
       notes: notes || null,
+      // Sent when it means something: on an edit (it may be switching back
+      // off), or a new customer who asked not to get offers.
+      ...(isEdit || marketingOptOut ? { marketing_email_opt_out: marketingOptOut } : {}),
     }
     try {
       if (isEdit) {
@@ -150,6 +155,23 @@ export function CustomerForm() {
             Visible to business staff only. This is not shared with the customer.
           </p>
           {errors.notes && <p className="mt-1 text-sm text-red-600">{errors.notes}</p>}
+        </div>
+
+        <div>
+          <label className="flex min-h-11 items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={marketingOptOut}
+              onChange={(e) => setMarketingOptOut(e.target.checked)}
+              aria-describedby="marketing_opt_out_help"
+              className="mt-0.5 h-4 w-4"
+            />
+            <span className="font-medium">Don't send offers by email</span>
+          </label>
+          <p id="marketing_opt_out_help" className="mt-1 text-xs text-slate-500">
+            Stops loyalty reward emails and other offers. Booking confirmations and reminders still
+            go out. Customers can also opt out themselves from the link in any offer email.
+          </p>
         </div>
 
         <div className="flex gap-3">

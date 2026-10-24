@@ -117,6 +117,10 @@ export interface BookingRequestInput {
    * business has terms. A stale version is a 409 `terms_version_mismatch`. */
   terms_accepted?: boolean
   terms_version?: number | null
+  /** Optional discount code - only ever the code. The server re-checks it on
+   * every submission and alone decides the price; a client never sends a
+   * price or a discount amount. Part of an attempt's idempotency identity. */
+  discount_code?: string
 }
 
 export function getPublicGarages(): Promise<PublicGarage[]> {
@@ -265,6 +269,11 @@ export interface DepositIntentCreated {
    * sessionStorage and is never a Stripe credential. */
   recovery_token?: string | null
   hold_expires_at: string | null
+  /** `service_total` is already discounted; these say by what. Null without
+   * a code; absent from an older API. */
+  discount_code?: string | null
+  discount_amount?: string | null
+  price_before_discount?: string | null
 }
 
 export type DepositStatusPoll = Omit<
@@ -338,6 +347,55 @@ export function recoverDepositAttempt(
     `/api/public/${slug}/booking-requests/deposit-attempt/recover`,
     { method: 'POST', body: { recovery_token: recoveryToken }, skipAuth: true },
   )
+}
+
+/** Give up this browser's own unpaid deposit hold (the recovery token
+ * proves it) so a fresh attempt can start at a different price - after a
+ * discount code is applied or removed once the payment step had opened. A
+ * 409 means it can't be: it was paid, or a payment is being confirmed. */
+export function abandonDepositAttempt(slug: string, recoveryToken: string): Promise<void> {
+  return apiFetch<void>(`/api/public/${slug}/booking-requests/deposit-attempt/abandon`, {
+    method: 'POST',
+    body: { recovery_token: recoveryToken },
+    skipAuth: true,
+  })
+}
+
+// --- Discount codes ----------------------------------------------------------
+
+/** `errors.reason` when the server rejects a code - deliberately one reason
+ * (and one message) for every way a code can be wrong. */
+export const DISCOUNT_CODE_INVALID = 'discount_code_invalid'
+
+export interface DiscountValidation {
+  code: string
+  discount_type: 'PERCENTAGE' | 'FIXED'
+  discount_value: string
+  original_total: string
+  discount_amount: string
+  new_total: string
+  /** False when the service takes no deposit, or the code makes it free. */
+  deposit_required: boolean
+  deposit_amount: string | null
+  remaining_balance: string | null
+}
+
+/** The checkout's "Apply" - advisory only; the booking submission and the
+ * deposit intent re-check the code themselves. */
+export function validateDiscountCode(
+  slug: string,
+  data: {
+    code: string
+    appointment_type_id: string
+    customer_email: string
+    add_ons: { add_on_id: string; quantity: number }[]
+  },
+): Promise<DiscountValidation> {
+  return apiFetch<DiscountValidation>(`/api/public/${slug}/discount-codes/validate`, {
+    method: 'POST',
+    body: data,
+    skipAuth: true,
+  })
 }
 
 // --- Availability calendar ------------------------------------------------

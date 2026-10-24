@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { CustomerLoyaltyPanel } from '../../components/loyalty/CustomerLoyaltyPanel'
 import { useCustomer, useCustomerCommunications, useDeleteCustomer, useVehicles } from '../../api/queries'
 import { errorMessage } from '../../lib/errors'
 import { useToast } from '../../components/Toast'
@@ -101,6 +102,8 @@ export function CustomerDetail() {
           )}
         </div>
       </div>
+
+      <CustomerLoyaltyPanel customerId={customer.id} />
 
       <div className="mt-8">
         <div className="flex items-center justify-between">

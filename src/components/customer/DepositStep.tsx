@@ -8,6 +8,7 @@ import {
 import { errorMessage, isApiError } from '../../lib/errors'
 import { PaymentCheckout } from './payments/PaymentCheckout'
 import { TERMS_VERSION_MISMATCH } from '../../api/terms'
+import { DISCOUNT_CODE_INVALID } from '../../api/publicGarage'
 
 interface Props {
   slug: string
@@ -21,6 +22,9 @@ interface Props {
   /** The business changed its terms since the customer ticked the box - the
    * wizard refetches and asks again. */
   onTermsChanged?: () => void
+  /** The server turned the discount code down (e.g. it expired since it was
+   * applied) - the wizard drops it and remounts this step at full price. */
+  onDiscountRejected?: (message: string) => void
 }
 
 /** The Deposit step: creates a short-lived payment hold + provider session
@@ -35,6 +39,7 @@ interface Props {
 export function DepositStep({
   slug, garageName, payload, appointmentType, onPaid, onSlotLost, initialIntent, onRecoveryToken,
   onTermsChanged,
+  onDiscountRejected,
 }: Props) {
   const [intent, setIntent] = useState<DepositIntentCreated | null>(initialIntent ?? null)
   const [creating, setCreating] = useState(!initialIntent)
@@ -64,6 +69,10 @@ export function DepositStep({
         // this garage - so it must not be shown as "slot unavailable".
         if (isApiError(err) && err.code === 409 && err.reason === TERMS_VERSION_MISMATCH) {
           onTermsChanged?.()
+          return
+        }
+        if (isApiError(err) && err.reason === DISCOUNT_CODE_INVALID && onDiscountRejected) {
+          onDiscountRejected(errorMessage(err))
           return
         }
         if (isApiError(err) && err.code === 409 && err.reason === 'vehicle_reference_conflict') {
@@ -137,6 +146,22 @@ function DepositSummary({
     <div className="mt-4 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm">
       {appointmentType && <p className="font-medium text-slate-900">{appointmentType.name}</p>}
       <dl className="mt-2 space-y-1">
+        {intent.discount_code && intent.discount_amount && (
+          <>
+            {intent.price_before_discount && (
+              <div className="flex justify-between">
+                <dt className="text-slate-500">Price</dt>
+                <dd className="text-slate-500">
+                  <s>£{intent.price_before_discount}</s>
+                </dd>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Discount {intent.discount_code}</dt>
+              <dd className="text-slate-800">−£{intent.discount_amount}</dd>
+            </div>
+          </>
+        )}
         {intent.service_total && (
           <div className="flex justify-between">
             <dt className="text-slate-500">Service total</dt>

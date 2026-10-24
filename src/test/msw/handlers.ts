@@ -22,6 +22,8 @@ import {
   makeImportItem,
   makeImportResult,
   makeSquareStatus,
+  makeCustomerLoyalty,
+  makeLoyaltySettings,
 } from '../fixtures'
 
 /**
@@ -188,4 +190,7 @@ export const handlers = [
     }),
   ),
   http.get('*/api/payments/square/status', () => HttpResponse.json(makeSquareStatus())),
+  http.get('*/api/loyalty/settings', () => HttpResponse.json(makeLoyaltySettings())),
+  http.get('*/api/loyalty/codes', () => HttpResponse.json({ items: [], total: 0 })),
+  http.get('*/api/loyalty/customers/:customerId', () => HttpResponse.json(makeCustomerLoyalty())),
 ]
