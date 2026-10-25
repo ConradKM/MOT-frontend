@@ -1,3 +1,5 @@
+import type { CustomerLoyaltySummary, DiscountCode, LoyaltySettings } from '../api/loyalty'
+import type { DiscountValidation } from '../api/publicGarage'
 import type { SquareConnectStatus } from '../api/payments'
 import type { PublicTerms, TermsAcceptanceLookup } from '../api/terms'
 import type {
@@ -690,4 +692,90 @@ export function makeConnectedSquareStatus(
     ready: true,
     ...overrides,
   })
+}
+
+// --- Loyalty & discount codes ------------------------------------------------
+
+export function makeLoyaltySettings(patch: Partial<LoyaltySettings> = {}): LoyaltySettings {
+  return {
+    enabled: false,
+    visits_required: 5,
+    discount_type: 'PERCENTAGE',
+    discount_value: '10.00',
+    expiry_days: 90,
+    enabled_at: null,
+    ...patch,
+  }
+}
+
+export function makeDiscountCode(patch: Partial<DiscountCode> = {}): DiscountCode {
+  return {
+    id: 'dc1',
+    code: 'SUMMER10',
+    source: 'MANUAL',
+    discount_type: 'PERCENTAGE',
+    discount_value: '10.00',
+    status: 'ACTIVE',
+    stored_status: 'ACTIVE',
+    uses: 0,
+    max_uses: null,
+    max_uses_per_customer: null,
+    valid_from: null,
+    expires_at: null,
+    customer: null,
+    issued_for_visit_count: null,
+    email_status: null,
+    emailed_at: null,
+    created_at: '2026-10-01T09:00:00Z',
+    ...patch,
+  }
+}
+
+export function makeLoyaltyCode(patch: Partial<DiscountCode> = {}): DiscountCode {
+  return makeDiscountCode({
+    id: 'dc-loyal',
+    code: 'LOYAL-7KQ2M9XA',
+    source: 'LOYALTY',
+    max_uses: 1,
+    max_uses_per_customer: 1,
+    issued_for_visit_count: 5,
+    expires_at: '2026-12-31T23:59:59Z',
+    email_status: 'SENT',
+    emailed_at: '2026-10-01T09:00:00Z',
+    customer: {
+      id: 'c1',
+      first_name: 'Oliver',
+      last_name: 'Bennett',
+      email: 'oliver@example.com',
+      marketing_email_opt_out: false,
+    },
+    ...patch,
+  })
+}
+
+export function makeCustomerLoyalty(patch: Partial<CustomerLoyaltySummary> = {}): CustomerLoyaltySummary {
+  return {
+    enabled: true,
+    visits_required: 5,
+    completed_visits: 3,
+    visits_to_next_reward: 2,
+    marketing_email_opt_out: false,
+    codes: [],
+    ...patch,
+  }
+}
+
+export function makeDiscountValidation(patch: Partial<DiscountValidation> = {}): DiscountValidation {
+  return {
+    code: 'SUMMER10',
+    discount_type: 'PERCENTAGE',
+    discount_value: '10.00',
+    original_total: '100.00',
+    discount_amount: '10.00',
+    new_total: '90.00',
+    deposit_required: false,
+    deposit_amount: null,
+    remaining_balance: null,
+    ...patch,
+  }
 }

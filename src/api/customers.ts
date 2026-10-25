@@ -7,6 +7,7 @@ export interface CustomerInput {
   email?: string | null
   phone?: string | null
   notes?: string | null
+  marketing_email_opt_out?: boolean
 }
 
 export interface CustomerListParams {

@@ -130,9 +130,18 @@ export function AppointmentOverview() {
           <div>
             <p className="text-xs font-medium uppercase text-slate-400">Price</p>
             <p className="mt-0.5 text-sm text-slate-900">
+              {appointment.price_before_discount != null && appointment.discount_code && (
+                <s className="mr-1 text-slate-400">£{appointment.price_before_discount}</s>
+              )}
               £{appointment.price_at_booking}
               <span className="ml-1 text-xs text-slate-400">(at time of booking)</span>
             </p>
+            {appointment.discount_code && appointment.discount_amount != null && (
+              <p className="mt-0.5 text-sm text-slate-700">
+                Discount <span className="font-mono">{appointment.discount_code}</span>: −£
+                {appointment.discount_amount}
+              </p>
+            )}
           </div>
         )}
         {appointment.applied_add_ons && appointment.applied_add_ons.length > 0 && (

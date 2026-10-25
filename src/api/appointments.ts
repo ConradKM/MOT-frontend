@@ -12,6 +12,9 @@ export interface AppointmentInput {
   notes?: string | null
   /** The full add-on selection. Omit on update to leave it unchanged. */
   add_ons?: { add_on_id: string; quantity: number }[]
+  /** Apply a discount code (re-checked server-side). On update: omit to
+   * leave it, the same code again changes nothing, null removes it. */
+  discount_code?: string | null
 }
 
 export interface AppointmentListParams {

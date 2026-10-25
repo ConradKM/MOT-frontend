@@ -19,8 +19,11 @@ import { formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useBookingFlow, usePublicGarage } from '../../api/queries'
 import {
+  abandonDepositAttempt,
+  DISCOUNT_CODE_INVALID,
   recoverDepositAttempt,
   submitBookingRequest,
+  type DiscountValidation,
   type BookingFlowSection,
   type BookingRequestInput,
   type DepositIntentCreated,
@@ -32,6 +35,7 @@ import { Captcha, captchaEnabled } from '../../components/Captcha'
 import { isPlausibleUkMobile } from '../../lib/phone'
 import { RichTextInput } from '../../components/rich/RichTextInput'
 import { DepositStep } from '../../components/customer/DepositStep'
+import { DiscountCodeField } from '../../components/customer/DiscountCodeField'
 import { TermsAcceptance } from '../../components/customer/TermsAcceptance'
 import { TERMS_VERSION_MISMATCH } from '../../api/terms'
 import { AddOnPicker } from '../../components/addOns/AddOnPicker'
@@ -165,6 +169,14 @@ export function BookingWizard() {
   // intent - and enforced server-side either way.
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [termsError, setTermsError] = useState<string | undefined>()
+  // A discount code the server has accepted for this exact booking (service,
+  // add-ons, email). Cleared whenever any of those change, since the server
+  // must check it again; the server re-checks it on submit regardless.
+  const [discount, setDiscount] = useState<DiscountValidation | null>(null)
+  const [discountNotice, setDiscountNotice] = useState<string | null>(null)
+  // Bumped to remount the Deposit step with a fresh payment attempt - its
+  // hold is created at one price, so a code change needs a new one.
+  const [depositAttempt, setDepositAttempt] = useState(0)
 
   const handleCaptchaToken = useCallback((token: string) => setCaptchaToken(token), [])
   const persistRecoveryToken = useCallback((token: string) => {
@@ -176,9 +188,16 @@ export function BookingWizard() {
     try { sessionStorage.removeItem(recoveryStorageKey(urlGarageId)) } catch { /* optional UX */ }
   }, [urlGarageId])
 
+  const clearDiscount = () => {
+    setDiscount(null)
+    setDiscountNotice(null)
+  }
+
   const update = (field: keyof WizardData, value: string) => {
     setData((d) => ({ ...d, [field]: value, paymentAttemptId: '' }))
     if (errors[field]) setErrors((e) => ({ ...e, [field]: undefined }))
+    // Loyalty codes belong to one customer, matched by email.
+    if (field === 'email') clearDiscount()
   }
 
   const selectDate = (date: string) => {
@@ -193,7 +212,10 @@ export function BookingWizard() {
     // change invalidates any date/time already picked.
     setData((d) => ({ ...d, appointmentTypeId, date: '', time: '', paymentAttemptId: '' }))
     setErrors({})
-    if (appointmentTypeId !== data.appointmentTypeId) setAddOnSelection({})
+    if (appointmentTypeId !== data.appointmentTypeId) {
+      setAddOnSelection({})
+      clearDiscount()
+    }
     // A service with add-ons stays on this step so they can be chosen before
     // the calendar - they change the job's length, and so which slots fit.
     const chosen = services.find((svc) => svc.id === appointmentTypeId)
@@ -202,6 +224,7 @@ export function BookingWizard() {
 
   const changeAddOns = (next: AddOnSelection) => {
     setAddOnSelection(next)
+    clearDiscount()
     // Same reason as a service change: a different duration can make the
     // chosen day/time no longer fit.
     setData((d) => ({ ...d, date: '', time: '', paymentAttemptId: '' }))
@@ -258,6 +281,10 @@ export function BookingWizard() {
   const hasServices = services.length > 0
   const selectedAppointmentType = services.find((t) => t.id === data.appointmentTypeId)
   const requiresDeposit = selectedAppointmentType?.deposit_required ?? false
+  // A code that makes the booking free skips the deposit entirely - it goes
+  // through as an ordinary booking (the server agrees: see
+  // app/public_booking/routes.py::BookingRequestSubmit).
+  const needsDeposit = requiresDeposit && !(discount && !discount.deposit_required)
   const availableAddOns = selectedAppointmentType?.add_ons ?? []
   const addOnsQuery = selectionToQuery(addOnSelection)
 
@@ -457,6 +484,49 @@ export function BookingWizard() {
     setStep('time')
   }
 
+  /** Switch the booking to a new discount (or none). A deposit booking's
+   * payment hold was created at the old price, so give it up first and let
+   * the Deposit step start a fresh attempt - refusing (and keeping the old
+   * price) if that payment has already gone through or is being confirmed. */
+  const switchDiscount = async (next: DiscountValidation | null): Promise<boolean> => {
+    setDiscountNotice(null)
+    if (requiresDeposit && !depositResult) {
+      let token: string | null = null
+      try { token = urlGarageId ? sessionStorage.getItem(recoveryStorageKey(urlGarageId)) : null } catch { /* optional UX */ }
+      if (token) {
+        try {
+          await abandonDepositAttempt(garageSlug, token)
+        } catch (err) {
+          if (isApiError(err) && err.code === 409) {
+            setDiscountNotice(errorMessage(err))
+            return false
+          }
+          // 404: nothing left to give up (it expired, or never got made).
+        }
+        clearRecoveryToken()
+      }
+      setRecoveredIntent(null)
+      setData((d) => ({ ...d, paymentAttemptId: crypto.randomUUID() }))
+      setDepositAttempt((n) => n + 1)
+    }
+    setDiscount(next)
+    return true
+  }
+
+  /** The server turned the code down at submit time (it expired, or was
+   * used, since it was applied): drop it, show why, and show the full price
+   * rather than failing silently. */
+  const handleDiscountRejected = (message: string) => {
+    setDiscount(null)
+    setDiscountNotice(
+      `${message} We've removed it, so the full price is shown below - please check it before you continue.`,
+    )
+    if (requiresDeposit) {
+      setData((d) => ({ ...d, paymentAttemptId: crypto.randomUUID() }))
+      setDepositAttempt((n) => n + 1)
+    }
+  }
+
   const refreshAvailability = () => {
     queryClient.invalidateQueries({ queryKey: ['garageAvailability', garageSlug] })
     queryClient.invalidateQueries({ queryKey: ['garageDayAvailability', garageSlug] })
@@ -485,7 +555,15 @@ export function BookingWizard() {
       const email = data.email.trim()
       const result = await submitBookingRequest(
         garageSlug,
-        buildBookingPayload(data, captchaToken, sections, answers, addOnSelection, termsPayload),
+        buildBookingPayload(
+          data,
+          captchaToken,
+          sections,
+          answers,
+          addOnSelection,
+          termsPayload,
+          discount?.code,
+        ),
       )
       setBookingReference(result.booking_reference)
       // The account (Customer + Vehicle) already exists at this point (see
@@ -501,6 +579,10 @@ export function BookingWizard() {
     } catch (err) {
       if (isApiError(err) && err.code === 409 && err.reason === TERMS_VERSION_MISMATCH) {
         handleTermsChanged()
+        return
+      }
+      if (isApiError(err) && err.reason === DISCOUNT_CODE_INVALID) {
+        handleDiscountRejected(errorMessage(err))
         return
       }
       // The slot was taken between loading the calendar and submitting.
@@ -563,6 +645,7 @@ export function BookingWizard() {
     setCaptchaToken('')
     setTermsAccepted(false)
     setTermsError(undefined)
+    clearDiscount()
   }
 
   if (submitted) {
@@ -679,7 +762,25 @@ export function BookingWizard() {
             sections={sections}
             answers={answers}
             onEditStep={goToStep}
-            requiresDeposit={requiresDeposit}
+            requiresDeposit={needsDeposit}
+            discount={discount}
+            discountNotice={discountNotice}
+            discountControl={
+              // Only while the price can still change: not once a deposit is
+              // paid, nor for a resumed checkout (its price is fixed), nor
+              // for a service with no price to take a discount off.
+              !depositResult && !recoveredIntent && selectedAppointmentType?.base_price != null ? (
+                <DiscountCodeField
+                  slug={garageSlug}
+                  appointmentTypeId={data.appointmentTypeId}
+                  customerEmail={data.email.trim()}
+                  addOns={selectionToPayload(addOnSelection)}
+                  applied={discount}
+                  onApply={(result) => switchDiscount(result)}
+                  onRemove={() => switchDiscount(null)}
+                />
+              ) : null
+            }
             termsAcceptance={
               // Not once a deposit has been paid, nor for a resumed checkout:
               // acceptance was already recorded when that request was made.
@@ -692,16 +793,17 @@ export function BookingWizard() {
                   error={termsError}
                   // Ticking it on a deposit booking starts the checkout, which
                   // records the acceptance - it can't be taken back from here.
-                  disabled={requiresDeposit && termsAccepted}
+                  disabled={needsDeposit && termsAccepted}
                 />
               ) : null
             }
             paymentCheckout={
-              requiresDeposit && !depositResult ? (
+              needsDeposit && !depositResult ? (
                 // The deposit intent *creates* the booking request, so the box
                 // has to be ticked before it is ever requested.
                 !terms || termsAccepted || recoveredIntent ? (
                   <DepositStep
+                    key={depositAttempt}
                     slug={garageSlug}
                     garageName={garage.name}
                     payload={buildBookingPayload(
@@ -711,8 +813,10 @@ export function BookingWizard() {
                       answers,
                       addOnSelection,
                       termsPayload,
+                      discount?.code,
                     )}
                     appointmentType={selectedAppointmentType}
+                    onDiscountRejected={handleDiscountRejected}
                     onPaid={handleDepositPaid}
                     onSlotLost={handleDepositSlotLost}
                     initialIntent={recoveredIntent}
@@ -735,7 +839,7 @@ export function BookingWizard() {
         )}
 
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6">
-          {step !== steps[0] && !(step === 'review' && (depositResult || requiresDeposit)) ? (
+          {step !== steps[0] && !(step === 'review' && (depositResult || needsDeposit)) ? (
             <button
               type="button"
               onClick={goBack}
@@ -746,7 +850,7 @@ export function BookingWizard() {
           ) : (
             <span />
           )}
-          {step === 'review' && (!requiresDeposit || depositResult) ? (
+          {step === 'review' && (!needsDeposit || depositResult) ? (
             <button
               type="button"
               onClick={handleSubmit}
@@ -792,6 +896,7 @@ function buildBookingPayload(
   answers: AnswerMap,
   addOnSelection: AddOnSelection,
   { termsAccepted, termsVersion }: { termsAccepted: boolean; termsVersion: number | null },
+  discountCode?: string,
 ): BookingRequestInput {
   return {
     customer_first_name: data.firstName.trim(),
@@ -814,6 +919,9 @@ function buildBookingPayload(
     ...(termsVersion != null
       ? { terms_accepted: termsAccepted, terms_version: termsVersion }
       : {}),
+    // Only the code, never a price: the server re-checks it and prices the
+    // booking itself.
+    ...(discountCode ? { discount_code: discountCode } : {}),
   }
 }
 
@@ -1088,6 +1196,9 @@ function ReviewStep({
   answers,
   onEditStep,
   requiresDeposit,
+  discount,
+  discountNotice,
+  discountControl,
   termsAcceptance,
   paymentCheckout,
 }: {
@@ -1100,6 +1211,9 @@ function ReviewStep({
   answers: AnswerMap
   onEditStep: (step: StepKey) => void
   requiresDeposit: boolean
+  discount: DiscountValidation | null
+  discountNotice: string | null
+  discountControl: ReactNode
   termsAcceptance: ReactNode
   paymentCheckout: ReactNode
 }) {
@@ -1142,12 +1256,13 @@ function ReviewStep({
                 .join(', ')}
             />
           )}
-          {appointmentType?.base_price != null && (
+          {appointmentType?.base_price != null && !discount && (
             <SummaryRow
               label="Price"
               value={formatPence(toPence(appointmentType.base_price) + extra.pricePence)}
             />
           )}
+          {discount && <DiscountBreakdown discount={discount} />}
           <SummaryRow label="Date" value={data.date ? formatLongDate(data.date) : '—'} />
           <SummaryRow
             label="Time"
@@ -1155,8 +1270,30 @@ function ReviewStep({
           />
         </SummarySection>
 
+        {(discountControl || discountNotice) && (
+          <div className="space-y-2">
+            {discountNotice && (
+              <p role="alert" className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                {discountNotice}
+              </p>
+            )}
+            {discountControl}
+            {discount && !discount.deposit_required && appointmentType?.deposit_required && (
+              <p className="text-sm text-slate-600">
+                Your discount covers the whole booking, so there's no deposit to pay.
+              </p>
+            )}
+          </div>
+        )}
+
         {depositResult && (
           <SummarySection title="Payment">
+            {depositResult.discount_code && depositResult.discount_amount && (
+              <SummaryRow
+                label={`Discount ${depositResult.discount_code}`}
+                value={`−£${depositResult.discount_amount}`}
+              />
+            )}
             <SummaryRow
               label="Service total"
               value={depositResult.service_total ? `£${depositResult.service_total}` : '—'}
@@ -1220,6 +1357,25 @@ function ReviewStep({
             } to confirm.`}
       </p>
     </div>
+  )
+}
+
+/** Original total struck through, the discount, and what's now due - all
+ * as the server worked them out. */
+function DiscountBreakdown({ discount }: { discount: DiscountValidation }) {
+  return (
+    <>
+      <div className="flex justify-between gap-4 text-sm">
+        <dt className="text-slate-500">Price</dt>
+        <dd className="text-right">
+          <s className="text-slate-500" aria-label={`was £${discount.original_total}`}>
+            £{discount.original_total}
+          </s>{' '}
+          <span className="font-medium text-slate-900">£{discount.new_total}</span>
+        </dd>
+      </div>
+      <SummaryRow label={`Discount ${discount.code}`} value={`−£${discount.discount_amount}`} />
+    </>
   )
 }
 

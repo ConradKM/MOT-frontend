@@ -244,6 +244,17 @@ function RequestDetails({ request }: { request: BookingRequest }) {
           {formatPrice(request.requested_price ?? request.appointment_type?.base_price ?? null)}
         </dd>
       </div>
+      {request.discount_code && request.discount_amount != null && (
+        <div>
+          <dt className="font-medium text-slate-700">Discount</dt>
+          <dd className="text-slate-600">
+            <span className="font-mono">{request.discount_code}</span>: −
+            {formatPrice(request.discount_amount)}
+            {request.price_before_discount != null &&
+              ` (from ${formatPrice(request.price_before_discount)})`}
+          </dd>
+        </div>
+      )}
       {request.add_ons && request.add_ons.length > 0 && (
         <div>
           <dt className="font-medium text-slate-700">Add-ons</dt>
@@ -425,7 +436,9 @@ function ReviewRow({ request }: { request: BookingRequest }) {
           <p>{request.appointment_type?.name ?? 'Not specified'}</p>
           <p className="text-xs text-slate-500">
             {formatDurationMinutes(request.duration_minutes)} ·{' '}
-            {formatPrice(request.appointment_type?.base_price)}
+            {/* What the customer was quoted (add-ons and any discount
+                included), falling back to the service's price. */}
+            {formatPrice(request.requested_price ?? request.appointment_type?.base_price)}
           </p>
           {request.payment && (
             <span

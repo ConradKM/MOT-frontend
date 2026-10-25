@@ -1,4 +1,5 @@
 import {
+  BadgePercent,
   Bell,
   BellRing,
   Building2,
@@ -41,6 +42,7 @@ export const SECTIONS: SettingsSection[] = [
       { slug: 'booking-workflow', label: 'Booking Workflow', icon: Workflow },
       { slug: 'terms', label: 'Terms & Conditions', icon: ScrollText },
       { slug: 'booking-appearance', label: 'Booking Page Appearance', icon: Palette },
+      { slug: 'discounts', label: 'Discounts', icon: BadgePercent },
     ],
   },
   {

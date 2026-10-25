@@ -9,6 +9,7 @@ import {
   useCreateAppointment,
   useCustomers,
   useEmployees,
+  usePreviewDiscount,
   useUpdateAppointment,
   useVehicles,
 } from '../../api/queries'
@@ -35,6 +36,12 @@ import {
   type AddOnSelection,
 } from '../../lib/addOns'
 import type { AppointmentStatus } from '../../types'
+import type { DiscountPreview } from '../../api/loyalty'
+
+/** Codes compare without case, spaces or dashes - as the server does. */
+function normaliseCode(code: string | null | undefined): string {
+  return (code ?? '').replace(/[\s-]/g, '').toUpperCase()
+}
 
 const priceFormatter = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'GBP' })
 
@@ -75,6 +82,13 @@ export function AppointmentForm() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [conflict, setConflict] = useState(false)
+  // The discount code applied on this form ('' = none), what the server says
+  // it's worth on this booking, and the not-yet-applied text being typed.
+  const [discountCode, setDiscountCode] = useState('')
+  const [discountInput, setDiscountInput] = useState('')
+  const [discountPreview, setDiscountPreview] = useState<DiscountPreview | null>(null)
+  const [discountError, setDiscountError] = useState<string | null>(null)
+  const previewDiscount = usePreviewDiscount()
 
   useEffect(() => {
     if (existing) {
@@ -87,6 +101,7 @@ export function AppointmentForm() {
       setStatus(existing.status)
       setNotes(existing.notes ?? '')
       setAddOnSelection(savedSelection(existing.applied_add_ons))
+      setDiscountCode(existing.discount_code ?? '')
     }
   }, [existing])
 
@@ -113,13 +128,20 @@ export function AppointmentForm() {
     (a) => a.status === 'ACTIVE' || addOnSelection[a.id],
   )
   const liveTotals = addOnTotals(addOnSelection, addOnCatalogue ?? [], snapshotDeltas)
+  // On a discounted appointment price_at_booking is already discounted; the
+  // price before the discount is what add-ons are worked out from (the
+  // server does the same - see MOT-backend app/appointments/discounts.py).
+  const savedPreDiscount = existing
+    ? (existing.price_before_discount ?? existing.price_at_booking)
+    : null
+  /** The total before any discount. */
   const livePricePence = (() => {
     if (isEdit && existing && !addOnsDirty) {
-      return existing.price_at_booking != null ? toPence(existing.price_at_booking) : null
+      return savedPreDiscount != null ? toPence(savedPreDiscount) : null
     }
     if (isEdit && existing && !typeChanged) {
       // Recover the booked base price the same way the server does.
-      if (existing.price_at_booking == null) return null
+      if (savedPreDiscount == null) return null
       const savedTotals = addOnTotals(
         savedSelection(savedAddOns),
         [],
@@ -129,11 +151,106 @@ export function AppointmentForm() {
         (n, a) => n + toPence(a.price_delta) * a.quantity,
         0,
       )
-      return toPence(existing.price_at_booking) - savedTotals.pricePence - orphanPence + liveTotals.pricePence
+      return toPence(savedPreDiscount) - savedTotals.pricePence - orphanPence + liveTotals.pricePence
     }
     if (!selectedType || selectedType.base_price == null) return null
     return toPence(selectedType.base_price) + liveTotals.pricePence
   })()
+
+  // --- discount -------------------------------------------------------------
+  const discountUnchanged =
+    isEdit && !!existing && normaliseCode(discountCode) === normaliseCode(existing.discount_code)
+  const pricingUnchanged =
+    isEdit && !!existing && !addOnsDirty && !typeChanged && customerId === existing.customer_id
+  const addOnKey = JSON.stringify(selectionToPayload(addOnSelection))
+
+  const runPreview = (code: string) =>
+    previewDiscount.mutateAsync({
+      code,
+      customer_id: customerId,
+      appointment_type_id: appointmentTypeId,
+      add_ons: JSON.parse(addOnKey),
+      appointment_id: isEdit ? appointmentId : null,
+    })
+
+  // Re-ask the server what an applied code is worth whenever what it's
+  // worked out on changes. Nothing to ask while the saved discount still
+  // describes the booking exactly.
+  useEffect(() => {
+    if (!discountCode || !customerId || !appointmentTypeId) return
+    if (discountUnchanged && pricingUnchanged) {
+      setDiscountPreview(null)
+      return
+    }
+    let cancelled = false
+    previewDiscount
+      .mutateAsync({
+        code: discountCode,
+        customer_id: customerId,
+        appointment_type_id: appointmentTypeId,
+        add_ons: JSON.parse(addOnKey),
+        appointment_id: isEdit ? appointmentId : null,
+      })
+      .then((result) => {
+        if (!cancelled) setDiscountPreview(result)
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        setDiscountPreview(null)
+        // A saved code is re-applied by the server on save whatever happened
+        // to it since; only a newly typed one can be refused here.
+        if (!discountUnchanged) {
+          setDiscountCode('')
+          setDiscountError(errorMessage(err))
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+    // previewDiscount is a fresh object each render; the inputs below are
+    // what the preview depends on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discountCode, customerId, appointmentTypeId, addOnKey, discountUnchanged, pricingUnchanged])
+
+  const applyDiscount = async () => {
+    const code = discountInput.trim()
+    setDiscountError(null)
+    if (!code) return setDiscountError('Enter a discount code.')
+    if (!customerId) return setDiscountError('Choose the customer first - some codes belong to one customer.')
+    if (!appointmentTypeId) return setDiscountError('Choose the appointment type first.')
+    try {
+      const result = await runPreview(code)
+      setDiscountPreview(result)
+      setDiscountCode(result.code)
+      setDiscountInput('')
+    } catch (err) {
+      setDiscountError(errorMessage(err))
+    }
+  }
+
+  const removeDiscount = () => {
+    setDiscountCode('')
+    setDiscountPreview(null)
+    setDiscountError(null)
+  }
+
+  /** What the live summary shows for the discount - always the server's
+   * numbers: the saved snapshot, or a fresh preview. */
+  const shownDiscount: { original: string; amount: string; total: string } | null = !discountCode
+    ? null
+    : discountUnchanged && pricingUnchanged && existing?.discount_amount != null
+      ? {
+          original: existing.price_before_discount ?? '',
+          amount: existing.discount_amount,
+          total: existing.price_at_booking ?? '',
+        }
+      : discountPreview
+        ? {
+            original: discountPreview.original_total,
+            amount: discountPreview.discount_amount,
+            total: discountPreview.new_total,
+          }
+        : null
 
   const derivedEnd = (start: string, typeId: string, selection: AddOnSelection) => {
     const type = appointmentTypes?.find((t) => t.id === typeId)
@@ -231,6 +348,15 @@ export function AppointmentForm() {
       // Omitted on an unchanged edit so the server keeps the saved snapshots
       // (including any add-on since deleted from the catalogue) as they are.
       ...(addOnsDirty ? { add_ons: selectionToPayload(addOnSelection) } : {}),
+      // Only the code - the server prices it. On an edit, leaving the saved
+      // code alone is sent as no change at all.
+      ...(isEdit
+        ? discountUnchanged
+          ? {}
+          : { discount_code: discountCode || null }
+        : discountCode
+          ? { discount_code: discountCode }
+          : {}),
     }
     try {
       if (isEdit) {
@@ -455,9 +581,26 @@ export function AppointmentForm() {
             <div className="flex gap-1">
               <dt className="text-slate-500">Price</dt>
               <dd className="font-medium text-slate-900">
-                {livePricePence != null ? formatPence(livePricePence) : 'Not set'}
+                {shownDiscount ? (
+                  <>
+                    <s className="font-normal text-slate-500">£{shownDiscount.original}</s>{' '}
+                    £{shownDiscount.total}
+                  </>
+                ) : livePricePence != null ? (
+                  formatPence(livePricePence)
+                ) : (
+                  'Not set'
+                )}
               </dd>
             </div>
+            {discountCode && (
+              <div className="flex gap-1">
+                <dt className="text-slate-500">Discount {discountCode}</dt>
+                <dd className="font-medium text-slate-900">
+                  {shownDiscount ? `−£${shownDiscount.amount}` : 'applied when you save'}
+                </dd>
+              </div>
+            )}
             {selectedType?.default_duration_minutes != null && (
               <div className="flex gap-1">
                 <dt className="text-slate-500">Duration</dt>
@@ -467,6 +610,61 @@ export function AppointmentForm() {
               </div>
             )}
           </dl>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700" htmlFor="discount_code">
+            Discount code <span className="font-normal text-slate-400">(optional)</span>
+          </label>
+          {discountCode ? (
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm">
+              <span className="text-emerald-900">
+                <span className="font-mono font-semibold">{discountCode}</span> applied
+              </span>
+              <button
+                type="button"
+                onClick={removeDiscount}
+                className="min-h-11 rounded-md px-2 font-medium text-emerald-900 underline sm:min-h-0"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="mt-1 flex gap-2">
+              <input
+                id="discount_code"
+                value={discountInput}
+                onChange={(e) => {
+                  setDiscountInput(e.target.value.toUpperCase())
+                  setDiscountError(null)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void applyDiscount()
+                  }
+                }}
+                autoComplete="off"
+                spellCheck={false}
+                aria-invalid={discountError || errors.discount_code ? true : undefined}
+                aria-describedby={discountError || errors.discount_code ? 'discount_code_error' : undefined}
+                className={`min-w-0 flex-1 font-mono ${richFieldBoxClass} ${richFieldFocusClass}`}
+              />
+              <button
+                type="button"
+                onClick={() => void applyDiscount()}
+                disabled={previewDiscount.isPending}
+                className="min-h-11 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 sm:min-h-0"
+              >
+                {previewDiscount.isPending ? 'Checking…' : 'Apply'}
+              </button>
+            </div>
+          )}
+          {(discountError || errors.discount_code) && (
+            <p id="discount_code_error" className="mt-1 text-sm text-red-600">
+              {discountError || errors.discount_code}
+            </p>
+          )}
         </div>
 
         <div>

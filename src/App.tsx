@@ -218,6 +218,12 @@ const QueueDashboard = lazy(() =>
 const ShareSettings = lazy(() =>
   import('./pages/settings/ShareSettings').then((m) => ({ default: m.ShareSettings })),
 )
+const DiscountsSettings = lazy(() =>
+  import('./pages/settings/DiscountsSettings').then((m) => ({ default: m.DiscountsSettings })),
+)
+const UnsubscribePage = lazy(() =>
+  import('./pages/UnsubscribePage').then((m) => ({ default: m.UnsubscribePage })),
+)
 const WalkInQueueSettings = lazy(() =>
   import('./pages/settings/WalkInQueueSettings').then((m) => ({
     default: m.WalkInQueueSettings,
@@ -270,6 +276,8 @@ export default function App() {
           {/* Accepting them for a WhatsApp/SMS/phone booking; the token is in
               the URL fragment. */}
           <Route path="/accept-terms/:garageId" element={<AcceptTermsPage />} />
+          {/* The loyalty email's signed opt-out link (MOT-backend app/loyalty/unsubscribe.py). */}
+          <Route path="/unsubscribe" element={<UnsubscribePage />} />
           <Route element={<CustomerProtectedRoute />}>
             <Route path="/customer/account" element={<CustomerAccount />} />
             <Route
@@ -351,6 +359,7 @@ export default function App() {
               <Route path="communications-automation" element={<CommunicationsAutomationSettings />} />
               <Route path="payments" element={<PaymentsSettings />} />
               <Route path="walk-in-queue" element={<WalkInQueueSettings />} />
+              <Route path="discounts" element={<DiscountsSettings />} />
             </Route>
           </Route>
         </Route>

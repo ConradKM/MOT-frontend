@@ -119,6 +119,17 @@ function defaults(): Stub[] {
     { match: (u) => u.pathname === '/api/booking-requests/', handler: (r) => json(r, []) },
     { match: (u) => u.pathname === '/api/communications/unread-count', handler: (r) => json(r, { whatsapp_unread: 0 }) },
     { match: (u) => u.pathname === '/api/queue', handler: (r) => json(r, QUEUE_DASHBOARD) },
+    {
+      match: (u) => u.pathname === '/api/loyalty/settings',
+      handler: (r) =>
+        json(r, { enabled: false, visits_required: 5, discount_type: 'PERCENTAGE', discount_value: '10.00', expiry_days: 90, enabled_at: null }),
+    },
+    { match: (u) => u.pathname === '/api/loyalty/codes', handler: (r) => json(r, { items: [], total: 0 }) },
+    {
+      match: (u) => /^\/api\/loyalty\/customers\/[^/]+$/.test(u.pathname),
+      handler: (r) =>
+        json(r, { enabled: false, visits_required: null, completed_visits: 0, visits_to_next_reward: null, marketing_email_opt_out: false, codes: [] }),
+    },
 
     // public booking
     { match: (u) => /^\/api\/public\/garages\/[^/]+$/.test(u.pathname), handler: (r) => json(r, PUBLIC_GARAGE) },
