@@ -1,4 +1,5 @@
-import type { AddOnNormalised, ImportResult, ServiceNormalised } from '../../types'
+import type { ImportResult, ServiceNormalised } from '../../types'
+import { addOnTerms } from '../../lib/importDisplay'
 import { IssueList, ItemStatusBadge, WarningBadge } from './parts'
 
 /** A services preview as a table: what each row resolved to, and what is
@@ -100,18 +101,4 @@ export function ServicesPreview({ result }: { result: ImportResult }) {
       </table>
     </div>
   )
-}
-
-/** "+£45.00 · +30 min · up to 2" - only the terms that differ from an
- * add-on's defaults. */
-function addOnTerms(addOn: AddOnNormalised): string {
-  const terms: string[] = []
-  const price = Number(addOn.price_delta)
-  if (price !== 0) terms.push(`${price < 0 ? '−' : '+'}£${Math.abs(price).toFixed(2)}`)
-  const minutes = addOn.duration_delta_minutes
-  if (minutes !== 0) terms.push(`${minutes < 0 ? '−' : '+'}${Math.abs(minutes)} min`)
-  if (addOn.max_quantity > 1) terms.push(`up to ${addOn.max_quantity}`)
-  if (addOn.exclusivity_group) terms.push(`one of “${addOn.exclusivity_group}”`)
-  if (addOn.status !== 'ACTIVE') terms.push(addOn.status.toLowerCase())
-  return terms.length ? terms.join(' · ') : 'no extra cost or time'
 }
