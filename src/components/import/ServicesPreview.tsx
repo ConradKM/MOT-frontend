@@ -1,4 +1,4 @@
-import type { ImportResult, ServiceNormalised } from '../../types'
+import type { AddOnNormalised, ImportResult, ServiceNormalised } from '../../types'
 import { IssueList, ItemStatusBadge, WarningBadge } from './parts'
 
 /** A services preview as a table: what each row resolved to, and what is
@@ -28,6 +28,9 @@ export function ServicesPreview({ result }: { result: ImportResult }) {
             </th>
             <th scope="col" className="px-3 py-2">
               Group
+            </th>
+            <th scope="col" className="px-3 py-2">
+              Add-ons
             </th>
             <th scope="col" className="px-3 py-2">
               Problems
@@ -71,6 +74,22 @@ export function ServicesPreview({ result }: { result: ImportResult }) {
                     <span className="block text-xs text-slate-500">new group</span>
                   ) : null}
                 </td>
+                <td className="min-w-40 px-3 py-2">
+                  {service.add_ons?.length ? (
+                    <ul className="space-y-1">
+                      {service.add_ons.map((addOn) => (
+                        <li key={addOn.name}>
+                          {addOn.name}
+                          <span className="block text-xs text-slate-500">
+                            {addOnTerms(addOn)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 <td className="min-w-48 px-3 py-2">
                   <IssueList errors={item.errors} warnings={item.warnings} />
                 </td>
@@ -81,4 +100,18 @@ export function ServicesPreview({ result }: { result: ImportResult }) {
       </table>
     </div>
   )
+}
+
+/** "+£45.00 · +30 min · up to 2" - only the terms that differ from an
+ * add-on's defaults. */
+function addOnTerms(addOn: AddOnNormalised): string {
+  const terms: string[] = []
+  const price = Number(addOn.price_delta)
+  if (price !== 0) terms.push(`${price < 0 ? '−' : '+'}£${Math.abs(price).toFixed(2)}`)
+  const minutes = addOn.duration_delta_minutes
+  if (minutes !== 0) terms.push(`${minutes < 0 ? '−' : '+'}${Math.abs(minutes)} min`)
+  if (addOn.max_quantity > 1) terms.push(`up to ${addOn.max_quantity}`)
+  if (addOn.exclusivity_group) terms.push(`one of “${addOn.exclusivity_group}”`)
+  if (addOn.status !== 'ACTIVE') terms.push(addOn.status.toLowerCase())
+  return terms.length ? terms.join(' · ') : 'no extra cost or time'
 }
