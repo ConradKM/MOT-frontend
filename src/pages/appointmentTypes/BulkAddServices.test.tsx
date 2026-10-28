@@ -35,7 +35,24 @@ function renderPage() {
 const PAYLOAD = { services: [{ name: 'MOT' }, { name: 'Tyres', base_price: '40' }] }
 const RESULT = makeImportResult([
   makeImportItem({ index: 0, status: 'EXISTS', normalised: { name: 'MOT' } }),
-  makeImportItem({ index: 1, normalised: { name: 'Tyres', base_price: '40' } }),
+  makeImportItem({
+    index: 1,
+    normalised: {
+      name: 'Tyres',
+      base_price: '40',
+      add_ons: [
+        {
+          name: 'Locking nut removal',
+          description: null,
+          price_delta: '-5.5',
+          duration_delta_minutes: 15,
+          max_quantity: 4,
+          exclusivity_group: null,
+          status: 'ACTIVE',
+        },
+      ],
+    },
+  }),
 ])
 
 describe('Bulk add services', () => {
@@ -73,6 +90,8 @@ describe('Bulk add services', () => {
     })
     await user.click(within(dialog).getByRole('button', { name: 'Preview' }))
     expect(await within(dialog).findByRole('cell', { name: 'Tyres' })).toBeInTheDocument()
+    expect(within(dialog).getByText('Locking nut removal')).toBeInTheDocument()
+    expect(within(dialog).getByText('−£5.50 · +15 min · up to 4')).toBeInTheDocument()
     const readsBeforeCommit = typeReads
 
     await user.click(within(dialog).getByRole('button', { name: 'Add 1 service' }))

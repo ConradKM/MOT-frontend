@@ -444,6 +444,19 @@ export interface ServiceNormalised {
   group?: string | null
   group_is_new?: boolean
   existing?: { id: string; name: string }
+  /** Created with the service; always empty for an `EXISTS` row. */
+  add_ons?: AddOnNormalised[]
+}
+
+export interface AddOnNormalised {
+  name: string
+  description: string | null
+  /** Signed decimal string, e.g. "-10.50". */
+  price_delta: string
+  duration_delta_minutes: number
+  max_quantity: number
+  exclusivity_group: string | null
+  status: AppointmentTypeStatus
 }
 
 export type AppointmentFlag = 'past' | 'clash' | 'over_capacity' | 'out_of_hours'
