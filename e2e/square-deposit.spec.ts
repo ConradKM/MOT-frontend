@@ -90,7 +90,7 @@ test('a customer pays a Square deposit and the booking is confirmed by the backe
   await page.getByLabel('Email').fill('oliver@example.com')
   await page.getByLabel('Mobile number').fill('07123 456789')
   await page.getByLabel('Registration number').fill('OB08AUD')
-  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'Next' }).click()
 
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
   await expect(page.getByLabel('Card number')).toBeVisible()

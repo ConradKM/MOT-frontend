@@ -64,7 +64,7 @@ async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
 
   await pickDateAndTime(user)
   await fillYourDetails(user)
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Next' }))
 
   await screen.findByRole('heading', { name: 'Review' })
 }
@@ -138,7 +138,7 @@ describe('BookingWizard — a business with no services configured', () => {
     await user.click(await screen.findByRole('gridcell', { name: DAY_CELL }))
     await user.click(await screen.findByRole('button', { name: '10:00 to 14:00, Available' }))
     await fillYourDetails(user)
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await screen.findByRole('heading', { name: 'Review' })
     expect(screen.getByText('10:00 - 14:00')).toBeInTheDocument()
@@ -269,13 +269,13 @@ describe('BookingWizard — a business with no services configured', () => {
     await user.type(screen.getByLabelText(/Last name/), 'Turner')
     await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
     // Mobile number left blank.
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     expect(screen.getByText('Mobile number is required.')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Review' })).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText(/Mobile number/), '0123456789') // landline-shaped
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     expect(screen.getByText(/valid UK mobile number/)).toBeInTheDocument()
   })
 
@@ -361,7 +361,7 @@ describe('BookingWizard — choosing a service first', () => {
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await pickDateAndTime(user)
     await fillYourDetails(user)
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await screen.findByRole('heading', { name: 'Review' })
     const review = screen.getByRole('heading', { name: 'Review' }).parentElement as HTMLElement
@@ -569,7 +569,7 @@ describe('BookingWizard — a business with configured questions', () => {
     await screen.findByText('Test Garage')
     await pickDateAndTime(user)
     await fillYourDetails(user)
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     expect(screen.getByText('Hair length is required.')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Review' })).not.toBeInTheDocument()
@@ -588,7 +588,7 @@ describe('BookingWizard — a business with configured questions', () => {
     await pickDateAndTime(user)
     await fillYourDetails(user)
     await user.selectOptions(screen.getByLabelText(/Hair length/), 'Long')
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await screen.findByRole('heading', { name: 'Review' })
     await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
@@ -625,7 +625,7 @@ describe('BookingWizard — a business with configured questions', () => {
     await pickDateAndTime(user)
     await fillYourDetails(user)
     await user.selectOptions(screen.getByLabelText(/Hair length/), 'Long')
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await user.click(await screen.findByRole('button', { name: 'Confirm Booking' }))
 
     expect(await screen.findByText('Hair length is required.')).toBeInTheDocument()
@@ -640,7 +640,7 @@ describe('BookingWizard — a business with configured questions', () => {
     await pickDateAndTime(user)
     await fillYourDetails(user)
     await user.selectOptions(screen.getByLabelText(/Hair length/), 'Short')
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await screen.findByRole('heading', { name: 'Review' })
     expect(screen.getByText('Hair length')).toBeInTheDocument()
