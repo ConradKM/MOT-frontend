@@ -14,9 +14,13 @@ import {
 } from '../../components/customer/BookingFieldInput'
 import { BusinessBrandMark } from '../../components/BusinessBrandMark'
 import { TimeSlotPicker } from '../../components/customer/TimeSlotPicker'
-import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner'
+import {
+  BookingSummaryBar,
+  SUMMARY_BAR_RESERVED_SPACE,
+} from '../../components/customer/BookingSummaryBar'
 import {
   BookingSummaryOverlay,
+  bookingTotals,
   SUMMARY_OVERLAY_RESERVED_SPACE,
 } from '../../components/customer/BookingSummaryOverlay'
 import { formatTimeRange, serviceMinutes } from '../../lib/availability'
@@ -45,7 +49,6 @@ import { TermsAcceptance } from '../../components/customer/TermsAcceptance'
 import { TERMS_VERSION_MISMATCH } from '../../api/terms'
 import {
   addOnTotals,
-  formatMinutes,
   formatPence,
   selectionToPayload,
   selectionToQuery,
@@ -699,11 +702,22 @@ export function BookingWizard() {
     )
   }
 
-  const showSlotBanner = Boolean(data.date && data.time && step !== 'time')
   const showSummaryOverlay = step === 'service' && selectedAppointmentType !== undefined
+  // The later steps' slim bar - replaces the old "Your selected time" banner.
+  const showSummaryBar = step !== 'service' && selectedAppointmentType !== undefined
+  const totals = selectedAppointmentType
+    ? bookingTotals(selectedAppointmentType, availableAddOns, addOnSelection)
+    : null
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div
+      className={`mx-auto max-w-2xl ${
+        // Date & time widens on large screens - past the page column, which
+        // has the room to spare - so the times can sit beside a full-size
+        // calendar instead of squeezing it. CSS only, like every breakpoint.
+        step === 'time' ? 'lg:-mx-32 lg:max-w-none xl:-mx-44' : ''
+      }`}
+    >
       <div className="mb-6 flex items-center gap-3">
         <BusinessBrandMark name={garage.name} logoUrl={garage.logo_url} />
         <div>
@@ -715,15 +729,6 @@ export function BookingWizard() {
       <WizardStepper steps={wizardSteps} currentStep={currentStepNumber} />
 
       <div className="mt-8 rounded-lg bg-white shadow-card p-6">
-        {showSlotBanner && (
-          <SelectedSlotBanner
-            date={data.date}
-            time={data.time}
-            end={data.timeEnd || reviewFinishTime(data, selectedAppointmentType, addOnSelection) || undefined}
-            onChange={() => goToStep('time')}
-          />
-        )}
-
         {/* Keyed on the step so the fade replays on each transition. */}
         <div key={step} className="animate-step-in">
         {step === 'service' && (
@@ -744,12 +749,9 @@ export function BookingWizard() {
             date={data.date}
             appointmentTypeId={data.appointmentTypeId}
             addOns={addOnsQuery}
-            addOnMinutes={addOnTotals(addOnSelection, availableAddOns).minutes}
-            selectedService={selectedAppointmentType}
             time={data.time}
             onSelectDate={selectDate}
             onSelectSlot={selectSlot}
-            onChangeService={hasServices ? () => goToStep('service') : undefined}
           />
         )}
         {step === 'details' && (
@@ -914,6 +916,33 @@ export function BookingWizard() {
           />
         </>
       )}
+
+      {showSummaryBar && totals && (
+        <>
+          {/* Keeps the step's own Back / Continue clear of the bar. */}
+          <div aria-hidden="true" className={SUMMARY_BAR_RESERVED_SPACE} />
+          <BookingSummaryBar
+            serviceName={selectedAppointmentType.name}
+            // A discount the server accepted is what will be charged.
+            pricePence={discount ? toPence(discount.new_total) : totals.pricePence}
+            minutes={totals.minutes}
+            date={data.time ? data.date : undefined}
+            time={data.time || undefined}
+            timeEnd={
+              data.timeEnd ||
+              reviewFinishTime(data, selectedAppointmentType, addOnSelection) ||
+              undefined
+            }
+            // Back to what this step depends on; nothing is changeable once
+            // a deposit has been paid.
+            {...(depositResult
+              ? {}
+              : step === 'time'
+                ? { onChange: () => goToStep('service'), changeLabel: 'Change service' }
+                : { onChange: () => goToStep('time'), changeLabel: 'Change time' })}
+          />
+        </>
+      )}
     </div>
   )
 }
@@ -1010,23 +1039,17 @@ function DateTimeStep({
   date,
   appointmentTypeId,
   addOns,
-  addOnMinutes,
-  selectedService,
   time,
   onSelectDate,
   onSelectSlot,
-  onChangeService,
 }: {
   slug: string
   date: string
   appointmentTypeId: string
   addOns: string
-  addOnMinutes: number
-  selectedService: PublicAppointmentType | undefined
   time: string
   onSelectDate: (date: string) => void
   onSelectSlot: (time: string, end?: string) => void
-  onChangeService?: () => void
 }) {
   const timesRef = useRef<HTMLDivElement>(null)
   const shownDate = useRef(date)
@@ -1039,33 +1062,15 @@ function DateTimeStep({
     const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     timesRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
   }, [date])
-  const minutes = selectedService ? serviceMinutes(selectedService) : null
-
   return (
     <div>
       <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Pick a date &amp; time</h2>
-      {selectedService && (
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-slate-600">
-          <span>
-            Booking <span className="font-medium text-slate-900">{selectedService.name}</span>
-            {minutes != null && ` · ${formatMinutes(minutes + addOnMinutes)}`}
-          </span>
-          {onChangeService && (
-            <button
-              type="button"
-              onClick={onChangeService}
-              className="text-xs font-medium text-slate-500 underline hover:text-slate-800"
-            >
-              Change
-            </button>
-          )}
-        </p>
-      )}
       <p className="mt-1 text-sm text-slate-500">
         Green days have good availability, amber days are filling up, and red days are full.
       </p>
-      {/* Side by side from md: (CSS only), stacked below it. */}
-      <div className="mt-4 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_16rem]">
+      {/* Side by side from lg: (CSS only), where the step widens to give a
+          full-size calendar; stacked, as before, below it. */}
+      <div className="mt-4 grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
         <AvailabilityCalendar
           slug={slug}
           selectedDate={date || null}
@@ -1099,7 +1104,7 @@ function DateTimeStep({
 function TimesPlaceholder() {
   return (
     <div
-      className="hidden rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 md:block"
+      className="hidden rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 lg:block"
       data-testid="times-placeholder"
     >
       <div aria-hidden="true" className="space-y-2">

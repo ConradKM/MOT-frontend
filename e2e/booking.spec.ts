@@ -50,7 +50,7 @@ test('a customer books a slot end to end and sees a confirmation', async ({ page
   // The review step summarises the choices before anything is sent.
   await expect(page.getByText('Monday, 14 September 2099', { exact: true })).toBeVisible()
   await expect(page.getByText('09:00 - 10:00', { exact: true })).toBeVisible()
-  await expect(page.getByText('£54.85')).toBeVisible()
+  await expect(page.locator('.shadow-card').getByText('£54.85')).toBeVisible()
 
   await page.getByRole('button', { name: 'Confirm Booking' }).click()
 
@@ -142,7 +142,7 @@ test('changing the service clears the chosen time, since the duration changed', 
   await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Back' }).click()
-  await page.getByRole('button', { name: 'Change' }).click()
+  await page.getByRole('button', { name: 'Change service' }).click()
   await page.getByRole('button', { name: /^Full service/ }).click()
   // Picking only selects; Next on the summary overlay moves on.
   await page.getByRole('button', { name: 'Next' }).click()
@@ -289,7 +289,7 @@ test('a customer adds extras, sees the price and finish time change, and books t
 
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
   await expect(page.getByText('Tyre check, Rush job')).toBeVisible()
-  await expect(page.getByText('£89.85')).toBeVisible()
+  await expect(page.locator('.shadow-card').getByText('£89.85')).toBeVisible()
   await expect(page.getByText('09:00 - 10:15', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Confirm Booking' }).click()
