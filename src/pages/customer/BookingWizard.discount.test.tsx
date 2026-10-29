@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { renderWithAppProviders } from '../../test/utils'
@@ -95,6 +95,10 @@ function renderWizard() {
   )
 }
 
+/** The Review card - the slim summary bar repeats the price, so assertions
+ * about Review's own breakdown are scoped to it. */
+const reviewPanel = () => screen.getByRole('heading', { name: 'Review' }).parentElement as HTMLElement
+
 async function reachReview(user: ReturnType<typeof userEvent.setup>, service: RegExp) {
   await screen.findByText('Test Garage')
   await user.click(await screen.findByRole('button', { name: service }))
@@ -172,7 +176,9 @@ describe('BookingWizard — discount code', () => {
       add_ons: [],
     })
     expect(screen.getByLabelText('was £100.00')).toBeInTheDocument()
-    expect(screen.getByText('£90.00')).toBeInTheDocument()
+    expect(within(reviewPanel()).getByText('£90.00')).toBeInTheDocument()
+    // The bar shows what will actually be charged.
+    expect(screen.getByTestId('summary-bar-details')).toHaveTextContent('£90.00')
     expect(screen.getByText('−£10.00')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
@@ -200,7 +206,7 @@ describe('BookingWizard — discount code', () => {
       "This discount code isn't valid for this booking.",
     )
     expect(screen.queryByText(/applied/)).not.toBeInTheDocument()
-    expect(screen.getByText('£100.00')).toBeInTheDocument()
+    expect(within(reviewPanel()).getByText('£100.00')).toBeInTheDocument()
   })
 
   it('removes a code and goes back to the full price', async () => {
@@ -212,7 +218,7 @@ describe('BookingWizard — discount code', () => {
     await user.click(await screen.findByRole('button', { name: 'Remove code' }))
 
     expect(screen.queryByText('−£10.00')).not.toBeInTheDocument()
-    expect(screen.getByText('£100.00')).toBeInTheDocument()
+    expect(within(reviewPanel()).getByText('£100.00')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
     await waitFor(() => expect(api.submitBookingRequest).toHaveBeenCalled())
     expect(vi.mocked(api.submitBookingRequest).mock.calls[0][1]).not.toHaveProperty('discount_code')
@@ -255,7 +261,7 @@ describe('BookingWizard — discount code', () => {
 
     expect(await screen.findByText(/We've removed it, so the full price is shown below/)).toBeInTheDocument()
     expect(screen.queryByText('−£10.00')).not.toBeInTheDocument()
-    expect(screen.getByText('£100.00')).toBeInTheDocument()
+    expect(within(reviewPanel()).getByText('£100.00')).toBeInTheDocument()
     // Still on Review, not a dead end: confirming again books at full price.
     expect(screen.getByRole('heading', { name: 'Review' })).toBeInTheDocument()
   })
