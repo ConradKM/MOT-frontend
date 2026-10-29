@@ -408,9 +408,11 @@ export function BookingWizard() {
   /**
    * Deep link: /book/<id>?service=<id> or ?group=<id>.
    *
-   * A business can put a button on its own site that drops the customer
-   * straight onto the date step for one service, rather than back onto a menu
-   * they have already chosen from. Applied once, before first paint.
+   * A business can put a button on its own site ("Book an MOT") that lands
+   * the customer with that service already chosen. It preselects - opening
+   * its group and showing the summary overlay - but never skips the overlay:
+   * Next there is the one way on, so price, time and add-ons are always seen
+   * first. Applied once, before first paint.
    */
   useEffect(() => {
     if (deepLinkApplied || !hasServices) return
@@ -426,15 +428,7 @@ export function BookingWizard() {
         ? singleServiceIn(services, groupParam)
         : undefined
 
-    if (target) {
-      // Preselected either way, so Back from the date step shows the
-      // summary overlay for it.
-      setData((d) => ({ ...d, appointmentTypeId: target.id }))
-      // The business's own "Book an MOT" button already made the choice, so
-      // with nothing to add it goes straight to the calendar; with add-ons
-      // it lands on the overlay so they aren't skipped past.
-      setStep(target.add_ons?.length ? 'service' : 'time')
-    }
+    if (target) setData((d) => ({ ...d, appointmentTypeId: target.id }))
     setDeepLinkApplied(true)
   }, [deepLinkApplied, hasServices, searchParams, services])
 

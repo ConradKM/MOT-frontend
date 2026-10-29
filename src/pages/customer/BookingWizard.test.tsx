@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { renderWithAppProviders } from '../../test/utils'
@@ -453,11 +453,17 @@ describe('BookingWizard — deep links', () => {
     )
   })
 
-  it('?service= lands straight on the date step with that service chosen', async () => {
+  it('?service= preselects that service and waits on the overlay', async () => {
+    const user = userEvent.setup()
     renderWizard('/book/test-garage?service=type-service')
 
+    const overlay = await screen.findByRole('region', { name: 'Full Service' })
+    expect(screen.getByText('What would you like to book?')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Full Service/, pressed: true })).toBeInTheDocument()
+    expect(api.getGarageAvailability).not.toHaveBeenCalled()
+
+    await user.click(within(overlay).getByRole('button', { name: 'Next' }))
     expect(await screen.findByText('Pick a date & time')).toBeInTheDocument()
-    expect(screen.getByText('Full Service')).toBeInTheDocument()
     await waitFor(() =>
       expect(api.getGarageAvailability).toHaveBeenLastCalledWith(
         'test-garage',
@@ -490,7 +496,10 @@ describe('BookingWizard — deep links', () => {
     )
     renderWizard('/book/test-garage?group=grp1')
 
-    expect(await screen.findByText('Pick a date & time')).toBeInTheDocument()
+    // Preselected, its group open, and the overlay showing it.
+    expect(await screen.findByRole('region', { name: 'MOT test' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Testing/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: /MOT test/, pressed: true })).toBeInTheDocument()
   })
 
   it('?group= leaves the choice when the group holds several services', async () => {

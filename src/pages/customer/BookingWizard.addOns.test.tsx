@@ -268,14 +268,12 @@ describe('BookingWizard — add-ons', () => {
     expect(within(overlay).getByRole('checkbox', { name: /Tyre check/ })).toBeInTheDocument()
   })
 
-  it('Back from a deep-linked date step shows the overlay for the preselected service', async () => {
-    const user = userEvent.setup()
+  it('a ?service= deep link to a service without add-ons also waits on the overlay', async () => {
     renderWizard('/book/test-garage?service=plain')
 
-    expect(await screen.findByText('Pick a date & time')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Back' }))
-
     expect(await screen.findByRole('region', { name: 'Diagnostic' })).toBeInTheDocument()
+    expect(screen.getByText('What would you like to book?')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Diagnostic/, pressed: true })).toBeInTheDocument()
   })
+
 })
