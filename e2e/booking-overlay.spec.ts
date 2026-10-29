@@ -64,6 +64,28 @@ test('the overlay never hides the last service', async ({ page }) => {
   expect(lastBox.y + lastBox.height).toBeLessThanOrEqual(overlayBox.y)
 })
 
+test('the slim bar on later steps never covers the step buttons', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 640 })
+  await stubApi(page)
+  await page.goto('/book/g1')
+  await chooseMotTest(page)
+  await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
+  await page.getByRole('button', { name: '09:00, Available' }).click()
+  await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
+
+  const bar = page.getByRole('region', { name: 'MOT test' })
+  await expect(bar).toBeVisible()
+  await expect(bar.getByRole('button', { name: 'Change time' })).toBeVisible()
+
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+  const cont = (await page.getByRole('button', { name: 'Continue' }).boundingBox())!
+  const barBox = (await bar.boundingBox())!
+  expect(cont.y + cont.height).toBeLessThanOrEqual(barBox.y)
+
+  await bar.getByRole('button', { name: 'Change time' }).click()
+  await expect(page.getByRole('heading', { name: 'Pick a date & time' })).toBeVisible()
+})
+
 test('reduced motion: the overlay arrives without animating', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await stubApi(page)
@@ -107,6 +129,8 @@ test.describe('wide screens (1280px)', () => {
     await expect(placeholder).toBeVisible()
     await expect(placeholder).toContainText('Pick a day to see available times')
     const cal = (await calendar.boundingBox())!
+    // The step widens rather than squeezing the calendar beside the times.
+    expect(cal.width).toBeGreaterThanOrEqual(600)
     const ph = (await placeholder.boundingBox())!
     expect(ph.x).toBeGreaterThanOrEqual(cal.x + cal.width)
     expect(Math.abs(ph.y - cal.y)).toBeLessThan(cal.height)
@@ -116,6 +140,23 @@ test.describe('wide screens (1280px)', () => {
     await expect(times).toBeVisible()
     await expect(placeholder).toBeHidden()
     expect((await times.boundingBox())!.x).toBeGreaterThanOrEqual(cal.x + cal.width)
+  })
+})
+
+test.describe('tablets (768px)', () => {
+  test.use({ viewport: { width: 768, height: 1024 } })
+
+  test('a full-width calendar with the times stacked under it, as before', async ({ page }) => {
+    await stubApi(page)
+    await page.goto('/book/g1')
+    await chooseMotTest(page)
+
+    await expect(page.getByTestId('times-placeholder')).toBeHidden()
+    await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
+    const cal = (await page.getByRole('grid').boundingBox())!
+    expect(cal.width).toBeGreaterThanOrEqual(560)
+    const times = (await page.getByRole('heading', { name: /Times for/ }).boundingBox())!
+    expect(times.y).toBeGreaterThan(cal.y + cal.height)
   })
 })
 
@@ -162,7 +203,11 @@ test('a long appointment shows its whole span, and a taken span sends the custom
   await expect(slot).toContainText('10:00 - 14:00')
   await slot.click()
 
-  await expect(page.getByText(/10:00 - 14:00/)).toBeVisible() // the selected-slot banner
+  // The slim bar carries the whole span on; the old top banner is gone.
+  await expect(page.getByTestId('summary-bar-details')).toHaveText(
+    '£54.85 · 1 h · Mon 14 Sept, 10:00 - 14:00',
+  )
+  await expect(page.getByText('Your selected time')).toHaveCount(0)
   await page.getByLabel('First name').fill('Oliver')
   await page.getByLabel('Last name').fill('Bennett')
   await page.getByLabel('Email').fill('oliver@example.com')

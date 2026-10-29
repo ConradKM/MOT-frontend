@@ -29,6 +29,22 @@ function spokenMinutes(minutes: number): string {
   return parts.join(' ')
 }
 
+/** Price (pence, or null when the service has none) and total minutes
+ * (or null) for a service plus add-ons - the same sum availability checks.
+ * Shared by the overlay and the slim bar on later steps. */
+export function bookingTotals(
+  service: PublicAppointmentType,
+  addOns: AddOnOption[],
+  selection: AddOnSelection,
+): { pricePence: number | null; minutes: number | null } {
+  const extra = addOnTotals(selection, addOns)
+  const baseMinutes = serviceMinutes(service)
+  return {
+    pricePence: service.base_price != null ? toPence(service.base_price) + extra.pricePence : null,
+    minutes: baseMinutes != null ? baseMinutes + extra.minutes : null,
+  }
+}
+
 /**
  * The bar that rises from the bottom of the Service step once a service is
  * picked: the add-ons that can go with it, the running price and total time,
@@ -58,12 +74,8 @@ export function BookingSummaryOverlay({
   // away to see the services behind it.
   const [addOnsOpen, setAddOnsOpen] = useState(true)
 
-  const extra = addOnTotals(selection, addOns)
   const count = selectionCount(selection)
-  const basePence = service.base_price != null ? toPence(service.base_price) : null
-  const totalPence = basePence != null ? basePence + extra.pricePence : null
-  const baseMinutes = serviceMinutes(service)
-  const totalMinutes = baseMinutes != null ? baseMinutes + extra.minutes : null
+  const { pricePence: totalPence, minutes: totalMinutes } = bookingTotals(service, addOns, selection)
 
   const spoken = [
     totalPence != null ? `Total ${formatPence(totalPence)}` : 'Price confirmed by the business',

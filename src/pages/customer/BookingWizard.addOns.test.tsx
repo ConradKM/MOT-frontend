@@ -190,7 +190,10 @@ describe('BookingWizard — add-ons', () => {
     await user.click(screen.getByRole('checkbox', { name: /Tyre check/ }))
 
     await user.click(screen.getByRole('button', { name: 'Next' }))
-    expect(await screen.findByText(/Booking/)).toHaveTextContent('Full Service · 1 h 40 min')
+    // The slim bar carries the service, price and time on from here.
+    const bar = await screen.findByRole('region', { name: 'Full Service' })
+    expect(within(bar).getByTestId('summary-bar-details')).toHaveTextContent('£123.00 · 1 h 40 min')
+    expect(within(bar).getByRole('button', { name: 'Change service' })).toBeInTheDocument()
     await waitFor(() =>
       expect(api.getGarageAvailability).toHaveBeenLastCalledWith(
         'test-garage',
@@ -234,6 +237,12 @@ describe('BookingWizard — add-ons', () => {
 
     await user.click(await screen.findByRole('gridcell', { name: DAY_CELL }))
     await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
+    // Once a time is picked the bar adds it, and Change goes back to it.
+    expect(await screen.findByTestId('summary-bar-details')).toHaveTextContent(
+      '£123.00 · 1 h 40 min · Thu 10 Sept, 09:00 - 10:40',
+    )
+    expect(screen.getByRole('button', { name: 'Change time' })).toBeInTheDocument()
+    expect(screen.queryByText('Your selected time')).not.toBeInTheDocument()
     await user.type(await screen.findByLabelText(/First name/), 'Alex')
     await user.type(screen.getByLabelText(/Last name/), 'Turner')
     await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')

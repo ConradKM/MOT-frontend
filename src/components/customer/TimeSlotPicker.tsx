@@ -119,7 +119,7 @@ export function TimeSlotPicker({
             These are start times, grouped by the hour. Choose when you'd like to start, then an
             exact start time.
           </p>
-          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:max-h-[26rem] md:grid-cols-1 md:overflow-y-auto">
+          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:max-h-[26rem] lg:grid-cols-1 lg:overflow-y-auto">
             {buckets.map((bucket) => {
               const meta = SLOT_STATUS[bucket.status]
               return (
@@ -166,7 +166,7 @@ export function TimeSlotPicker({
       )}
 
       {visibleSlots.length > 0 && (
-        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:max-h-[26rem] md:grid-cols-1 md:overflow-y-auto">
+        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:max-h-[26rem] lg:grid-cols-1 lg:overflow-y-auto">
           {visibleSlots.map((slot) => {
             const meta = SLOT_STATUS[slot.status]
             const isSelected = slot.start === selectedTime

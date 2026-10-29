@@ -122,7 +122,7 @@ describe('BookingWizard — a business with no services configured', () => {
     expect(screen.queryByTestId('times-placeholder')).not.toBeInTheDocument()
   })
 
-  it('carries the server-reported range through to Review and the banner', async () => {
+  it('carries the server-reported range through to Review', async () => {
     vi.mocked(api.getGarageDayAvailability).mockResolvedValue({
       date: TODAY,
       is_open: true,
@@ -137,7 +137,6 @@ describe('BookingWizard — a business with no services configured', () => {
 
     await user.click(await screen.findByRole('gridcell', { name: DAY_CELL }))
     await user.click(await screen.findByRole('button', { name: '10:00 to 14:00, Available' }))
-    expect(await screen.findByText(/10:00 - 14:00/)).toBeInTheDocument() // banner
     await fillYourDetails(user)
     await user.click(screen.getByRole('button', { name: 'Continue' }))
 
@@ -365,8 +364,9 @@ describe('BookingWizard — choosing a service first', () => {
     await user.click(screen.getByRole('button', { name: 'Continue' }))
 
     await screen.findByRole('heading', { name: 'Review' })
-    expect(screen.getByText('Full Service')).toBeInTheDocument()
-    expect(screen.getByText('£189.00')).toBeInTheDocument()
+    const review = screen.getByRole('heading', { name: 'Review' }).parentElement as HTMLElement
+    expect(within(review).getByText('Full Service')).toBeInTheDocument()
+    expect(within(review).getByText('£189.00')).toBeInTheDocument()
     expect(screen.getByText('09:00 - 10:30')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
@@ -390,7 +390,8 @@ describe('BookingWizard — choosing a service first', () => {
     await screen.findByRole('heading', { name: 'Your details' })
 
     await user.click(screen.getByRole('button', { name: 'Back' }))
-    await user.click(screen.getByRole('button', { name: 'Change' }))
+    // On Date & time the slim bar's Change goes back to the service.
+    await user.click(screen.getByRole('button', { name: 'Change service' }))
     await user.click(await screen.findByRole('button', { name: /Diagnostic Check/ }))
     await user.click(screen.getByRole('button', { name: 'Next' }))
 
