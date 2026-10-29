@@ -76,6 +76,100 @@ export function AddOnPicker({
     value[a.id] > 1 ? `${value[a.id]}× ${a.name}` : a.name,
   )
 
+  return (
+    <div ref={rootRef} className="relative" onKeyDown={handleKeyDown}>
+      <button
+        ref={triggerRef}
+        type="button"
+        id={id}
+        disabled={disabled || addOns.length === 0}
+        onClick={() => (open ? close(false) : setOpen(true))}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={panelId}
+        className={`flex items-center justify-between gap-2 ${richFieldBoxClass} ${richFieldFocusClass} ${richFieldDisabledClass}`}
+      >
+        {count > 0 ? (
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium text-slate-900">
+              {selectedNames.join(', ')}
+            </span>
+            <span className="block truncate text-xs text-slate-500">
+              {formatDelta(totals.pricePence, totals.minutes)}
+            </span>
+          </span>
+        ) : (
+          <span className="flex-1 truncate text-slate-400">
+            {addOns.length === 0 ? 'No extras offered for this service' : placeholder}
+          </span>
+        )}
+        <svg
+          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          viewBox="0 0 20 20"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M6 8l4 4 4-4"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+
+      <div
+        ref={panelRef}
+        id={panelId}
+        role="dialog"
+        aria-label="Add-ons"
+        aria-hidden={!open}
+        inert={!open}
+        className={`absolute z-20 mt-1 w-full origin-top rounded-md border border-slate-200 bg-white shadow-lg transition duration-150 ease-out motion-reduce:transition-none ${
+          open
+            ? 'visible translate-y-0 scale-100 opacity-100'
+            : 'invisible -translate-y-1 scale-95 opacity-0'
+        }`}
+      >
+        <div className="max-h-80 overflow-auto p-1">
+          <AddOnOptions addOns={addOns} value={value} onChange={onChange} />
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-3 py-2">
+          <p className="text-xs text-slate-500" aria-live="polite">
+            {count > 0 ? formatDelta(totals.pricePence, totals.minutes) : 'Nothing added'}
+          </p>
+          <button
+            type="button"
+            onClick={() => close()}
+            className="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Every add-on as a row: a checkbox (or a radio, within an exclusivity
+ * group) or a quantity stepper when it can be added more than once. The
+ * dropdown above and the booking summary overlay both render these, so the
+ * selection rules live in one place.
+ */
+export function AddOnOptions({
+  addOns,
+  value,
+  onChange,
+}: {
+  addOns: AddOnOption[]
+  value: AddOnSelection
+  onChange: (next: AddOnSelection) => void
+}) {
+  // Scopes the radios' names, so two pickers on one page never share a group.
+  const radioName = useId()
+
   const ungrouped = addOns.filter((a) => !a.exclusivity_group)
   const groups = new Map<string, AddOnOption[]>()
   for (const a of addOns) {
@@ -138,7 +232,7 @@ export function AddOnPicker({
         >
           <input
             type={groupName ? 'radio' : 'checkbox'}
-            name={groupName ? `${panelId}-${groupName}` : undefined}
+            name={groupName ? `${radioName}-${groupName}` : undefined}
             checked={selected}
             // A radio only fires change when becoming checked; onClick also
             // lets the selected one be cleared, so a group can be left empty.
@@ -163,85 +257,16 @@ export function AddOnPicker({
   }
 
   return (
-    <div ref={rootRef} className="relative" onKeyDown={handleKeyDown}>
-      <button
-        ref={triggerRef}
-        type="button"
-        id={id}
-        disabled={disabled || addOns.length === 0}
-        onClick={() => (open ? close(false) : setOpen(true))}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={panelId}
-        className={`flex items-center justify-between gap-2 ${richFieldBoxClass} ${richFieldFocusClass} ${richFieldDisabledClass}`}
-      >
-        {count > 0 ? (
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-medium text-slate-900">
-              {selectedNames.join(', ')}
-            </span>
-            <span className="block truncate text-xs text-slate-500">
-              {formatDelta(totals.pricePence, totals.minutes)}
-            </span>
-          </span>
-        ) : (
-          <span className="flex-1 truncate text-slate-400">
-            {addOns.length === 0 ? 'No extras offered for this service' : placeholder}
-          </span>
-        )}
-        <svg
-          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
-          viewBox="0 0 20 20"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path
-            d="M6 8l4 4 4-4"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-
-      <div
-        ref={panelRef}
-        id={panelId}
-        role="dialog"
-        aria-label="Add-ons"
-        aria-hidden={!open}
-        inert={!open}
-        className={`absolute z-20 mt-1 w-full origin-top rounded-md border border-slate-200 bg-white shadow-lg transition duration-150 ease-out motion-reduce:transition-none ${
-          open
-            ? 'visible translate-y-0 scale-100 opacity-100'
-            : 'invisible -translate-y-1 scale-95 opacity-0'
-        }`}
-      >
-        <div className="max-h-80 overflow-auto p-1">
-          {ungrouped.length > 0 && <ul>{ungrouped.map((a) => renderRow(a, null))}</ul>}
-          {[...groups.entries()].map(([group, members]) => (
-            <fieldset key={group} className="mt-1 border-t border-slate-100 pt-1 first:mt-0 first:border-0 first:pt-0">
-              <legend className="px-3 pt-1 text-xs font-medium uppercase tracking-wide text-slate-400">
-                {group} · choose one
-              </legend>
-              <ul>{members.map((a) => renderRow(a, group))}</ul>
-            </fieldset>
-          ))}
-        </div>
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-3 py-2">
-          <p className="text-xs text-slate-500" aria-live="polite">
-            {count > 0 ? formatDelta(totals.pricePence, totals.minutes) : 'Nothing added'}
-          </p>
-          <button
-            type="button"
-            onClick={() => close()}
-            className="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800"
-          >
-            Done
-          </button>
-        </div>
-      </div>
-    </div>
+    <>
+      {ungrouped.length > 0 && <ul>{ungrouped.map((a) => renderRow(a, null))}</ul>}
+      {[...groups.entries()].map(([group, members]) => (
+        <fieldset key={group} className="mt-1 border-t border-slate-100 pt-1 first:mt-0 first:border-0 first:pt-0">
+          <legend className="px-3 pt-1 text-xs font-medium uppercase tracking-wide text-slate-400">
+            {group} · choose one
+          </legend>
+          <ul>{members.map((a) => renderRow(a, group))}</ul>
+        </fieldset>
+      ))}
+    </>
   )
 }

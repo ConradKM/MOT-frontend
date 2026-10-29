@@ -96,6 +96,8 @@ async function reachReview(user: ReturnType<typeof userEvent.setup>, service: st
     { route: `/book/${GARAGE_ID}` },
   )
   await user.click(await screen.findByRole('button', { name: new RegExp(service) }))
+  // Picking only selects; the summary overlay's Next moves on.
+  await user.click(screen.getByRole('button', { name: 'Next' }))
   await user.click(
     await screen.findByRole('gridcell', { name: /14 September 2099 — .*selectable/ }),
   )

@@ -47,7 +47,7 @@ async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
       name: /10 September 2026 — Good availability, selectable/,
     }),
   )
-  await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+  await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
   // By label, not by position: the details step is assembled partly from the
   // business's own configuration, so field order is not fixed.
   await user.type(await screen.findByLabelText(/First name/), 'Alex')

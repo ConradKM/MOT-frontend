@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useGarageDayAvailability } from '../../api/queries'
 import { formatLongDate } from '../../lib/datetime'
-import { SLOT_STATUS, BUCKET_STEP_THRESHOLD, groupIntoHourBuckets } from '../../lib/availability'
+import { formatMinutes } from '../../lib/addOns'
+import {
+  SLOT_STATUS,
+  BUCKET_STEP_THRESHOLD,
+  formatTimeRange,
+  groupIntoHourBuckets,
+} from '../../lib/availability'
 import type { SlotBucket } from '../../lib/availability'
 
 interface Props {
@@ -14,7 +20,8 @@ interface Props {
   /** Selected add-ons in `id:qty,...` form - they change the duration too. */
   addOns?: string
   selectedTime: string | null
-  onSelectSlot: (time: string) => void
+  /** The start, and the server's end for the whole appointment. */
+  onSelectSlot: (time: string, end?: string) => void
 }
 
 export function TimeSlotPicker({
@@ -57,7 +64,7 @@ export function TimeSlotPicker({
   const visibleSlots = useBuckets ? (expandedBucket?.slots ?? []) : (data?.slots ?? [])
 
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 p-4">
+    <div className="rounded-lg border border-slate-200 p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900">
           Times for {formatLongDate(date)}
@@ -66,6 +73,12 @@ export function TimeSlotPicker({
           <span className="text-xs text-slate-400">updating…</span>
         )}
       </div>
+      {/* Explains why each time reads as a range: it is the whole job. */}
+      {data?.duration_minutes != null && data.is_open && (
+        <p className="mt-1 text-xs text-slate-600" data-testid="appointment-length">
+          Appointment length: {formatMinutes(data.duration_minutes)}
+        </p>
+      )}
 
       {isLoading && (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -102,8 +115,11 @@ export function TimeSlotPicker({
 
       {useBuckets && !expandedBucket && buckets.length > 0 && (
         <>
-          <p className="mt-3 text-xs text-slate-500">Choose a time window, then an exact time.</p>
-          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <p className="mt-3 text-xs text-slate-500">
+            These are start times, grouped by the hour. Choose when you'd like to start, then an
+            exact start time.
+          </p>
+          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:max-h-[26rem] md:grid-cols-1 md:overflow-y-auto">
             {buckets.map((bucket) => {
               const meta = SLOT_STATUS[bucket.status]
               return (
@@ -111,6 +127,7 @@ export function TimeSlotPicker({
                   <button
                     type="button"
                     aria-disabled={!meta.selectable}
+                    aria-label={`Starting between ${bucket.bucketStart} and ${bucket.bucketEnd}, ${meta.label}`}
                     onClick={() => meta.selectable && setOpenBucketStart(bucket.bucketStart)}
                     className={[
                       'flex w-full min-h-11 flex-col items-center justify-center rounded-md border px-2 py-1.5 text-sm transition',
@@ -119,8 +136,10 @@ export function TimeSlotPicker({
                         : 'cursor-not-allowed border-slate-100 bg-slate-50',
                     ].join(' ')}
                   >
+                    {/* Never a bare "10:00-11:00": for a 4-hour job that would
+                        read as the appointment itself. */}
                     <span className="font-semibold">
-                      {bucket.bucketStart}–{bucket.bucketEnd}
+                      Start {formatTimeRange(bucket.bucketStart, bucket.bucketEnd)}
                     </span>
                     <span className={`text-[11px] leading-none ${meta.pill}`}>{meta.label}</span>
                   </button>
@@ -141,13 +160,13 @@ export function TimeSlotPicker({
             ← Back to time windows
           </button>
           <span className="text-xs text-slate-500">
-            {expandedBucket.bucketStart}–{expandedBucket.bucketEnd}
+            Starting {formatTimeRange(expandedBucket.bucketStart, expandedBucket.bucketEnd)}
           </span>
         </div>
       )}
 
       {visibleSlots.length > 0 && (
-        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:max-h-[26rem] md:grid-cols-1 md:overflow-y-auto">
           {visibleSlots.map((slot) => {
             const meta = SLOT_STATUS[slot.status]
             const isSelected = slot.start === selectedTime
@@ -157,8 +176,8 @@ export function TimeSlotPicker({
                   type="button"
                   aria-disabled={!meta.selectable}
                   aria-pressed={isSelected}
-                  aria-label={`${slot.start} — ${meta.label}`}
-                  onClick={() => meta.selectable && onSelectSlot(slot.start)}
+                  aria-label={`${slot.end ? `${slot.start} to ${slot.end}` : slot.start}, ${meta.label}`}
+                  onClick={() => meta.selectable && onSelectSlot(slot.start, slot.end)}
                   className={[
                     'flex w-full min-h-11 flex-col items-center justify-center rounded-md border px-2 py-1.5 text-sm transition',
                     meta.selectable
@@ -169,7 +188,9 @@ export function TimeSlotPicker({
                       : '',
                   ].join(' ')}
                 >
-                  <span className="font-semibold">{slot.start}</span>
+                  <span className="font-semibold tabular-nums">
+                    {formatTimeRange(slot.start, slot.end)}
+                  </span>
                   <span
                     className={`text-[11px] leading-none ${
                       isSelected ? 'text-slate-200' : meta.pill

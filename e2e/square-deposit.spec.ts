@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { respond, stubApi, stubSquareSdk } from './fixtures/api'
+import { chooseMotTest } from './fixtures/booking'
 import { PUBLIC_GARAGE } from './fixtures/data'
 
 /**
@@ -80,9 +81,9 @@ test('a customer pays a Square deposit and the booking is confirmed by the backe
   // Nothing from Square loads before a Square deposit is due.
   expect(sdk.loads).toEqual([])
 
-  await page.getByRole('button', { name: /^MOT test/ }).click()
+  await chooseMotTest(page)
   await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
-  await page.getByRole('button', { name: '09:00 — Available' }).click()
+  await page.getByRole('button', { name: '09:00, Available' }).click()
   await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
   await page.getByLabel('First name').fill('Oliver')
   await page.getByLabel('Last name').fill('Bennett')

@@ -74,6 +74,21 @@ export const SLOT_STATUS: Record<
   },
 }
 
+/** "10:00 - 14:00" - the whole appointment, from the server's own `end`.
+ * Just the start when an older server sent no end. */
+export function formatTimeRange(start: string, end?: string | null): string {
+  return end ? `${start} - ${end}` : start
+}
+
+/** The minutes availability will check for a service (see
+ * `effective_duration_minutes`), or null when the server reported neither. */
+export function serviceMinutes(service: {
+  effective_duration_minutes?: number
+  default_duration_minutes: number | null
+}): number | null {
+  return service.effective_duration_minutes ?? service.default_duration_minutes
+}
+
 /** Above this many slots for a day, TimeSlotPicker groups them into coarser
  * buckets first rather than rendering one button per slot (relevant once
  * garages can offer 5-minute granularity - a full day can be 80+ slots). At

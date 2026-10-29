@@ -143,3 +143,66 @@
     animation: none;
   }
 }
+
+/* The booking summary overlay rises in once, when a service is first picked. */
+@keyframes comaz-overlay-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@utility animate-overlay-in {
+  animation: comaz-overlay-in 220ms ease-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+/* A changed price or time rolls in from the direction it moved (up for more,
+ * down for less) with a brief highlight, so the change is noticed without
+ * anything looping. Transform, opacity and background only. */
+@keyframes comaz-value-up {
+  from {
+    transform: translateY(60%);
+    opacity: 0;
+    background-color: rgb(16 185 129 / 0.18);
+  }
+  to {
+    transform: none;
+    opacity: 1;
+    background-color: transparent;
+  }
+}
+
+@keyframes comaz-value-down {
+  from {
+    transform: translateY(-60%);
+    opacity: 0;
+    background-color: rgb(245 158 11 / 0.2);
+  }
+  to {
+    transform: none;
+    opacity: 1;
+    background-color: transparent;
+  }
+}
+
+@utility animate-value-up {
+  animation: comaz-value-up 250ms ease-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@utility animate-value-down {
+  animation: comaz-value-down 250ms ease-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

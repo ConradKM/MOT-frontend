@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { signInAsStaff, stubApi, themedGarage } from './fixtures/api'
+import { chooseMotTest } from './fixtures/booking'
 
 /**
  * A browser-level accessibility sweep. Unlike the jsdom checks in the unit
@@ -49,9 +50,9 @@ test.describe('public pages', () => {
     await stubApi(page)
     await page.goto('/book/g1')
     // Service first, then the calendar - the step order the customer sees.
-    await page.getByRole('button', { name: /^MOT test/ }).click()
+    await chooseMotTest(page)
     await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
-    await page.getByRole('button', { name: '09:00 — Available' }).click()
+    await page.getByRole('button', { name: '09:00, Available' }).click()
     await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
 
     const results = await scan(page)
@@ -111,7 +112,7 @@ test.describe('keyboard operation', () => {
     await stubApi(page)
     await page.goto('/book/g1')
     // The calendar is the second step now, so choose a service to reach it.
-    await page.getByRole('button', { name: /^MOT test/ }).click()
+    await chooseMotTest(page)
 
     // Roving tabindex: exactly one cell — the 1st of the month, before any
     // selection — is in the tab order, and the arrows move from there.
@@ -133,7 +134,7 @@ test.describe('keyboard operation', () => {
   test('the chosen day is announced as selected', async ({ page }) => {
     await stubApi(page)
     await page.goto('/book/g1')
-    await page.getByRole('button', { name: /^MOT test/ }).click()
+    await chooseMotTest(page)
     const day = page.getByRole('gridcell', { name: /14 September 2099/ })
     await expect(day).toHaveAttribute('aria-selected', 'false')
     await day.click()

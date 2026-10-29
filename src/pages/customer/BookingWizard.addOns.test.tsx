@@ -45,7 +45,7 @@ const SERVICE = makePublicAppointmentType({
     },
   ],
 })
-const PLAIN = makePublicAppointmentType({ id: 'plain', name: 'Diagnostic', order: 1 })
+const PLAIN = makePublicAppointmentType({ id: 'plain', name: 'Diagnostic', order: 1, base_price: null })
 
 function renderWizard(route = '/book/test-garage') {
   return renderWithAppProviders(
@@ -56,12 +56,12 @@ function renderWizard(route = '/book/test-garage') {
   )
 }
 
+/** Add-ons are chosen in the summary overlay's panel, open by default. */
 async function chooseAddOns(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('button', { name: /Add extras to Full Service/ }))
-  await user.click(screen.getByRole('checkbox', { name: /Tyre check/ }))
-  await user.click(screen.getByRole('button', { name: 'Add one Key cut' }))
-  await user.click(screen.getByRole('button', { name: 'Add one Key cut' }))
-  await user.click(screen.getByRole('button', { name: 'Done' }))
+  const overlay = await screen.findByRole('region', { name: 'Full Service' })
+  await user.click(within(overlay).getByRole('checkbox', { name: /Tyre check/ }))
+  await user.click(within(overlay).getByRole('button', { name: 'Add one Key cut' }))
+  await user.click(within(overlay).getByRole('button', { name: 'Add one Key cut' }))
 }
 
 beforeEach(() => {
@@ -109,24 +109,55 @@ afterEach(() => {
 })
 
 describe('BookingWizard — add-ons', () => {
-  it('stays on the service step to offer add-ons before the calendar', async () => {
+  it('shows no overlay until a service is picked', async () => {
+    renderWizard()
+    await screen.findByText('What would you like to book?')
+
+    expect(screen.queryByTestId('booking-summary-overlay')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
+  })
+
+  it('offers add-ons in the overlay on picking a service, without navigating', async () => {
     const user = userEvent.setup()
     renderWizard()
 
     await user.click(await screen.findByRole('button', { name: /Full Service/ }))
 
+    const overlay = screen.getByRole('region', { name: 'Full Service' })
+    expect(within(overlay).getByRole('button', { name: /Add-ons/ })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    expect(within(overlay).getByRole('checkbox', { name: /Tyre check/ })).toBeInTheDocument()
     expect(screen.getByText('What would you like to book?')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Add extras to Full Service/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument()
     expect(api.getGarageAvailability).not.toHaveBeenCalled()
   })
 
-  it('still skips straight to the calendar for a service with no add-ons', async () => {
+  it('waits for Next for a service with no add-ons too', async () => {
     const user = userEvent.setup()
     renderWizard()
 
     await user.click(await screen.findByRole('button', { name: /Diagnostic/ }))
 
+    const overlay = screen.getByRole('region', { name: 'Diagnostic' })
+    expect(within(overlay).queryByRole('button', { name: /Add-ons/ })).not.toBeInTheDocument()
+    expect(screen.getByText('What would you like to book?')).toBeInTheDocument()
+
+    await user.click(within(overlay).getByRole('button', { name: 'Next' }))
     expect(await screen.findByText('Pick a date & time')).toBeInTheDocument()
+    expect(screen.queryByTestId('booking-summary-overlay')).not.toBeInTheDocument()
+  })
+
+  it('says the price is confirmed by the business, never £0, for an unpriced service', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+
+    await user.click(await screen.findByRole('button', { name: /Diagnostic/ }))
+
+    expect(screen.getByTestId('summary-price')).toHaveTextContent('Price confirmed by the business')
+    expect(screen.getByTestId('booking-summary-overlay')).not.toHaveTextContent('£0')
   })
 
   it('updates the total live, then asks availability about the longer job', async () => {
@@ -134,16 +165,31 @@ describe('BookingWizard — add-ons', () => {
     renderWizard()
     await user.click(await screen.findByRole('button', { name: /Full Service/ }))
 
-    const total = screen.getByTestId('service-add-on-total')
-    expect(total).toHaveTextContent('£100.00')
-    expect(total).toHaveTextContent('about 1 h')
+    expect(screen.getByTestId('summary-price')).toHaveTextContent('£100.00')
+    expect(screen.getByTestId('summary-time')).toHaveTextContent('1 h')
+    expect(screen.getByTestId('summary-live')).toHaveTextContent('Total £100.00, 1 hour')
+    // Nothing has changed yet, so nothing animates.
+    expect(screen.getByTestId('summary-price').parentElement).not.toHaveAttribute('data-direction')
 
     await chooseAddOns(user)
     // £100 + £15 + 2×£4; 60 + 30 + 2×5 minutes
-    expect(total).toHaveTextContent('£123.00')
-    expect(total).toHaveTextContent('about 1 h 40 min')
+    expect(screen.getByTestId('summary-price')).toHaveTextContent('£123.00')
+    expect(screen.getByTestId('summary-time')).toHaveTextContent('1 h 40 min')
+    expect(screen.getByTestId('summary-live')).toHaveTextContent(
+      'Total £123.00, 1 hour 40 minutes',
+    )
+    expect(screen.getByTestId('summary-price').parentElement).toHaveAttribute('data-direction', 'up')
+    expect(screen.getByRole('button', { name: /Add-ons/ })).toHaveTextContent('3 selected')
 
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    // Taking one off rolls the other way.
+    await user.click(screen.getByRole('checkbox', { name: /Tyre check/ }))
+    expect(screen.getByTestId('summary-price').parentElement).toHaveAttribute(
+      'data-direction',
+      'down',
+    )
+    await user.click(screen.getByRole('checkbox', { name: /Tyre check/ }))
+
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     expect(await screen.findByText(/Booking/)).toHaveTextContent('Full Service · 1 h 40 min')
     await waitFor(() =>
       expect(api.getGarageAvailability).toHaveBeenLastCalledWith(
@@ -166,15 +212,28 @@ describe('BookingWizard — add-ons', () => {
     )
   })
 
+  it('folds the add-on panel away and back', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+    await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+
+    const toggle = screen.getByRole('button', { name: /Add-ons/ })
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('checkbox', { name: /Tyre check/ })).not.toBeInTheDocument()
+    await user.click(toggle)
+    expect(screen.getByRole('checkbox', { name: /Tyre check/ })).toBeInTheDocument()
+  })
+
   it('shows the add-on-inclusive price and finish time on review and submits the selection', async () => {
     const user = userEvent.setup()
     renderWizard()
     await user.click(await screen.findByRole('button', { name: /Full Service/ }))
     await chooseAddOns(user)
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await user.click(await screen.findByRole('gridcell', { name: DAY_CELL }))
-    await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+    await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
     await user.type(await screen.findByLabelText(/First name/), 'Alex')
     await user.type(screen.getByLabelText(/Last name/), 'Turner')
     await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
@@ -185,7 +244,7 @@ describe('BookingWizard — add-ons', () => {
     const panel = review.parentElement as HTMLElement
     expect(within(panel).getByText('Tyre check, 2× Key cut')).toBeInTheDocument()
     expect(within(panel).getByText('£123.00')).toBeInTheDocument()
-    expect(within(panel).getByText('09:00–10:40')).toBeInTheDocument()
+    expect(within(panel).getByText('09:00 - 10:40')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
     await waitFor(() =>
@@ -205,8 +264,18 @@ describe('BookingWizard — add-ons', () => {
   it('a ?service= deep link to a service with add-ons lands on the add-on choice', async () => {
     renderWizard('/book/test-garage?service=svc')
 
-    expect(
-      await screen.findByRole('button', { name: /Add extras to Full Service/ }),
-    ).toBeInTheDocument()
+    const overlay = await screen.findByRole('region', { name: 'Full Service' })
+    expect(within(overlay).getByRole('checkbox', { name: /Tyre check/ })).toBeInTheDocument()
+  })
+
+  it('Back from a deep-linked date step shows the overlay for the preselected service', async () => {
+    const user = userEvent.setup()
+    renderWizard('/book/test-garage?service=plain')
+
+    expect(await screen.findByText('Pick a date & time')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+
+    expect(await screen.findByRole('region', { name: 'Diagnostic' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Diagnostic/, pressed: true })).toBeInTheDocument()
   })
 })
