@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { WizardStepper, type WizardStep } from '../../components/customer/WizardStepper'
@@ -15,6 +15,11 @@ import {
 import { BusinessBrandMark } from '../../components/BusinessBrandMark'
 import { TimeSlotPicker } from '../../components/customer/TimeSlotPicker'
 import { SelectedSlotBanner } from '../../components/customer/SelectedSlotBanner'
+import {
+  BookingSummaryOverlay,
+  SUMMARY_OVERLAY_RESERVED_SPACE,
+} from '../../components/customer/BookingSummaryOverlay'
+import { formatTimeRange, serviceMinutes } from '../../lib/availability'
 import { formatLongDate } from '../../lib/datetime'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
 import { useBookingFlow, usePublicGarage } from '../../api/queries'
@@ -38,16 +43,13 @@ import { DepositStep } from '../../components/customer/DepositStep'
 import { DiscountCodeField } from '../../components/customer/DiscountCodeField'
 import { TermsAcceptance } from '../../components/customer/TermsAcceptance'
 import { TERMS_VERSION_MISMATCH } from '../../api/terms'
-import { AddOnPicker } from '../../components/addOns/AddOnPicker'
 import {
   addOnTotals,
-  formatDelta,
   formatMinutes,
   formatPence,
   selectionToPayload,
   selectionToQuery,
   toPence,
-  type AddOnOption,
   type AddOnSelection,
 } from '../../lib/addOns'
 
@@ -64,6 +66,9 @@ interface WizardData {
   date: string
   appointmentTypeId: string
   time: string
+  /** The server's end for the chosen slot (see AvailabilitySlot.end); only
+   * meaningful while `time` is set. */
+  timeEnd: string
   paymentAttemptId: string
 }
 
@@ -75,6 +80,7 @@ const initialData: WizardData = {
   date: '',
   appointmentTypeId: '',
   time: '',
+  timeEnd: '',
   paymentAttemptId: '',
 }
 
@@ -89,6 +95,18 @@ function addMinutesToTime(time: string, minutes: number): string {
   const hh = Math.floor((total % (24 * 60)) / 60)
   const mm = total % 60
   return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
+}
+
+/** Fallback finish time when the server's slot `end` isn't known (a resumed
+ * deposit attempt): start plus the same duration availability used. */
+function reviewFinishTime(
+  data: WizardData,
+  service: PublicAppointmentType | undefined,
+  selection: AddOnSelection,
+): string | null {
+  const minutes = service ? serviceMinutes(service) : null
+  if (!data.time || minutes == null) return null
+  return addMinutesToTime(data.time, minutes + addOnTotals(selection, service?.add_ons ?? []).minutes)
 }
 
 type FieldErrors = Partial<Record<keyof WizardData, string>> & { form?: string }
@@ -216,10 +234,9 @@ export function BookingWizard() {
       setAddOnSelection({})
       clearDiscount()
     }
-    // A service with add-ons stays on this step so they can be chosen before
-    // the calendar - they change the job's length, and so which slots fit.
-    const chosen = services.find((svc) => svc.id === appointmentTypeId)
-    if (!chosen?.add_ons?.length) setStep('time')
+    // Never navigates: picking reveals the summary overlay, whose Next is
+    // the only way on - so add-ons (which change the job's length, and so
+    // which slots fit) are always in view before the calendar.
   }
 
   const changeAddOns = (next: AddOnSelection) => {
@@ -235,8 +252,8 @@ export function BookingWizard() {
     setAnswerErrors((e) => (e[fieldId] ? { ...e, [fieldId]: '' } : e))
   }
 
-  const selectSlot = (time: string) => {
-    setData((d) => ({ ...d, time, paymentAttemptId: '' }))
+  const selectSlot = (time: string, end?: string) => {
+    setData((d) => ({ ...d, time, timeEnd: end ?? '', paymentAttemptId: '' }))
     setErrors((e) => ({ ...e, form: undefined }))
     setStep('details')
   }
@@ -331,6 +348,9 @@ export function BookingWizard() {
           phone: attempt.customer_phone ?? '',
           date: attempt.preferred_date,
           time: attempt.preferred_time ?? '',
+          // Not part of a recovered attempt; Review falls back to the
+          // service's duration.
+          timeEnd: '',
           appointmentTypeId: attempt.appointment_type_id,
           paymentAttemptId: '',
         })
@@ -388,9 +408,11 @@ export function BookingWizard() {
   /**
    * Deep link: /book/<id>?service=<id> or ?group=<id>.
    *
-   * A business can put a button on its own site that drops the customer
-   * straight onto the date step for one service, rather than back onto a menu
-   * they have already chosen from. Applied once, before first paint.
+   * A business can put a button on its own site ("Book an MOT") that lands
+   * the customer with that service already chosen. It preselects - opening
+   * its group and showing the summary overlay - but never skips the overlay:
+   * Next there is the one way on, so price, time and add-ons are always seen
+   * first. Applied once, before first paint.
    */
   useEffect(() => {
     if (deepLinkApplied || !hasServices) return
@@ -406,11 +428,7 @@ export function BookingWizard() {
         ? singleServiceIn(services, groupParam)
         : undefined
 
-    if (target) {
-      setData((d) => ({ ...d, appointmentTypeId: target.id }))
-      // Land on the add-on choice rather than skipping past it.
-      setStep(target.add_ons?.length ? 'service' : 'time')
-    }
+    if (target) setData((d) => ({ ...d, appointmentTypeId: target.id }))
     setDeepLinkApplied(true)
   }, [deepLinkApplied, hasServices, searchParams, services])
 
@@ -653,7 +671,7 @@ export function BookingWizard() {
       <ConfirmationScreen
         firstName={data.firstName}
         date={data.date}
-        time={data.time}
+        time={formatTimeRange(data.time, data.timeEnd || reviewFinishTime(data, selectedAppointmentType, addOnSelection))}
         email={data.email}
         bookingReference={bookingReference}
         onRestart={restart}
@@ -682,6 +700,7 @@ export function BookingWizard() {
   }
 
   const showSlotBanner = Boolean(data.date && data.time && step !== 'time')
+  const showSummaryOverlay = step === 'service' && selectedAppointmentType !== undefined
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -700,6 +719,7 @@ export function BookingWizard() {
           <SelectedSlotBanner
             date={data.date}
             time={data.time}
+            end={data.timeEnd || reviewFinishTime(data, selectedAppointmentType, addOnSelection) || undefined}
             onChange={() => goToStep('time')}
           />
         )}
@@ -715,14 +735,6 @@ export function BookingWizard() {
               selectedId={data.appointmentTypeId}
               onSelect={selectService}
             />
-            {selectedAppointmentType && availableAddOns.length > 0 && (
-              <ServiceAddOns
-                service={selectedAppointmentType}
-                addOns={availableAddOns}
-                value={addOnSelection}
-                onChange={changeAddOns}
-              />
-            )}
             <IncludedItems service={selectedAppointmentType} />
           </>
         )}
@@ -838,6 +850,9 @@ export function BookingWizard() {
           <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{errors.form}</p>
         )}
 
+        {/* The Service step has no footer: the summary overlay's Next is the
+            way on, and there is nothing to go back to. */}
+        {step !== 'service' && (
         <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-6">
           {step !== steps[0] && !(step === 'review' && (depositResult || needsDeposit)) ? (
             <button
@@ -881,7 +896,24 @@ export function BookingWizard() {
             </button>
           )}
         </div>
+        )}
       </div>
+
+      {showSummaryOverlay && (
+        <>
+          {/* Keeps the last service clear of the collapsed bar. */}
+          <div aria-hidden="true" className={SUMMARY_OVERLAY_RESERVED_SPACE} />
+          <BookingSummaryOverlay
+            // A different service starts with its add-on panel open again.
+            key={selectedAppointmentType.id}
+            service={selectedAppointmentType}
+            addOns={availableAddOns}
+            selection={addOnSelection}
+            onChangeAddOns={changeAddOns}
+            onNext={goNext}
+          />
+        </>
+      )}
     </div>
   )
 }
@@ -973,49 +1005,6 @@ function Field({
   )
 }
 
-/** Add-ons for the chosen service, on the Service step - before the calendar,
- * so availability is computed at the job's real length. */
-function ServiceAddOns({
-  service,
-  addOns,
-  value,
-  onChange,
-}: {
-  service: PublicAppointmentType
-  addOns: AddOnOption[]
-  value: AddOnSelection
-  onChange: (next: AddOnSelection) => void
-}) {
-  const extra = addOnTotals(value, addOns)
-  const basePence = service.base_price != null ? toPence(service.base_price) : null
-  const baseMinutes = service.default_duration_minutes
-  return (
-    <div className="mt-6 rounded-md border border-slate-200 p-4">
-      <label htmlFor="service-add-ons" className="block text-sm font-medium text-slate-900">
-        Add extras to {service.name} <span className="font-normal text-slate-400">(optional)</span>
-      </label>
-      <div className="mt-2">
-        <AddOnPicker id="service-add-ons" addOns={addOns} value={value} onChange={onChange} />
-      </div>
-      <p className="mt-2 text-sm text-slate-600" aria-live="polite" data-testid="service-add-on-total">
-        {basePence != null && (
-          <>
-            Total <span className="font-medium text-slate-900">{formatPence(basePence + extra.pricePence)}</span>
-          </>
-        )}
-        {basePence != null && baseMinutes != null && ' · '}
-        {baseMinutes != null && <>about {formatMinutes(baseMinutes + extra.minutes)}</>}
-        {basePence == null && baseMinutes == null && formatDelta(extra.pricePence, extra.minutes)}
-      </p>
-      {service.deposit_required && (
-        <p className="mt-1 text-xs text-slate-500">
-          The deposit is worked out on this total when you pay.
-        </p>
-      )}
-    </div>
-  )
-}
-
 function DateTimeStep({
   slug,
   date,
@@ -1036,9 +1025,22 @@ function DateTimeStep({
   selectedService: PublicAppointmentType | undefined
   time: string
   onSelectDate: (date: string) => void
-  onSelectSlot: (time: string) => void
+  onSelectSlot: (time: string, end?: string) => void
   onChangeService?: () => void
 }) {
+  const timesRef = useRef<HTMLDivElement>(null)
+  const shownDate = useRef(date)
+  // Stacked (narrow) layout: bring the times into view when a day is picked.
+  // A no-op when they're already visible beside the calendar, so no
+  // breakpoint logic is needed. Not on arrival with a day already chosen.
+  useEffect(() => {
+    if (!date || date === shownDate.current) return
+    shownDate.current = date
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    timesRef.current?.scrollIntoView?.({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
+  }, [date])
+  const minutes = selectedService ? serviceMinutes(selectedService) : null
+
   return (
     <div>
       <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Pick a date &amp; time</h2>
@@ -1046,8 +1048,7 @@ function DateTimeStep({
         <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-slate-600">
           <span>
             Booking <span className="font-medium text-slate-900">{selectedService.name}</span>
-            {selectedService.default_duration_minutes != null &&
-              ` · ${formatMinutes(selectedService.default_duration_minutes + addOnMinutes)}`}
+            {minutes != null && ` · ${formatMinutes(minutes + addOnMinutes)}`}
           </span>
           {onChangeService && (
             <button
@@ -1063,7 +1064,8 @@ function DateTimeStep({
       <p className="mt-1 text-sm text-slate-500">
         Green days have good availability, amber days are filling up, and red days are full.
       </p>
-      <div className="mt-4">
+      {/* Side by side from md: (CSS only), stacked below it. */}
+      <div className="mt-4 grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_16rem]">
         <AvailabilityCalendar
           slug={slug}
           selectedDate={date || null}
@@ -1071,17 +1073,45 @@ function DateTimeStep({
           appointmentTypeId={appointmentTypeId || undefined}
           addOns={addOns || undefined}
         />
+        <div ref={timesRef} className="scroll-mt-4">
+          {date ? (
+            <TimeSlotPicker
+              slug={slug}
+              date={date}
+              appointmentTypeId={appointmentTypeId || undefined}
+              addOns={addOns || undefined}
+              selectedTime={time || null}
+              onSelectSlot={onSelectSlot}
+            />
+          ) : (
+            <TimesPlaceholder />
+          )}
+        </div>
       </div>
-      {date && (
-        <TimeSlotPicker
-          slug={slug}
-          date={date}
-          appointmentTypeId={appointmentTypeId || undefined}
-          addOns={addOns || undefined}
-          selectedTime={time || null}
-          onSelectSlot={onSelectSlot}
-        />
-      )}
+    </div>
+  )
+}
+
+/** Holds the times column open beside the calendar before a day is chosen.
+ * It only *looks* like it's loading: the skeleton is hidden from assistive
+ * tech and the caption is real text, so nothing claims to be busy. Wide
+ * screens only - stacked, there's nothing for it to sit beside. */
+function TimesPlaceholder() {
+  return (
+    <div
+      className="hidden rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 md:block"
+      data-testid="times-placeholder"
+    >
+      <div aria-hidden="true" className="space-y-2">
+        <div className="h-4 w-2/3 animate-pulse rounded bg-slate-200 motion-reduce:animate-none" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-11 animate-pulse rounded-md bg-slate-200/70 motion-reduce:animate-none"
+          />
+        ))}
+      </div>
+      <p className="mt-3 text-center text-sm text-slate-600">Pick a day to see available times</p>
     </div>
   )
 }
@@ -1220,10 +1250,9 @@ function ReviewStep({
   const catalogue = appointmentType?.add_ons ?? []
   const chosenAddOns = catalogue.filter((a) => addOnSelection[a.id])
   const extra = addOnTotals(addOnSelection, catalogue)
-  const finishTime =
-    data.time && appointmentType?.default_duration_minutes != null
-      ? addMinutesToTime(data.time, appointmentType.default_duration_minutes + extra.minutes)
-      : null
+  // The server's own end for the slot; computed only for a resumed payment,
+  // which doesn't carry one.
+  const finishTime = data.timeEnd || reviewFinishTime(data, appointmentType, addOnSelection)
 
   // Once a deposit is paid the booking already exists server-side, so nothing
   // here is still editable - every Edit link goes away rather than offering a
@@ -1266,7 +1295,7 @@ function ReviewStep({
           <SummaryRow label="Date" value={data.date ? formatLongDate(data.date) : '—'} />
           <SummaryRow
             label="Time"
-            value={data.time ? (finishTime ? `${data.time}–${finishTime}` : data.time) : '—'}
+            value={data.time ? formatTimeRange(data.time, finishTime) : '—'}
           />
         </SummarySection>
 

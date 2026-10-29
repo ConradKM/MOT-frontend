@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { respond, stubApi, stubSquareSdk } from './fixtures/api'
+import { chooseMotTest } from './fixtures/booking'
 import { PUBLIC_GARAGE } from './fixtures/data'
 
 /**
@@ -137,9 +138,9 @@ test('a discount code applied at checkout lowers the deposit the customer pays',
   ])
 
   await page.goto('/book/g1')
-  await page.getByRole('button', { name: /^MOT test/ }).click()
+  await chooseMotTest(page)
   await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
-  await page.getByRole('button', { name: '09:00 — Available' }).click()
+  await page.getByRole('button', { name: '09:00, Available' }).click()
   await page.getByLabel('First name').fill('Oliver')
   await page.getByLabel('Last name').fill('Bennett')
   await page.getByLabel('Email').fill('oliver@example.com')

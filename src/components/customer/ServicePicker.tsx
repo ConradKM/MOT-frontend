@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
+import { Check } from 'lucide-react'
 import type {
   DisplayMode,
   PublicAppointmentType,
   PublicAppointmentTypeGroup,
 } from '../../api/publicGarage'
+import { serviceMinutes } from '../../lib/availability'
 
 /**
  * "What are you booking?" - the wizard's first step.
@@ -79,11 +81,14 @@ function ServiceGroup({
   selectedId: string
   onSelect: (id: string) => void
 }) {
-  // Open by default, and open regardless if the current selection is inside -
-  // a customer stepping back to change their mind must see what they picked.
-  const [open, setOpen] = useState(true)
+  // Closed to begin with, so a long menu reads as its headings; each group
+  // opens on its own (not an accordion). Open regardless if the current
+  // selection is inside - a customer stepping back to change their mind
+  // must see what they picked.
+  const [open, setOpen] = useState(false)
   const holdsSelection = services.some((s) => s.id === selectedId)
   const expanded = open || holdsSelection
+  const panelId = useId()
 
   return (
     <section>
@@ -91,6 +96,7 @@ function ServiceGroup({
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={expanded}
+        aria-controls={panelId}
         className="flex w-full items-center justify-between gap-3 border-b border-slate-200 pb-2 text-left"
       >
         <span>
@@ -100,7 +106,7 @@ function ServiceGroup({
           )}
         </span>
         <svg
-          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
+          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform motion-reduce:transition-none ${
             expanded ? 'rotate-180' : ''
           }`}
           viewBox="0 0 20 20"
@@ -117,16 +123,28 @@ function ServiceGroup({
         </svg>
       </button>
 
-      {expanded && (
-        <div className="mt-3">
-          <ServiceList
-            services={services}
-            displayMode={group.display_mode}
-            selectedId={selectedId}
-            onSelect={onSelect}
-          />
+      {/* Always mounted so it can animate shut as well as open (0fr -> 1fr);
+          `inert` + aria-hidden keep a closed group out of reach. */}
+      <div
+        id={panelId}
+        inert={!expanded}
+        aria-hidden={!expanded}
+        data-state={expanded ? 'open' : 'closed'}
+        className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
+          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="pt-3">
+            <ServiceList
+              services={services}
+              displayMode={group.display_mode}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          </div>
         </div>
-      )}
+      </div>
     </section>
   )
 }
@@ -185,9 +203,10 @@ function ServiceList({
 /** Price and duration, as one line. Either may be absent - a service can be
  * "ask us" on both and still be bookable. */
 function metaLine(service: PublicAppointmentType): string {
+  const minutes = serviceMinutes(service)
   return [
     service.base_price != null ? `£${service.base_price}` : null,
-    service.default_duration_minutes != null ? `${service.default_duration_minutes} min` : null,
+    minutes != null ? `${minutes} min` : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -210,7 +229,7 @@ function ServiceCard({
         type="button"
         aria-pressed={selected}
         onClick={() => onSelect(service.id)}
-        className={`flex h-full w-full flex-col overflow-hidden rounded-lg border text-left transition ${
+        className={`relative flex h-full w-full flex-col overflow-hidden rounded-lg border text-left transition ${
           selected
             ? 'border-slate-900 ring-2 ring-slate-900'
             : 'border-slate-200 hover:border-slate-400'
@@ -233,7 +252,10 @@ function ServiceCard({
           )}
         </span>
         <span className="flex flex-1 flex-col gap-0.5 p-3">
-          <span className="text-sm font-medium text-slate-900">{service.name}</span>
+          <span className="flex items-start justify-between gap-2 text-sm font-medium text-slate-900">
+            {service.name}
+            {selected && <SelectedMark />}
+          </span>
           {meta && <span className="text-xs text-slate-500">{meta}</span>}
         </span>
       </button>
@@ -265,7 +287,10 @@ function ServiceRow({
         }`}
       >
         <span className="flex items-center justify-between gap-3">
-          <span className="font-medium">{service.name}</span>
+          <span className="flex items-center gap-2 font-medium">
+            {selected && <SelectedMark />}
+            {service.name}
+          </span>
           {meta && (
             <span className={`text-sm ${selected ? 'text-slate-200' : 'text-slate-500'}`}>
               {meta}
@@ -282,6 +307,12 @@ function ServiceRow({
       </button>
     </li>
   )
+}
+
+/** A tick beside the chosen service, so the choice never rests on colour
+ * alone. Announced through the button's aria-pressed, so hidden here. */
+function SelectedMark() {
+  return <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden="true" data-testid="selected-mark" />
 }
 
 /** "What's included" for the chosen service - the customer-visible checklist

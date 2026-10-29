@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { respond, stubApi } from './fixtures/api'
+import { chooseMotTest } from './fixtures/booking'
 import { BOOKING_DATE, DAY_AVAILABILITY, PUBLIC_GARAGE } from './fixtures/data'
 
 /**
@@ -14,9 +15,9 @@ async function fillWizard(page: import('@playwright/test').Page) {
 
   // Service first: what is being booked decides which days and times are
   // even offered, so it cannot sensibly come after the calendar.
-  await page.getByRole('button', { name: /^MOT test/ }).click()
+  await chooseMotTest(page)
   await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
-  await page.getByRole('button', { name: '09:00 — Available' }).click()
+  await page.getByRole('button', { name: '09:00, Available' }).click()
 
   // The wizard advances to the details step as soon as a slot is picked.
   await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
@@ -48,7 +49,7 @@ test('a customer books a slot end to end and sees a confirmation', async ({ page
 
   // The review step summarises the choices before anything is sent.
   await expect(page.getByText('Monday, 14 September 2099', { exact: true })).toBeVisible()
-  await expect(page.getByText('09:00–10:00')).toBeVisible()
+  await expect(page.getByText('09:00 - 10:00', { exact: true })).toBeVisible()
   await expect(page.getByText('£54.85')).toBeVisible()
 
   await page.getByRole('button', { name: 'Confirm Booking' }).click()
@@ -74,10 +75,10 @@ test('a customer books a slot end to end and sees a confirmation', async ({ page
 test('a booked slot cannot be chosen', async ({ page }) => {
   await stubApi(page)
   await page.goto('/book/g1')
-  await page.getByRole('button', { name: /^MOT test/ }).click()
+  await chooseMotTest(page)
   await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
 
-  const booked = page.getByRole('button', { name: '10:00 — Booked' })
+  const booked = page.getByRole('button', { name: '10:00, Booked' })
   await expect(booked).toHaveAttribute('aria-disabled', 'true')
   // force: Playwright refuses to click a disabled control on its own; forcing
   // it proves the app itself ignores the click rather than relying on that.
@@ -89,9 +90,9 @@ test('a booked slot cannot be chosen', async ({ page }) => {
 test('the wizard blocks bad contact details before anything is sent', async ({ page }) => {
   await stubApi(page)
   await page.goto('/book/g1')
-  await page.getByRole('button', { name: /^MOT test/ }).click()
+  await chooseMotTest(page)
   await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
-  await page.getByRole('button', { name: '09:00 — Available' }).click()
+  await page.getByRole('button', { name: '09:00, Available' }).click()
 
   await page.getByLabel('Registration number').fill('OB08AUD')
   await page.getByLabel('First name').fill('Oliver')
@@ -135,19 +136,21 @@ test('the customer can go back and correct their details without losing them', a
 test('changing the service clears the chosen time, since the duration changed', async ({ page }) => {
   await stubApi(page)
   await page.goto('/book/g1')
-  await page.getByRole('button', { name: /^MOT test/ }).click()
+  await chooseMotTest(page)
   await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
-  await page.getByRole('button', { name: '09:00 — Available' }).click()
+  await page.getByRole('button', { name: '09:00, Available' }).click()
   await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible()
 
   await page.getByRole('button', { name: 'Back' }).click()
   await page.getByRole('button', { name: 'Change' }).click()
   await page.getByRole('button', { name: /^Full service/ }).click()
+  // Picking only selects; Next on the summary overlay moves on.
+  await page.getByRole('button', { name: 'Next' }).click()
 
   // Back on the calendar with nothing picked: a different duration means
   // different days and times are available, so the old choice cannot stand.
   await expect(page.getByRole('heading', { name: 'Pick a date & time' })).toBeVisible()
-  await expect(page.getByRole('button', { name: '09:00 — Available' })).toBeHidden()
+  await expect(page.getByRole('button', { name: '09:00, Available' })).toBeHidden()
 })
 
 test('a dead booking link explains itself instead of showing an empty wizard', async ({ page }) => {
@@ -169,7 +172,7 @@ test('a day with no remaining times says so', async ({ page }) => {
     },
   ])
   await page.goto('/book/g1')
-  await page.getByRole('button', { name: /^MOT test/ }).click()
+  await chooseMotTest(page)
   await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
 
   await expect(page.getByText(/No times are still available on this day/)).toBeVisible()
@@ -187,7 +190,7 @@ test('a failed availability lookup offers a retry rather than an empty calendar'
     },
   ])
   await page.goto('/book/g1')
-  await page.getByRole('button', { name: /^MOT test/ }).click()
+  await chooseMotTest(page)
   await expect(page.getByRole('button', { name: /try again/i })).toBeVisible()
   expect(attempts).toBeGreaterThan(0)
 })
@@ -254,24 +257,27 @@ test('a customer adds extras, sees the price and finish time change, and books t
   ])
 
   await page.goto('/book/g1')
+  await page.getByRole('button', { name: /^Testing & servicing/ }).click()
   await page.getByRole('button', { name: /^MOT test/ }).click()
 
-  // Extras are chosen before the calendar, because they change the job's length.
-  const total = page.getByTestId('service-add-on-total')
-  await expect(total).toContainText('£54.85')
-  await page.getByRole('button', { name: /Add extras to MOT test/ }).click()
-  await page.getByRole('checkbox', { name: /Tyre check/ }).click()
-  await page.getByRole('radio', { name: /Standard/ }).click()
-  await page.getByRole('radio', { name: /Rush job/ }).click()
+  // Extras are chosen in the summary overlay before the calendar, because
+  // they change the job's length. Its add-on panel starts open.
+  const overlay = page.getByRole('region', { name: 'MOT test' })
+  const price = overlay.getByTestId('summary-price')
+  await expect(price).toHaveText('£54.85')
+  await overlay.getByRole('checkbox', { name: /Tyre check/ }).click()
+  await overlay.getByRole('radio', { name: /Standard/ }).click()
+  await overlay.getByRole('radio', { name: /Rush job/ }).click()
   // One per group: picking Rush job cleared Standard.
-  await expect(page.getByRole('radio', { name: /Standard/ })).not.toBeChecked()
-  await expect(total).toContainText('£89.85')
-  await expect(total).toContainText('about 1 h 15 min')
-  await page.getByRole('button', { name: 'Done' }).click()
-  await page.getByRole('button', { name: 'Continue' }).click()
+  await expect(overlay.getByRole('radio', { name: /Standard/ })).not.toBeChecked()
+  await expect(price).toHaveText('£89.85')
+  await expect(overlay.getByTestId('summary-time')).toHaveText('1 h 15 min')
+  // Choosing extras never navigates on its own.
+  await expect(page.getByRole('heading', { name: 'What would you like to book?' })).toBeVisible()
+  await overlay.getByRole('button', { name: 'Next' }).click()
 
   await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
-  await page.getByRole('button', { name: '09:00 — Available' }).click()
+  await page.getByRole('button', { name: '09:00, Available' }).click()
   expect(availabilityQueries.at(-1)).toBe('ao-rush:1,ao-tyre:1')
 
   await page.getByLabel('First name').fill('Oliver')
@@ -284,7 +290,7 @@ test('a customer adds extras, sees the price and finish time change, and books t
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
   await expect(page.getByText('Tyre check, Rush job')).toBeVisible()
   await expect(page.getByText('£89.85')).toBeVisible()
-  await expect(page.getByText('09:00–10:15')).toBeVisible()
+  await expect(page.getByText('09:00 - 10:15', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Confirm Booking' }).click()
   await expect(page.getByRole('heading', { name: 'Request received' })).toBeVisible()

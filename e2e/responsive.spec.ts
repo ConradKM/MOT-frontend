@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { signInAsStaff, stubApi } from './fixtures/api'
+import { chooseMotTest } from './fixtures/booking'
 
 /**
  * This app has no JavaScript breakpoint logic — responsiveness is entirely
@@ -43,7 +44,7 @@ for (const [name, size] of Object.entries(VIEWPORTS)) {
       await expect(page.getByRole('heading', { name: 'What would you like to book?' })).toBeVisible()
       expect(await overflowsHorizontally(page)).toBe(false)
 
-      await page.getByRole('button', { name: /^MOT test/ }).click()
+      await chooseMotTest(page)
       await expect(page.getByRole('heading', { name: 'Pick a date & time' })).toBeVisible()
       expect(await overflowsHorizontally(page)).toBe(false)
     })
@@ -178,9 +179,9 @@ test.describe('layout reflow between breakpoints', () => {
     await stubApi(page)
     await page.goto('/book/g1')
 
-    await page.getByRole('button', { name: /^MOT test/ }).click()
+    await chooseMotTest(page)
     await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
-    await page.getByRole('button', { name: '09:00 — Available' }).click()
+    await page.getByRole('button', { name: '09:00, Available' }).click()
 
     await page.getByLabel('First name').fill('Oliver')
     await page.getByLabel('Last name').fill('Bennett')
@@ -198,10 +199,10 @@ test.describe('layout reflow between breakpoints', () => {
     await page.setViewportSize(VIEWPORTS.mobile)
     await stubApi(page)
     await page.goto('/book/g1')
-    await page.getByRole('button', { name: /^MOT test/ }).click()
+    await chooseMotTest(page)
     await page.getByRole('gridcell', { name: /14 September 2099/ }).click()
 
-    const slot = page.getByRole('button', { name: '09:00 — Available' })
+    const slot = page.getByRole('button', { name: '09:00, Available' })
     const box = (await slot.boundingBox())!
     expect(box.height).toBeGreaterThanOrEqual(44)
   })

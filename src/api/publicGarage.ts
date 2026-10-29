@@ -20,6 +20,10 @@ export interface PublicAppointmentType {
   /** Decimal string from the backend (e.g. "54.85"), or null. */
   base_price: string | null
   default_duration_minutes: number | null
+  /** The length availability actually checks: `default_duration_minutes`, or
+   * the business's generic default when that is null. Optional only so an
+   * older server still type-checks - prefer it over the raw default. */
+  effective_duration_minutes?: number
   /** Null for an ungrouped service. Membership is expressed here and only
    * here - groups carry no id lists, so the two can never disagree. */
   group_id: string | null
@@ -442,6 +446,10 @@ export interface AvailabilityRange {
 export interface AvailabilitySlot {
   /** "HH:MM" */
   start: string
+  /** "HH:MM", business-local: when the whole appointment would finish. The
+   * server works it out (clock changes included) - never compute it here. */
+  end?: string
+  duration_minutes?: number
   status: SlotStatus
   remaining: number
   capacity: number
@@ -451,6 +459,8 @@ export interface DayAvailabilityDetail {
   date: string
   is_open: boolean
   level: DayLevel
+  /** The appointment length these slots were computed for. */
+  duration_minutes?: number
   slots: AvailabilitySlot[]
 }
 

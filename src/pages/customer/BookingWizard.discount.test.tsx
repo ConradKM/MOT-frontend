@@ -98,10 +98,12 @@ function renderWizard() {
 async function reachReview(user: ReturnType<typeof userEvent.setup>, service: RegExp) {
   await screen.findByText('Test Garage')
   await user.click(await screen.findByRole('button', { name: service }))
+  // Picking only selects; the summary overlay's Next moves on.
+  await user.click(screen.getByRole('button', { name: 'Next' }))
   await user.click(
     await screen.findByRole('gridcell', { name: /10 September 2026 — Good availability, selectable/ }),
   )
-  await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+  await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
   await user.type(await screen.findByLabelText(/First name/), 'Alex')
   await user.type(screen.getByLabelText(/Last name/), 'Turner')
   await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')

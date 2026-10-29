@@ -91,10 +91,12 @@ function renderWizard() {
 async function reachDetailsStep(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole('heading', { name: 'Bennett Motors' })
   await user.click(await screen.findByRole('button', { name: /^MOT test/ }))
+  // Picking only selects; the summary overlay's Next moves on.
+  await user.click(screen.getByRole('button', { name: 'Next' }))
   await user.click(
     await screen.findByRole('gridcell', { name: new RegExp(formatLongDate(AVAILABILITY_FROM)) }),
   )
-  await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+  await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
   await screen.findByRole('heading', { name: 'Your details' })
 }
 
@@ -118,6 +120,8 @@ describe('BookingWizard — accessibility', () => {
     const { container } = renderWizard()
     await screen.findByRole('heading', { name: 'Bennett Motors' })
     await user.click(await screen.findByRole('button', { name: /^MOT test/ }))
+    // Picking only selects; the summary overlay's Next moves on.
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await screen.findByRole('heading', { name: 'Pick a date & time' })
     await expectNoA11yViolations(container)
   })

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { renderWithAppProviders } from '../../test/utils'
@@ -55,7 +55,7 @@ async function fillYourDetails(user: ReturnType<typeof userEvent.setup>) {
 
 async function pickDateAndTime(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('gridcell', { name: DAY_CELL }))
-  await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+  await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
 }
 
 async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
@@ -105,6 +105,46 @@ afterEach(() => {
 })
 
 describe('BookingWizard — a business with no services configured', () => {
+  it('holds the times column with an inert placeholder until a day is picked', async () => {
+    const user = userEvent.setup()
+    renderWizard()
+    await screen.findByText('Pick a date & time')
+
+    const placeholder = screen.getByTestId('times-placeholder')
+    expect(placeholder).toHaveTextContent('Pick a day to see available times')
+    // Looks like loading, but never claims to be busy.
+    expect(placeholder.querySelector('[aria-hidden="true"]')).not.toBeNull()
+    expect(placeholder).not.toHaveAttribute('aria-busy')
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+    await user.click(await screen.findByRole('gridcell', { name: DAY_CELL }))
+    expect(await screen.findByRole('button', { name: '09:00, Available' })).toBeInTheDocument()
+    expect(screen.queryByTestId('times-placeholder')).not.toBeInTheDocument()
+  })
+
+  it('carries the server-reported range through to Review and the banner', async () => {
+    vi.mocked(api.getGarageDayAvailability).mockResolvedValue({
+      date: TODAY,
+      is_open: true,
+      level: 'available',
+      duration_minutes: 240,
+      slots: [
+        { start: '10:00', end: '14:00', duration_minutes: 240, status: 'available', remaining: 1, capacity: 1 },
+      ],
+    })
+    const user = userEvent.setup()
+    renderWizard()
+
+    await user.click(await screen.findByRole('gridcell', { name: DAY_CELL }))
+    await user.click(await screen.findByRole('button', { name: '10:00 to 14:00, Available' }))
+    expect(await screen.findByText(/10:00 - 14:00/)).toBeInTheDocument() // banner
+    await fillYourDetails(user)
+    await user.click(screen.getByRole('button', { name: 'Continue' }))
+
+    await screen.findByRole('heading', { name: 'Review' })
+    expect(screen.getByText('10:00 - 14:00')).toBeInTheDocument()
+  })
+
   it('skips the service step rather than showing an empty one', async () => {
     renderWizard()
     await screen.findByText('Test Garage')
@@ -295,6 +335,7 @@ describe('BookingWizard — choosing a service first', () => {
     renderWizard()
 
     await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await waitFor(() =>
       expect(api.getGarageAvailability).toHaveBeenLastCalledWith(
@@ -318,6 +359,7 @@ describe('BookingWizard — choosing a service first', () => {
     renderWizard()
 
     await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await pickDateAndTime(user)
     await fillYourDetails(user)
     await user.click(screen.getByRole('button', { name: 'Continue' }))
@@ -325,7 +367,7 @@ describe('BookingWizard — choosing a service first', () => {
     await screen.findByRole('heading', { name: 'Review' })
     expect(screen.getByText('Full Service')).toBeInTheDocument()
     expect(screen.getByText('£189.00')).toBeInTheDocument()
-    expect(screen.getByText('09:00–10:30')).toBeInTheDocument()
+    expect(screen.getByText('09:00 - 10:30')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
     await waitFor(() =>
@@ -343,15 +385,18 @@ describe('BookingWizard — choosing a service first', () => {
     renderWizard()
 
     await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await pickDateAndTime(user)
     await screen.findByRole('heading', { name: 'Your details' })
 
     await user.click(screen.getByRole('button', { name: 'Back' }))
     await user.click(screen.getByRole('button', { name: 'Change' }))
     await user.click(await screen.findByRole('button', { name: /Diagnostic Check/ }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
+    expect(await screen.findByText('Pick a date & time')).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: '09:00 — Available' }),
+      screen.queryByRole('button', { name: '09:00, Available' }),
     ).not.toBeInTheDocument()
   })
 
@@ -377,7 +422,14 @@ describe('BookingWizard — choosing a service first', () => {
     )
     renderWizard()
 
+    const user = userEvent.setup()
     expect(await screen.findByText('Colour')).toBeInTheDocument()
+    // Groups start closed.
+    const header = screen.getByRole('button', { name: /Colour/ })
+    expect(header).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('button', { name: /Balayage/ })).not.toBeInTheDocument()
+
+    await user.click(header)
     const card = await screen.findByRole('button', { name: /Balayage/ })
     expect(card.querySelector('img')).toHaveAttribute(
       'src',
@@ -401,11 +453,17 @@ describe('BookingWizard — deep links', () => {
     )
   })
 
-  it('?service= lands straight on the date step with that service chosen', async () => {
+  it('?service= preselects that service and waits on the overlay', async () => {
+    const user = userEvent.setup()
     renderWizard('/book/test-garage?service=type-service')
 
+    const overlay = await screen.findByRole('region', { name: 'Full Service' })
+    expect(screen.getByText('What would you like to book?')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Full Service/, pressed: true })).toBeInTheDocument()
+    expect(api.getGarageAvailability).not.toHaveBeenCalled()
+
+    await user.click(within(overlay).getByRole('button', { name: 'Next' }))
     expect(await screen.findByText('Pick a date & time')).toBeInTheDocument()
-    expect(screen.getByText('Full Service')).toBeInTheDocument()
     await waitFor(() =>
       expect(api.getGarageAvailability).toHaveBeenLastCalledWith(
         'test-garage',
@@ -438,7 +496,10 @@ describe('BookingWizard — deep links', () => {
     )
     renderWizard('/book/test-garage?group=grp1')
 
-    expect(await screen.findByText('Pick a date & time')).toBeInTheDocument()
+    // Preselected, its group open, and the overlay showing it.
+    expect(await screen.findByRole('region', { name: 'MOT test' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Testing/ })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: /MOT test/, pressed: true })).toBeInTheDocument()
   })
 
   it('?group= leaves the choice when the group holds several services', async () => {

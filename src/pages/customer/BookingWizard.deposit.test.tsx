@@ -74,12 +74,14 @@ async function fillDetailsAndReachDeposit(user: ReturnType<typeof userEvent.setu
   // Service first - which is also what decides whether a Deposit step exists
   // at all, so it has to be chosen before the rest of the walk.
   await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+  // Picking only selects; the summary overlay's Next moves on.
+  await user.click(screen.getByRole('button', { name: 'Next' }))
   await user.click(
     await screen.findByRole('gridcell', {
       name: /10 September 2026 — Good availability, selectable/,
     }),
   )
-  await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+  await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
 
   await user.type(await screen.findByLabelText(/First name/), 'Alex')
   await user.type(screen.getByLabelText(/Last name/), 'Turner')
@@ -288,12 +290,14 @@ describe('BookingWizard — deposit step', () => {
 
     await screen.findByText('Test Garage')
     await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+    // Picking only selects; the summary overlay's Next moves on.
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await user.click(
       await screen.findByRole('gridcell', {
         name: /10 September 2026 — Good availability, selectable/,
       }),
     )
-    await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+    await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
     await user.type(await screen.findByLabelText(/First name/), 'Alex')
     await user.type(screen.getByLabelText(/Last name/), 'Turner')
     await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
@@ -537,12 +541,14 @@ describe('BookingWizard — a deposit booking still asks the business its questi
 
     await screen.findByText('Test Garage')
     await user.click(await screen.findByRole('button', { name: /Full Service/ }))
+    // Picking only selects; the summary overlay's Next moves on.
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await user.click(
       await screen.findByRole('gridcell', {
         name: /10 September 2026 — Good availability, selectable/,
       }),
     )
-    await user.click(await screen.findByRole('button', { name: '09:00 — Available' }))
+    await user.click(await screen.findByRole('button', { name: '09:00, Available' }))
     await user.type(await screen.findByLabelText(/First name/), 'Alex')
     await user.type(screen.getByLabelText(/Last name/), 'Turner')
     await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
