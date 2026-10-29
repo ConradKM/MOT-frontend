@@ -71,11 +71,11 @@ export function BookingSummaryBar({
   action?: BarAction
 }) {
   const headingId = useId()
-  const parts = [
+  const costParts = [
     pricePence != null ? formatPence(pricePence) : 'Price confirmed by the business',
     minutes != null ? formatMinutes(minutes) : null,
-    date && time ? `${shortDate(date)}, ${formatTimeRange(time, timeEnd)}` : null,
   ].filter(Boolean) as string[]
+  const slot = date && time ? `${shortDate(date)}, ${formatTimeRange(time, timeEnd)}` : null
 
   return (
     <div
@@ -87,11 +87,27 @@ export function BookingSummaryBar({
     >
       <div className="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-t-xl border border-b-0 border-slate-200 bg-white px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_-6px_rgb(15_23_42/0.18)]">
         <div className="min-w-0 flex-1 text-sm">
-          <p id={headingId} className="truncate font-semibold text-slate-900">
-            {serviceName}
-          </p>
-          <p className="truncate text-slate-700" data-testid="summary-bar-details">
-            {parts.map((part, i) => (
+          {/* Change rides beside the name so the date and time below get
+              the full width - on a phone they share the row with the
+              action button. */}
+          <div className="flex items-baseline gap-2">
+            <p id={headingId} className="truncate font-semibold text-slate-900">
+              {serviceName}
+            </p>
+            {onChange && (
+              <button
+                type="button"
+                onClick={onChange}
+                aria-label={changeLabel}
+                // 44px tall to tap, without making the row taller.
+                className="-my-3 min-h-11 shrink-0 px-1 text-sm font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900"
+              >
+                Change
+              </button>
+            )}
+          </div>
+          <p className="text-slate-700" data-testid="summary-bar-details">
+            {costParts.map((part, i) => (
               <span key={i}>
                 {i > 0 && <span className="text-slate-500"> · </span>}
                 <span className={i === 0 && pricePence != null ? 'font-semibold text-slate-900' : ''}>
@@ -99,18 +115,15 @@ export function BookingSummaryBar({
                 </span>
               </span>
             ))}
+            {slot && (
+              <>
+                {/* Read as one sentence; shown on its own line. */}
+                <span className="sr-only"> · </span>
+                <span className="block truncate">{slot}</span>
+              </>
+            )}
           </p>
         </div>
-        {onChange && (
-          <button
-            type="button"
-            onClick={onChange}
-            aria-label={changeLabel}
-            className="min-h-11 shrink-0 rounded-md px-2 text-sm font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900"
-          >
-            Change
-          </button>
-        )}
         {action && (
           <button
             type="button"
