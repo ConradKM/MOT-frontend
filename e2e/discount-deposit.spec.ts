@@ -146,7 +146,7 @@ test('a discount code applied at checkout lowers the deposit the customer pays',
   await page.getByLabel('Email').fill('oliver@example.com')
   await page.getByLabel('Mobile number').fill('07123 456789')
   await page.getByLabel('Registration number').fill('OB08AUD')
-  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'Next' }).click()
 
   // The checkout opens at the full price first.
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()

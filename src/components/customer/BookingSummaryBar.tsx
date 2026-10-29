@@ -1,9 +1,10 @@
 import { useId } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { formatMinutes, formatPence } from '../../lib/addOns'
 import { formatTimeRange } from '../../lib/availability'
 
 /** Space the page keeps clear at the bottom of the later steps so the bar
- * never sits over the step's own Back / Continue buttons. */
+ * never sits over the step's own Back button. */
 export const SUMMARY_BAR_RESERVED_SPACE = 'h-24'
 
 /** "Mon 14 Sep" - short enough to share one line with price and time. */
@@ -22,10 +23,27 @@ function shortDate(isoDate: string): string {
  * the day and the appointment's whole span. It stays in view down a long
  * details form on a phone, which a banner at the top of the card did not.
  *
- * It only summarises: each step keeps its own Back / Continue. Change goes
- * back to the choice this step depends on (the service while picking a
- * time; the time after that), and is absent once nothing can change.
+ * It also carries the step's forward action - Next, or Confirm Booking on
+ * Review - so the way on is always in the same place, as on the Service
+ * step's overlay. Back stays in the card. Change goes back to the choice
+ * this step depends on (the service while picking a time; the time after
+ * that), and is absent once nothing can change.
  */
+export interface BarAction {
+  label: string
+  onClick: () => void
+  /** Truly unavailable (e.g. no time picked yet, or submitting). */
+  disabled?: boolean
+  /** Looks unavailable but stays clickable so trying explains why (unticked
+   * terms on Review). */
+  softDisabled?: boolean
+  /** Show the forward arrow - for Next, not for a final Confirm. */
+  arrow?: boolean
+  /** The final, booking-making action: green so it reads as "done", not
+   * just another step. emerald-700 keeps white text above AA (5.5:1). */
+  confirm?: boolean
+}
+
 export function BookingSummaryBar({
   serviceName,
   pricePence,
@@ -35,6 +53,7 @@ export function BookingSummaryBar({
   timeEnd,
   onChange,
   changeLabel,
+  action,
 }: {
   serviceName: string
   /** Null when the service has no price - the bar says so rather than £0. */
@@ -47,6 +66,9 @@ export function BookingSummaryBar({
   /** Accessible name for Change, e.g. "Change time" - it starts with the
    * visible word so speech input still finds it. */
   changeLabel?: string
+  /** The step's way forward; absent when the step has none of its own (a
+   * deposit booking's Review, where the payment form is the next move). */
+  action?: BarAction
 }) {
   const headingId = useId()
   const parts = [
@@ -84,9 +106,26 @@ export function BookingSummaryBar({
             type="button"
             onClick={onChange}
             aria-label={changeLabel}
-            className="min-h-11 shrink-0 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="min-h-11 shrink-0 rounded-md px-2 text-sm font-medium text-slate-700 underline underline-offset-2 hover:text-slate-900"
           >
             Change
+          </button>
+        )}
+        {action && (
+          <button
+            type="button"
+            onClick={action.onClick}
+            disabled={action.disabled}
+            aria-disabled={action.softDisabled || undefined}
+            data-variant={action.confirm ? 'confirm' : 'next'}
+            className={`inline-flex min-h-11 min-w-11 shrink-0 items-center gap-2 rounded-md px-4 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-40 ${
+              action.confirm
+                ? 'bg-emerald-700 hover:bg-emerald-800 focus-visible:outline-emerald-700'
+                : 'bg-slate-900 hover:bg-slate-800 focus-visible:outline-slate-900'
+            } ${action.softDisabled ? 'opacity-50' : ''}`}
+          >
+            {action.label}
+            {action.arrow && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
           </button>
         )}
       </div>

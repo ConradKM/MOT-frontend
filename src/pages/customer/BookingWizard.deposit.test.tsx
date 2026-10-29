@@ -87,7 +87,7 @@ async function fillDetailsAndReachDeposit(user: ReturnType<typeof userEvent.setu
   await user.type(screen.getByLabelText(/Last name/), 'Turner')
   await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
   await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Next' }))
 
   await screen.findByRole('heading', { name: 'Review' })
 }
@@ -302,7 +302,7 @@ describe('BookingWizard — deposit step', () => {
     await user.type(screen.getByLabelText(/Last name/), 'Turner')
     await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
     await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await screen.findByRole('heading', { name: 'Review' })
     expect(api.createDepositIntent).not.toHaveBeenCalled()
@@ -554,7 +554,7 @@ describe('BookingWizard — a deposit booking still asks the business its questi
     await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
     await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
     await user.type(screen.getByLabelText(/Anything we should know\?/), 'Please call first')
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await screen.findByRole('heading', { name: 'Deposit' })
     await waitFor(() => expect(api.createDepositIntent).toHaveBeenCalled())

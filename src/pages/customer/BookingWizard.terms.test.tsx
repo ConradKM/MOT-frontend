@@ -106,7 +106,7 @@ async function reachReview(user: ReturnType<typeof userEvent.setup>, service: st
   await user.type(screen.getByLabelText(/Last name/), 'Turner')
   await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
   await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Next' }))
   await screen.findByRole('heading', { name: 'Review' })
 }
 
