@@ -65,6 +65,26 @@ e2e/*.spec.ts                Playwright journeys against the built app with stub
 4. **Customer & vehicle CRUD** — the two forms staff use most, with server-side 422s.
 5. **Customer portal** — email + registration sign-in, account hub, protected routes.
 6. **Session expiry** — a 401 that cannot be refreshed must drop the user back to login.
+7. **Navigation** — the seven-item menu (`Layout.test.tsx`, `e2e/responsive.spec.ts`
+   `NAV_LABELS`): Queue and Communications hidden without their plan feature, the
+   pending-request badge on Appointments, Requests and Payments as tabs with their
+   parent item lit, and `/booking-requests` and `/payments` redirecting to those tabs
+   (`app.routing.test.tsx`, `e2e/navigation.spec.ts`).
+8. **Insights** (`src/pages/insights/*.test.ts(x)`, `e2e/insights.spec.ts`):
+   - owners see money, and staff see counts only, with no £ anywhere;
+   - on a basic plan the advanced panels are locked as an upsell and Export is
+     hidden;
+   - the empty state, the error state with retry, range switching and its
+     deltas, and `n/a` rates;
+   - the due-back list and its links;
+   - desktop and phone widths, and an axe sweep.
+
+   Recharts must stay out of the main bundle: `recharts.lazy.test.ts` checks
+   that only `charts/TrendChart.tsx` imports it, and only through `React.lazy`.
+   The Insights test also proves the chart module isn't loaded on a locked
+   plan, and the e2e suite proves the booking wizard never downloads it. The
+   Dashboard's "This week" card and the appointment-type due-back fields are
+   covered beside their pages.
 
 ## 5. API mocking strategy
 

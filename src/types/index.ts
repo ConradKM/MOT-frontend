@@ -149,6 +149,10 @@ export interface AppointmentType {
   /** Decimal string - a GBP amount for FIXED, a 0-100 number for PERCENTAGE. */
   deposit_value: string | null
   deposit_currency: string
+  /** Days customers usually leave between visits. Null: never "due back". */
+  return_interval_days: number | null
+  /** Due back on the vehicle's MOT expiry rather than last visit + interval. */
+  due_back_uses_mot_expiry: boolean
   /** Null when ungrouped, which is the normal state for a short menu. */
   group_id: string | null
   order: number
