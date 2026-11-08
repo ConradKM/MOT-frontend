@@ -8,8 +8,10 @@ import {
   useCapacitySummary,
   useCustomers,
   useGarage,
+  useInsights,
   useQueueDashboard,
 } from '../api/queries'
+import { formatGbp, thisWeek } from './insights/insightsFormat'
 import type { CapacityLevel } from '../api/garageCapacity'
 import type { QueueDashboard } from '../api/queue'
 import { useGarageId } from '../hooks/useGarageId'
@@ -102,6 +104,42 @@ function WalkInQueueRow({
   )
 }
 
+/** Three numbers for Monday-Sunday from the Insights endpoint. Basic data
+ * only, so it works on every plan; booked value is in the payload for owners
+ * alone, so staff simply never see that figure. */
+function ThisWeekCard({ garageId }: { garageId: string }) {
+  const { data, isError } = useInsights(thisWeek())
+  if (isError) return null
+  const summary = data?.summary
+  const stats = [
+    { label: 'Appointments', value: summary ? String(summary.appointments.total) : '—' },
+    { label: 'No-shows', value: summary ? String(summary.appointments.no_show) : '—' },
+    ...(summary?.booked_value !== undefined
+      ? [{ label: 'Booked value', value: formatGbp(summary.booked_value) }]
+      : []),
+  ]
+  return (
+    <section aria-labelledby="this-week-heading" className="mt-4 rounded-lg bg-white px-5 py-4 shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="this-week-heading" className="text-sm font-semibold text-slate-900">
+          This week
+        </h2>
+        <Link to={`/${garageId}/insights`} className="text-sm font-medium text-slate-900">
+          See insights →
+        </Link>
+      </div>
+      <dl className="mt-3 grid grid-cols-3 gap-3">
+        {stats.map((stat) => (
+          <div key={stat.label}>
+            <dt className="text-xs text-slate-500">{stat.label}</dt>
+            <dd className="text-xl font-semibold tabular-nums text-slate-900">{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  )
+}
+
 export function Dashboard() {
   const garageId = useGarageId()
   const { data: garage } = useGarage()
@@ -160,6 +198,8 @@ export function Dashboard() {
           <p className="mt-auto pt-3 text-sm font-medium text-slate-900">Manage appointments →</p>
         </Link>
       </div>
+
+      <ThisWeekCard garageId={garageId} />
 
       <WalkInQueueRow garageId={garageId} queue={queue} />
 

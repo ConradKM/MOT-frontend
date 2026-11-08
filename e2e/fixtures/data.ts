@@ -340,3 +340,110 @@ export const QUEUE_DASHBOARD = {
   entries: [],
   appointments: [],
 }
+
+const INSIGHTS_SUMMARY = {
+  appointments: {
+    total: 6,
+    by_status: { COMPLETED: 3, NO_SHOW: 1, CANCELLED: 1, BOOKED: 1 },
+    completed: 3,
+    no_show: 1,
+    cancelled: 1,
+    upcoming: 1,
+    completion_rate: 60,
+    no_show_rate: 25,
+    cancellation_rate: 20,
+  },
+  lost_count: 2,
+  customers_seen: 2,
+  new_customers: 1,
+  returning_customers: 1,
+  returning_rate: 50,
+  booking_requests: null,
+  booked_value: '80.00',
+  discounts_given: '5.00',
+  lost_value: '35.00',
+  deposits_collected: '25.00',
+  deposits_count: 2,
+  unpriced_appointments: 1,
+}
+
+/** `GET /api/insights` for an owner on PRO - every panel unlocked. */
+export const INSIGHTS = {
+  period: { start: '2026-03-01', end: '2026-03-31', days: 31, granularity: 'day', timezone: 'Europe/London' },
+  previous_period: { start: '2026-01-29', end: '2026-02-28', days: 31 },
+  scope: { employee_id: null, money_visible: true, advanced: true },
+  summary: INSIGHTS_SUMMARY,
+  previous_summary: { ...INSIGHTS_SUMMARY, booked_value: '40.00' },
+  top_services: {
+    services: [{ appointment_type_id: 'at1', name: 'MOT test', appointments: 6, completed: 3, booked_value: '80.00' }],
+    add_ons: [],
+    appointments_with_add_ons: 0,
+    add_on_uptake_rate: 0,
+  },
+  sources: { web: 4, staff: 2 },
+  trend: {
+    granularity: 'day',
+    points: [
+      { bucket_start: '2026-03-02', appointments: 2, new_customers: 1, booked_value: '50.00' },
+      { bucket_start: '2026-03-03', appointments: 4, new_customers: 0, booked_value: '30.00' },
+    ],
+  },
+  heatmap: { cells: [{ weekday: 1, hour: 10, appointments: 3 }], max: 3 },
+  staff: {
+    rows: [
+      {
+        employee_id: 'e1',
+        name: 'Greg Mason',
+        appointments: 6,
+        completed: 3,
+        no_show: 1,
+        cancelled: 1,
+        completion_rate: 60,
+        no_show_rate: 25,
+        booked_value: '80.00',
+      },
+    ],
+  },
+  customers: {
+    new_customers: 1,
+    returning_customers: 1,
+    returning_rate: 50,
+    due_back: {
+      as_of: '2026-03-31',
+      due_soon_days: 14,
+      due: 1,
+      due_soon: 0,
+      total: 1,
+      page: 1,
+      per_page: 20,
+      items: [
+        {
+          customer_id: 'c1',
+          customer_name: 'Jane Smith',
+          appointment_type_id: 'at1',
+          service_name: 'MOT test',
+          vehicle_id: 'v1',
+          vehicle_registration: 'AB12CDE',
+          last_visit: '2025-03-10',
+          due_date: '2026-03-10',
+          status: 'due',
+          basis: 'mot_expiry',
+        },
+      ],
+    },
+  },
+  export: { locked: false },
+}
+
+const LOCKED = { locked: true, feature: 'insights_advanced' }
+
+/** The same on a plan without `insights_advanced`. */
+export const BASIC_INSIGHTS = {
+  ...INSIGHTS,
+  scope: { ...INSIGHTS.scope, advanced: false },
+  trend: LOCKED,
+  heatmap: LOCKED,
+  staff: LOCKED,
+  customers: LOCKED,
+  export: LOCKED,
+}

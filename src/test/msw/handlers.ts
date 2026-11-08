@@ -8,6 +8,7 @@ import {
   makeCustomer,
   makeEmployee,
   makeGarage,
+  makeInsights,
   makeJwt,
   makePublicQueueInfo,
   makeQueueDashboard,
@@ -53,6 +54,7 @@ export const handlers = [
 
   // --- garage-scoped reads ----------------------------------------------
   http.get('*/api/garage', () => HttpResponse.json(makeGarage())),
+  http.get('*/api/insights', () => HttpResponse.json(makeInsights())),
   http.get('*/api/garage/features', () =>
     HttpResponse.json({
       plan: 'PRO',

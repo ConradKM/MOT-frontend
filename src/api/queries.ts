@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as communicationsApi from './communications'
 import * as conversationSimulatorApi from './conversationSimulator'
 import * as garageApi from './garage'
+import * as insightsApi from './insights'
 import * as garageCapacityApi from './garageCapacity'
 import * as garageScheduleApi from './garageSchedule'
 import * as appointmentRemindersApi from './appointmentReminders'
@@ -66,6 +67,27 @@ export function useFeatureVisible(key: string): boolean {
   if (isError) return true
   if (!data) return false
   return data.features[key] !== false
+}
+
+// Insights (read-only analytics)
+export function useInsights(params: insightsApi.InsightsParams, enabled = true) {
+  return useQuery({
+    queryKey: ['insights', params.start, params.end, params.employeeId ?? null],
+    queryFn: () => insightsApi.getInsights(params),
+    enabled,
+    // Keep the last period on screen while the next one loads, so switching
+    // range doesn't blank every panel.
+    placeholderData: (previous) => previous,
+  })
+}
+
+export function useDueBack(page: number, employeeId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['insightsDueBack', page, employeeId],
+    queryFn: () => insightsApi.getDueBack(page, employeeId),
+    enabled,
+    placeholderData: (previous) => previous,
+  })
 }
 
 /** Pending public booking requests awaiting staff review - the badge on

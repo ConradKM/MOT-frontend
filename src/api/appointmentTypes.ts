@@ -15,6 +15,10 @@ export interface AppointmentTypeInput {
   deposit_required?: boolean
   deposit_type?: DepositType | null
   deposit_value?: string | null
+  /** Days customers usually leave between visits; null = never "due back". */
+  return_interval_days?: number | null
+  /** Due back on the vehicle's MOT expiry instead of last visit + interval. */
+  due_back_uses_mot_expiry?: boolean
 }
 
 export function listAppointmentTypes(
