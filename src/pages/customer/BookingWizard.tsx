@@ -705,6 +705,29 @@ export function BookingWizard() {
   const showSummaryOverlay = step === 'service' && selectedAppointmentType !== undefined
   // The later steps' slim bar - replaces the old "Your selected time" banner.
   const showSummaryBar = step !== 'service' && selectedAppointmentType !== undefined
+  const termsBlocking = Boolean(terms && !termsAccepted && !depositResult)
+  // The step's forward action, carried by the summary bar. A deposit
+  // booking's Review has none until the deposit is confirmed - the payment
+  // form in the card is the next move (see DepositStep).
+  const barAction =
+    step === 'review'
+      ? !needsDeposit || depositResult
+        ? {
+            // Deposit bookings only reach here once the server has confirmed
+            // the deposit succeeded (see handleDepositPaid).
+            label: submitting ? 'Confirming…' : 'Confirm Booking',
+            onClick: handleSubmit,
+            disabled: submitting,
+            softDisabled: termsBlocking,
+            confirm: true,
+          }
+        : undefined
+      : {
+          label: 'Next',
+          onClick: goNext,
+          disabled: step === 'time' && (!data.date || !data.time),
+          arrow: true,
+        }
   const totals = selectedAppointmentType
     ? bookingTotals(selectedAppointmentType, availableAddOns, addOnSelection)
     : null
@@ -867,7 +890,10 @@ export function BookingWizard() {
           ) : (
             <span />
           )}
-          {step === 'review' && (!needsDeposit || depositResult) ? (
+          {showSummaryBar ? (
+            // The way on is in the summary bar, with the service and price.
+            <span />
+          ) : step === 'review' && (!needsDeposit || depositResult) ? (
             <button
               type="button"
               onClick={handleSubmit}
@@ -894,7 +920,7 @@ export function BookingWizard() {
               disabled={step === 'time' && (!data.date || !data.time)}
               className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
             >
-              Continue
+              Next
             </button>
           )}
         </div>
@@ -940,6 +966,7 @@ export function BookingWizard() {
               : step === 'time'
                 ? { onChange: () => goToStep('service'), changeLabel: 'Change service' }
                 : { onChange: () => goToStep('time'), changeLabel: 'Change time' })}
+            action={barAction}
           />
         </>
       )}

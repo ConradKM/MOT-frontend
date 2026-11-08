@@ -169,7 +169,7 @@ describe('BookingWizard — accessibility', () => {
     const user = userEvent.setup()
     renderWizard()
     await reachDetailsStep(user)
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     const select = screen.getByLabelText(/^Have you visited us before\?/)
     expect(select).toHaveAccessibleDescription('Have you visited us before? is required.')
@@ -180,7 +180,7 @@ describe('BookingWizard — accessibility', () => {
     const user = userEvent.setup()
     renderWizard()
     await reachDetailsStep(user)
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     const firstName = screen.getByLabelText(/^First name/)
     expect(firstName).toHaveAccessibleDescription('First name is required.')
@@ -192,7 +192,7 @@ describe('BookingWizard — accessibility', () => {
     const { container } = renderWizard()
     await reachDetailsStep(user)
     await fillRequired(user)
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await screen.findByRole('heading', { name: 'Review' })
     await expectNoA11yViolations(container)
@@ -203,7 +203,7 @@ describe('BookingWizard — accessibility', () => {
     const { container } = renderWizard()
     await reachDetailsStep(user)
     await fillRequired(user)
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     await screen.findByRole('heading', { name: 'Review' })
     await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))

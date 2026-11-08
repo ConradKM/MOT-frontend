@@ -78,9 +78,12 @@ test('the slim bar on later steps never covers the step buttons', async ({ page 
   await expect(bar.getByRole('button', { name: 'Change time' })).toBeVisible()
 
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-  const cont = (await page.getByRole('button', { name: 'Continue' }).boundingBox())!
+  // The way on lives in the bar; the card keeps only Back, never under it.
+  await expect(bar.getByRole('button', { name: 'Next' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Next' })).toHaveCount(1)
+  const back = (await page.getByRole('button', { name: 'Back' }).boundingBox())!
   const barBox = (await bar.boundingBox())!
-  expect(cont.y + cont.height).toBeLessThanOrEqual(barBox.y)
+  expect(back.y + back.height).toBeLessThanOrEqual(barBox.y)
 
   await bar.getByRole('button', { name: 'Change time' }).click()
   await expect(page.getByRole('heading', { name: 'Pick a date & time' })).toBeVisible()
@@ -213,12 +216,21 @@ test('a long appointment shows its whole span, and a taken span sends the custom
   await page.getByLabel('Email').fill('oliver@example.com')
   await page.getByLabel('Mobile number').fill('07123 456789')
   await page.getByLabel('Registration number').fill('OB08AUD')
-  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'Next' }).click()
 
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
   await expect(page.getByText('10:00 - 14:00', { exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Confirm Booking' }).click()
+  // Confirm Booking sits in the bar too, in green.
+  const confirm = page.getByRole('region', { name: 'MOT test' }).getByRole('button', {
+    name: 'Confirm Booking',
+  })
+  await expect(confirm).toHaveAttribute('data-variant', 'confirm')
+  // Off the button first: Next sat in the same spot, so it would show hover.
+  await page.mouse.move(0, 0)
+  // Tailwind's emerald-700, which Chromium reports in oklch.
+  await expect(confirm).toHaveCSS('background-color', /^oklch\(0\.50\d/)
+  await confirm.click()
   await expect(page.getByText(/This time is no longer available\./)).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Pick a date & time' })).toBeVisible()
 })

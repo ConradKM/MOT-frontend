@@ -61,7 +61,7 @@ async function walkToReview(user: ReturnType<typeof userEvent.setup>) {
   // The challenge lives on the details step now, not Review - it is verified
   // right before the first server call either path makes.
   await user.click(screen.getByRole('button', { name: 'Verify I am human' }))
-  await user.click(screen.getByRole('button', { name: 'Continue' }))
+  await user.click(screen.getByRole('button', { name: 'Next' }))
   await screen.findByRole('heading', { name: 'Review' })
 }
 
@@ -114,12 +114,12 @@ describe('BookingWizard — CAPTCHA on the Details step', () => {
     // protected too (it never reaches Review at all before that call).
     expect(screen.getByRole('button', { name: 'Verify I am human' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     expect(screen.getByText('Please confirm that you are not a robot.')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Review' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Verify I am human' }))
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await screen.findByRole('heading', { name: 'Review' })
 
     await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
@@ -150,7 +150,7 @@ describe('BookingWizard — CAPTCHA on the Details step', () => {
 
     // The stale token was cleared: continuing again asks for the challenge.
     expect(screen.getByRole('button', { name: 'Verify I am human' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     expect(screen.getByText('Please confirm that you are not a robot.')).toBeInTheDocument()
   })
 })

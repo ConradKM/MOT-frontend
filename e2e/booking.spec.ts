@@ -27,7 +27,7 @@ async function fillWizard(page: import('@playwright/test').Page) {
   await page.getByLabel('Mobile number').fill('07123 456789')
   // Part of this business's own configured workflow, not a built-in field.
   await page.getByLabel('Registration number').fill('OB08AUD')
-  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'Next' }).click()
 
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
 }
@@ -99,7 +99,7 @@ test('the wizard blocks bad contact details before anything is sent', async ({ p
   await page.getByLabel('Last name').fill('Bennett')
   await page.getByLabel('Email').fill('not-an-email')
   await page.getByLabel('Mobile number').fill('01234 567890') // a landline
-  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'Next' }).click()
 
   await expect(page.getByText('Enter a valid email address.')).toBeVisible()
   await expect(page.getByText(/Enter a valid UK mobile number/)).toBeVisible()
@@ -129,7 +129,7 @@ test('the customer can go back and correct their details without losing them', a
   await page.getByRole('button', { name: 'Back' }).click()
   await expect(page.getByLabel('Registration number')).toHaveValue('OB08AUD')
   await page.getByLabel('Registration number').fill('BM70WXY')
-  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'Next' }).click()
   await expect(page.getByText('BM70WXY')).toBeVisible()
 })
 
@@ -285,7 +285,7 @@ test('a customer adds extras, sees the price and finish time change, and books t
   await page.getByLabel('Email').fill('oliver@example.com')
   await page.getByLabel('Mobile number').fill('07123 456789')
   await page.getByLabel('Registration number').fill('OB08AUD')
-  await page.getByRole('button', { name: 'Continue' }).click()
+  await page.getByRole('button', { name: 'Next' }).click()
 
   await expect(page.getByRole('heading', { name: 'Review' })).toBeVisible()
   await expect(page.getByText('Tyre check, Rush job')).toBeVisible()

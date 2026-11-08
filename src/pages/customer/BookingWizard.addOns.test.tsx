@@ -242,12 +242,16 @@ describe('BookingWizard — add-ons', () => {
       '£123.00 · 1 h 40 min · Thu 10 Sept, 09:00 - 10:40',
     )
     expect(screen.getByRole('button', { name: 'Change time' })).toBeInTheDocument()
+    // The way on is in the bar, not the card.
+    const bar = screen.getByRole('region', { name: 'Full Service' })
+    expect(within(bar).getByRole('button', { name: 'Next' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Next' })).toHaveLength(1)
     expect(screen.queryByText('Your selected time')).not.toBeInTheDocument()
     await user.type(await screen.findByLabelText(/First name/), 'Alex')
     await user.type(screen.getByLabelText(/Last name/), 'Turner')
     await user.type(screen.getByLabelText(/^Email/), 'alex@example.com')
     await user.type(screen.getByLabelText(/Mobile number/), '07123456789')
-    await user.click(screen.getByRole('button', { name: 'Continue' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
 
     const review = await screen.findByRole('heading', { name: 'Review' })
     const panel = review.parentElement as HTMLElement
@@ -255,7 +259,13 @@ describe('BookingWizard — add-ons', () => {
     expect(within(panel).getByText('£123.00')).toBeInTheDocument()
     expect(within(panel).getByText('09:00 - 10:40')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Confirm Booking' }))
+    const confirm = within(screen.getByRole('region', { name: 'Full Service' })).getByRole(
+      'button',
+      { name: 'Confirm Booking' },
+    )
+    expect(confirm).toHaveAttribute('data-variant', 'confirm')
+    expect(screen.getAllByRole('button', { name: 'Confirm Booking' })).toHaveLength(1)
+    await user.click(confirm)
     await waitFor(() =>
       expect(api.submitBookingRequest).toHaveBeenCalledWith(
         'test-garage',
