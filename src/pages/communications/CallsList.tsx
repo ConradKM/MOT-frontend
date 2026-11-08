@@ -112,7 +112,7 @@ function CallDetailRow({ call, garageId }: { call: CommunicationLog; garageId: s
             <div>
               <dt className="font-medium text-slate-700">Related booking request</dt>
               <dd className="text-slate-600">
-                <Link to={`/${garageId}/booking-requests`} className="text-slate-900 hover:underline">
+                <Link to={`/${garageId}/appointments/requests`} className="text-slate-900 hover:underline">
                   {call.booking_request.status}
                 </Link>
               </dd>

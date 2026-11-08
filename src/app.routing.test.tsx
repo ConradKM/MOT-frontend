@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { server } from './test/msw/server'
 import { makeGarage } from './test/fixtures'
@@ -100,6 +100,27 @@ describe('staff protected routes', () => {
     signInAsStaff()
     renderApp('/g1')
     expect(await screen.findByText("Here's what's going on today.")).toBeInTheDocument()
+  })
+})
+
+describe('merged sections', () => {
+  it.each([
+    ['/g1/booking-requests', 'Booking requests', 'Appointments sections', 'Requests'],
+    ['/g1/appointments/requests', 'Booking requests', 'Appointments sections', 'Requests'],
+    ['/g1/appointments', 'Appointments', 'Appointments sections', 'Calendar'],
+    ['/g1/payments', 'Payments', 'Insights sections', 'Payments'],
+    ['/g1/insights/payments', 'Payments', 'Insights sections', 'Payments'],
+    ['/g1/insights', 'Insights', 'Insights sections', 'Overview'],
+  ])('renders %s as a tab, with its tab lit', async (route, heading, tabsLabel, tab) => {
+    signInAsStaff()
+    renderApp(route)
+    expect(await screen.findByRole('heading', { name: heading, level: 1 })).toBeInTheDocument()
+    const tabs = screen.getByRole('navigation', { name: tabsLabel })
+    // Payments is plan-aware, so its tab appears once the feature list loads.
+    expect(await within(tabs).findByRole('link', { name: new RegExp(`^${tab}`) })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
   })
 })
 

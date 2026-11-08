@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
+import { AppointmentsLayout } from './components/appointments/AppointmentsLayout'
 import { CommunicationsLayout } from './components/communications/CommunicationsLayout'
+import { InsightsLayout } from './components/insights/InsightsLayout'
 import { CustomerLayout } from './components/customer/CustomerLayout'
 import { CustomerProtectedRoute } from './components/CustomerProtectedRoute'
 import { SettingsLayout } from './components/settings/SettingsLayout'
@@ -121,6 +123,9 @@ const BookingRequestsList = lazy(() =>
 const PaymentsList = lazy(() =>
   import('./pages/payments/PaymentsList').then((m) => ({ default: m.PaymentsList })),
 )
+const InsightsOverview = lazy(() =>
+  import('./pages/insights/InsightsOverview').then((m) => ({ default: m.InsightsOverview })),
+)
 const AppointmentRemindersSettings = lazy(() =>
   import('./pages/reminders/AppointmentRemindersSettings').then((m) => ({
     default: m.AppointmentRemindersSettings,
@@ -237,6 +242,15 @@ const DashboardRedirect = lazy(() =>
 
 /** Shown for the brief gap while a route's own chunk downloads - most routes
  * never show this at all once cached by the browser. */
+/** A page that moved under another top-menu item. Emails, bookmarks and old
+ * dashboard links still point at the old URL, so keep it working - query
+ * string and hash included - and replace it in history. */
+function MovedTo({ path }: { path: string }) {
+  const { garageId } = useParams()
+  const { search, hash } = useLocation()
+  return <Navigate to={`/${garageId}/${path}${search}${hash}`} replace />
+}
+
 function RouteFallback() {
   return <p className="p-6 text-sm text-slate-500">Loading…</p>
 }
@@ -304,9 +318,15 @@ export default function App() {
             <Route path="vehicles/:id" element={<VehicleDetail />} />
             <Route path="vehicles/:id/edit" element={<VehicleForm />} />
 
-            <Route path="booking-requests" element={<BookingRequestsList />} />
+            {/* Moved under Appointments and Insights - see MovedTo. */}
+            <Route path="booking-requests" element={<MovedTo path="appointments/requests" />} />
+            <Route path="payments" element={<MovedTo path="insights/payments" />} />
             <Route path="queue" element={<QueueDashboard />} />
-            <Route path="payments" element={<PaymentsList />} />
+
+            <Route path="insights" element={<InsightsLayout />}>
+              <Route index element={<InsightsOverview />} />
+              <Route path="payments" element={<PaymentsList />} />
+            </Route>
             <Route path="feedback" element={<FeedbackPage />} />
 
             <Route path="communications" element={<CommunicationsLayout />}>
@@ -322,7 +342,10 @@ export default function App() {
               {import.meta.env.DEV && <Route path="simulator" element={<ConversationSimulator />} />}
             </Route>
 
-            <Route path="appointments" element={<AppointmentsCalendar />} />
+            <Route path="appointments" element={<AppointmentsLayout />}>
+              <Route index element={<AppointmentsCalendar />} />
+              <Route path="requests" element={<BookingRequestsList />} />
+            </Route>
             <Route path="appointments/new" element={<AppointmentForm />} />
             <Route path="appointments/:id/edit" element={<AppointmentForm />} />
             <Route path="appointments/:appointmentId/overview" element={<AppointmentOverview />} />

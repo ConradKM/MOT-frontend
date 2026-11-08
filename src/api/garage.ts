@@ -6,6 +6,17 @@ export function getGarage(): Promise<Garage> {
   return apiFetch<Garage>('/api/garage')
 }
 
+/** The business's effective plan features (`GET /api/garage/features`):
+ * its plan's defaults with any Platform Admin override applied. */
+export interface GarageFeatures {
+  plan: string
+  features: Record<string, boolean>
+}
+
+export function getGarageFeatures(): Promise<GarageFeatures> {
+  return apiFetch<GarageFeatures>('/api/garage/features')
+}
+
 /**
  * The subset of business fields an OWNER may edit (`PATCH /api/garage`). The
  * backend allowlist is exactly these six; `slug`, `id`, `layout_variant` and

@@ -7,6 +7,7 @@ import {
   CAPACITY,
   CUSTOMERS,
   DAY_AVAILABILITY,
+  FEATURES,
   FLOW_PRESETS,
   FLOW_SECTIONS,
   GARAGE,
@@ -84,6 +85,7 @@ function defaults(): Stub[] {
 
     // staff app
     { match: (u) => u.pathname === '/api/garage', handler: (r) => json(r, GARAGE) },
+    { match: (u) => u.pathname === '/api/garage/features', handler: (r) => json(r, FEATURES) },
     { match: (u) => u.pathname === '/api/garage/capacity/summary', handler: (r) => json(r, CAPACITY) },
     { match: (u) => u.pathname === '/api/customers/', handler: (r) => json(r, CUSTOMERS) },
     { match: (u) => u.pathname === '/api/vehicles/', handler: (r) => json(r, VEHICLES) },

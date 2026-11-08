@@ -14,7 +14,7 @@ test.describe('staff navigation', () => {
     for (const [link, heading, url] of [
       ['Customers', 'Customers', '/g1/customers'],
       ['Appointments', 'Appointments', '/g1/appointments'],
-      ['Requests', 'Booking requests', '/g1/booking-requests'],
+      ['Insights', 'Insights', '/g1/insights'],
       // Bare /settings lands on its first section (GitHub-style), not a hub.
       ['Settings', 'Business details', '/g1/settings/garage-details'],
     ] as const) {
@@ -22,6 +22,34 @@ test.describe('staff navigation', () => {
       await expect(page).toHaveURL(new RegExp(`${url}$`))
       await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible()
     }
+  })
+
+  test('reaches Requests and Payments as tabs under Appointments and Insights', async ({ page }) => {
+    await page.goto('/g1/appointments')
+    await page
+      .getByRole('navigation', { name: 'Appointments sections' })
+      .getByRole('link', { name: 'Requests' })
+      .click()
+    await expect(page).toHaveURL(/\/g1\/appointments\/requests$/)
+    await expect(page.getByRole('heading', { name: 'Booking requests', level: 1 })).toBeVisible()
+    await expect(
+      page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Appointments' }),
+    ).toHaveAttribute('aria-current', 'page')
+
+    await page.getByRole('link', { name: 'Insights', exact: true }).click()
+    await page
+      .getByRole('navigation', { name: 'Insights sections' })
+      .getByRole('link', { name: 'Payments' })
+      .click()
+    await expect(page).toHaveURL(/\/g1\/insights\/payments$/)
+    await expect(page.getByRole('heading', { name: 'Payments', level: 1 })).toBeVisible()
+  })
+
+  test('old Requests and Payments URLs redirect to their new tabs', async ({ page }) => {
+    await page.goto('/g1/booking-requests?status=PENDING')
+    await expect(page).toHaveURL(/\/g1\/appointments\/requests\?status=PENDING$/)
+    await page.goto('/g1/payments')
+    await expect(page).toHaveURL(/\/g1\/insights\/payments$/)
   })
 
   test('moves between grouped settings sections through the sidebar', async ({ page }) => {
