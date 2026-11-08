@@ -1,3 +1,4 @@
+import type { Insights, InsightsSummary } from '../api/insights'
 import type { CustomerLoyaltySummary, DiscountCode, LoyaltySettings } from '../api/loyalty'
 import type { DiscountValidation } from '../api/publicGarage'
 import type { SquareConnectStatus } from '../api/payments'
@@ -143,6 +144,8 @@ export function makeAppointmentType(patch: Partial<AppointmentType> = {}): Appoi
     deposit_type: null,
     deposit_value: null,
     deposit_currency: 'GBP',
+    return_interval_days: null,
+    due_back_uses_mot_expiry: false,
     group_id: null,
     order: 0,
     image_url: null,
@@ -776,6 +779,206 @@ export function makeDiscountValidation(patch: Partial<DiscountValidation> = {}):
     deposit_required: false,
     deposit_amount: null,
     remaining_balance: null,
+    ...patch,
+  }
+}
+
+export function makeInsightsSummary(patch: Partial<InsightsSummary> = {}): InsightsSummary {
+  return {
+    appointments: {
+      total: 6,
+      by_status: { COMPLETED: 3, NO_SHOW: 1, CANCELLED: 1, BOOKED: 1 },
+      completed: 3,
+      no_show: 1,
+      cancelled: 1,
+      upcoming: 1,
+      completion_rate: 60,
+      no_show_rate: 25,
+      cancellation_rate: 20,
+    },
+    lost_count: 2,
+    customers_seen: 2,
+    new_customers: 1,
+    returning_customers: 1,
+    returning_rate: 50,
+    booking_requests: {
+      total: 4,
+      pending: 0,
+      approved: 2,
+      rejected: 1,
+      expired: 1,
+      approval_rate: 66.7,
+      rejection_rate: 33.3,
+      expiry_rate: 25,
+    },
+    booked_value: '80.00',
+    discounts_given: '5.00',
+    lost_value: '35.00',
+    deposits_collected: '25.00',
+    deposits_count: 2,
+    unpriced_appointments: 1,
+    ...patch,
+  }
+}
+
+/** An owner's PRO-plan Insights payload - the same worked answers as the
+ * backend's tests/api/test_insights.py fixture. */
+export function makeInsights(patch: Partial<Insights> = {}): Insights {
+  return {
+    period: { start: '2026-03-01', end: '2026-03-31', days: 31, granularity: 'day', timezone: 'Europe/London' },
+    previous_period: { start: '2026-01-29', end: '2026-02-28', days: 31 },
+    scope: { employee_id: null, money_visible: true, advanced: true },
+    summary: makeInsightsSummary(),
+    previous_summary: makeInsightsSummary({
+      appointments: {
+        total: 4,
+        by_status: { COMPLETED: 4 },
+        completed: 4,
+        no_show: 0,
+        cancelled: 0,
+        upcoming: 0,
+        completion_rate: 100,
+        no_show_rate: 0,
+        cancellation_rate: 0,
+      },
+      booked_value: '40.00',
+      deposits_collected: '0.00',
+      new_customers: 0,
+      returning_rate: null,
+    }),
+    top_services: {
+      services: [
+        { appointment_type_id: 'at1', name: 'Haircut', appointments: 5, completed: 3, booked_value: '80.00' },
+        { appointment_type_id: 'at2', name: 'Beard trim', appointments: 1, completed: 0, booked_value: '0.00' },
+      ],
+      add_ons: [{ name: 'Hot towel', appointments: 1, quantity: 1 }],
+      appointments_with_add_ons: 1,
+      add_on_uptake_rate: 20,
+    },
+    sources: { web: 3, staff: 2, import: 1 },
+    trend: {
+      granularity: 'day',
+      points: [
+        { bucket_start: '2026-03-02', appointments: 2, new_customers: 1, booked_value: '50.00' },
+        { bucket_start: '2026-03-03', appointments: 4, new_customers: 0, booked_value: '30.00' },
+      ],
+    },
+    heatmap: {
+      cells: [
+        { weekday: 1, hour: 10, appointments: 3 },
+        { weekday: 6, hour: 9, appointments: 1 },
+      ],
+      max: 3,
+    },
+    staff: {
+      rows: [
+        {
+          employee_id: 'e1',
+          name: 'Sam Stylist',
+          appointments: 5,
+          completed: 3,
+          no_show: 1,
+          cancelled: 1,
+          completion_rate: 60,
+          no_show_rate: 25,
+          booked_value: '80.00',
+        },
+      ],
+    },
+    customers: {
+      new_customers: 1,
+      returning_customers: 1,
+      returning_rate: 50,
+      due_back: {
+        as_of: '2026-03-31',
+        due_soon_days: 14,
+        due: 1,
+        due_soon: 1,
+        total: 2,
+        page: 1,
+        per_page: 20,
+        items: [
+          {
+            customer_id: 'c1',
+            customer_name: 'Olive Green',
+            appointment_type_id: 'at1',
+            service_name: 'Haircut',
+            vehicle_id: null,
+            vehicle_registration: null,
+            last_visit: '2026-02-01',
+            due_date: '2026-03-03',
+            status: 'due',
+            basis: 'interval',
+          },
+          {
+            customer_id: 'c2',
+            customer_name: 'Drew Driver',
+            appointment_type_id: 'at3',
+            service_name: 'Annual check',
+            vehicle_id: 'v1',
+            vehicle_registration: 'DR11VE',
+            last_visit: '2025-04-07',
+            due_date: '2026-04-07',
+            status: 'due_soon',
+            basis: 'mot_expiry',
+          },
+        ],
+      },
+    },
+    export: { locked: false },
+    ...patch,
+  }
+}
+
+const LOCKED = { locked: true, feature: 'insights_advanced' } as const
+
+/** The same payload on a plan without `insights_advanced`. */
+export function makeBasicInsights(patch: Partial<Insights> = {}): Insights {
+  return makeInsights({
+    scope: { employee_id: null, money_visible: true, advanced: false },
+    trend: LOCKED,
+    heatmap: LOCKED,
+    staff: LOCKED,
+    customers: LOCKED,
+    export: LOCKED,
+    ...patch,
+  })
+}
+
+/** A non-owner's view: own appointments, and no money keys at all. */
+export function makeStaffInsights(patch: Partial<Insights> = {}): Insights {
+  const strip = (summary: InsightsSummary): InsightsSummary => {
+    const copy = { ...summary }
+    for (const key of [
+      'booked_value',
+      'discounts_given',
+      'lost_value',
+      'deposits_collected',
+      'deposits_count',
+      'unpriced_appointments',
+    ] as const) {
+      delete copy[key]
+    }
+    return { ...copy, booking_requests: null }
+  }
+  const owner = makeInsights()
+  return {
+    ...owner,
+    scope: { employee_id: 'e-staff', money_visible: false, advanced: true },
+    summary: strip(owner.summary),
+    previous_summary: strip(owner.previous_summary),
+    top_services: {
+      ...owner.top_services,
+      services: owner.top_services.services.map(({ booked_value: _unused, ...service }) => service),
+    },
+    trend: {
+      granularity: 'day',
+      points: [
+        { bucket_start: '2026-03-02', appointments: 1, new_customers: 0 },
+        { bucket_start: '2026-03-03', appointments: 0, new_customers: 0 },
+      ],
+    },
+    staff: null,
     ...patch,
   }
 }

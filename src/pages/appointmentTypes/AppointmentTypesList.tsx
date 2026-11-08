@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useId, useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useAppointmentTypeGroups,
@@ -7,6 +7,7 @@ import {
   useCreateAppointmentType,
   useDeleteAppointmentType,
   useUpdateAppointmentType,
+  useVehicles,
 } from '../../api/queries'
 import type { AppointmentTypeInput } from '../../api/appointmentTypes'
 import { Disclosure } from '../../components/Disclosure'
@@ -20,6 +21,7 @@ import {
   Th,
 } from '../../components/settings/ExpandableRow'
 import { SettingsPageHeader } from '../../components/settings/SettingsUI'
+import { InfoTip } from '../../components/settings/InfoTip'
 import { useGarageId } from '../../hooks/useGarageId'
 import { useToast } from '../../components/Toast'
 import { errorMessage, fieldErrors, isApiError } from '../../lib/errors'
@@ -42,6 +44,28 @@ interface FormValues {
   deposit_required: boolean
   deposit_type: DepositType
   deposit_value: string
+  return_every: string
+  return_unit: ReturnUnit
+  due_back_uses_mot_expiry: boolean
+}
+
+type ReturnUnit = 'days' | 'weeks' | 'months'
+
+/** Days per unit for "Customers usually return after N …". A month is 30
+ * days: due back is a nudge, not a calendar appointment. */
+const RETURN_UNIT_DAYS: Record<ReturnUnit, number> = { days: 1, weeks: 7, months: 30 }
+
+/** The stored day count back as the friendliest whole unit (42 -> 6 weeks). */
+function returnIntervalToForm(days: number | null): { return_every: string; return_unit: ReturnUnit } {
+  if (!days) return { return_every: '', return_unit: 'weeks' }
+  if (days % 30 === 0) return { return_every: String(days / 30), return_unit: 'months' }
+  if (days % 7 === 0) return { return_every: String(days / 7), return_unit: 'weeks' }
+  return { return_every: String(days), return_unit: 'days' }
+}
+
+function returnIntervalDays(v: Pick<FormValues, 'return_every' | 'return_unit'>): number | null {
+  if (!v.return_every.trim()) return null
+  return Number(v.return_every) * RETURN_UNIT_DAYS[v.return_unit]
 }
 
 const emptyForm: FormValues = {
@@ -53,6 +77,9 @@ const emptyForm: FormValues = {
   deposit_required: false,
   deposit_type: 'FIXED',
   deposit_value: '',
+  return_every: '',
+  return_unit: 'weeks',
+  due_back_uses_mot_expiry: false,
 }
 
 function toInput(v: FormValues): AppointmentTypeInput {
@@ -67,6 +94,8 @@ function toInput(v: FormValues): AppointmentTypeInput {
     deposit_required: v.deposit_required,
     deposit_type: v.deposit_required ? v.deposit_type : null,
     deposit_value: v.deposit_required ? v.deposit_value.trim() || null : null,
+    return_interval_days: returnIntervalDays(v),
+    due_back_uses_mot_expiry: v.due_back_uses_mot_expiry,
   }
 }
 
@@ -158,6 +187,8 @@ function TypeFields({
         </select>
       </label>
 
+      <DueBackFields values={values} onChange={onChange} errors={errors} input={input} />
+
       <div className="sm:col-span-2 rounded-md border border-slate-200 bg-slate-50 p-3">
         <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
           <input
@@ -202,6 +233,88 @@ function TypeFields({
         )}
       </div>
     </div>
+  )
+}
+
+/** "Customers usually return after…" - what Insights' due-back list works
+ * from. The MOT-expiry option only appears for businesses that keep vehicle
+ * records (or when it's already on), since it reads the vehicle's MOT date. */
+function DueBackFields({
+  values,
+  onChange,
+  errors,
+  input,
+}: {
+  values: FormValues
+  onChange: (patch: Partial<FormValues>) => void
+  errors: Record<string, string>
+  input: string
+}) {
+  const { data: vehicles } = useVehicles()
+  const tracksVehicles = (vehicles?.length ?? 0) > 0 || values.due_back_uses_mot_expiry
+  const everyId = useId()
+  const unitId = useId()
+  return (
+    <fieldset className="sm:col-span-2 rounded-md border border-slate-200 bg-slate-50 p-3">
+      {/* The legend floats so its tip can sit beside it - a tip must never be
+          inside the legend itself (see InfoTip). */}
+      <legend className="float-left text-sm font-medium text-slate-700">Due back</legend>
+      <InfoTip label="Due back" className="ml-1.5">
+        Used by Insights to list customers who are due another visit: their last completed visit for
+        this service plus this gap. Leave it empty for one-off services.
+      </InfoTip>
+      <div className="clear-left mt-2 flex flex-wrap items-end gap-2">
+        <label htmlFor={everyId} className="text-sm text-slate-700">
+          <span className="block">Customers usually return after</span>
+          <input
+            id={everyId}
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            placeholder="e.g. 6"
+            disabled={values.due_back_uses_mot_expiry}
+            value={values.return_every}
+            onChange={(e) => onChange({ return_every: e.target.value })}
+            className={`${input} w-28 disabled:bg-slate-100`}
+          />
+        </label>
+        <label htmlFor={unitId} className="text-sm text-slate-700">
+          <span className="sr-only">Unit</span>
+          <select
+            id={unitId}
+            disabled={values.due_back_uses_mot_expiry}
+            value={values.return_unit}
+            onChange={(e) => onChange({ return_unit: e.target.value as ReturnUnit })}
+            className={`${input} w-32 disabled:bg-slate-100`}
+          >
+            <option value="days">days</option>
+            <option value="weeks">weeks</option>
+            <option value="months">months</option>
+          </select>
+        </label>
+      </div>
+      {errors.return_interval_days && (
+        <span className="mt-1 block text-sm text-red-600">{errors.return_interval_days}</span>
+      )}
+      {tracksVehicles && (
+        <div className="mt-3 flex items-center gap-1.5">
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              checked={values.due_back_uses_mot_expiry}
+              onChange={(e) => onChange({ due_back_uses_mot_expiry: e.target.checked })}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            Use the vehicle&apos;s MOT expiry instead
+          </label>
+          <InfoTip label="Use the vehicle's MOT expiry">
+            Customers are due back when the vehicle they brought in has its MOT expiring, taken from
+            the vehicle record, rather than a fixed gap after their last visit.
+          </InfoTip>
+        </div>
+      )}
+    </fieldset>
   )
 }
 
@@ -286,6 +399,8 @@ function EditTypePanel({ type, onDone }: { type: AppointmentType; onDone: () => 
     deposit_required: type.deposit_required,
     deposit_type: type.deposit_type ?? 'FIXED',
     deposit_value: type.deposit_value ?? '',
+    ...returnIntervalToForm(type.return_interval_days),
+    due_back_uses_mot_expiry: type.due_back_uses_mot_expiry ?? false,
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)

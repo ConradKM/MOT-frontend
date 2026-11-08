@@ -247,3 +247,99 @@ describe('AppointmentTypesList — editing', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('AppointmentTypesList — due back', () => {
+  it('shows the stored interval in its friendliest unit and saves it as days', async () => {
+    serveTypes([makeAppointmentType({ id: 'at1', name: 'Haircut', return_interval_days: 42 })])
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.patch('*/api/appointment-types/:id', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(makeAppointmentType({ id: 'at1', name: 'Haircut' }))
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    const row = (await screen.findByText('Haircut')).closest('tr')!
+    await user.click(within(row).getByRole('button', { name: 'Edit' }))
+    const panel = screen.getByRole('region', { name: 'Edit Haircut' })
+
+    const every = within(panel).getByLabelText('Customers usually return after')
+    expect(every).toHaveValue(6)
+    expect(within(panel).getByLabelText('Unit')).toHaveValue('weeks')
+
+    await user.clear(every)
+    await user.type(every, '2')
+    await user.selectOptions(within(panel).getByLabelText('Unit'), 'months')
+    await user.click(within(panel).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(body?.return_interval_days).toBe(60))
+    expect(body?.due_back_uses_mot_expiry).toBe(false)
+  })
+
+  it('sends no interval for a one-off service', async () => {
+    serveTypes([])
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post('*/api/appointment-types/', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(makeAppointmentType(), { status: 201 })
+      }),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await openAddForm(user)
+    await user.type(screen.getAllByRole('textbox')[0], 'Consultation')
+    await user.click(submitButton())
+
+    await waitFor(() => expect(body).toBeDefined())
+    expect(body?.return_interval_days).toBeNull()
+  })
+
+  it('offers the MOT-expiry option to a business with vehicles, and it replaces the interval', async () => {
+    serveTypes([])
+    const user = userEvent.setup()
+    renderPage()
+    await openAddForm(user)
+
+    const option = await screen.findByLabelText("Use the vehicle's MOT expiry instead")
+    await user.click(option)
+    expect(screen.getByLabelText('Customers usually return after')).toBeDisabled()
+  })
+
+  it('hides the MOT-expiry option for a business with no vehicles', async () => {
+    serveTypes([])
+    server.use(http.get('*/api/vehicles/', () => HttpResponse.json([])))
+    const user = userEvent.setup()
+    renderPage()
+    await openAddForm(user)
+
+    expect(await screen.findByLabelText('Customers usually return after')).toBeInTheDocument()
+    expect(screen.queryByLabelText("Use the vehicle's MOT expiry instead")).not.toBeInTheDocument()
+  })
+
+  it('shows the server’s validation message for an out-of-range interval', async () => {
+    serveTypes([])
+    server.use(
+      http.post('*/api/appointment-types/', () =>
+        HttpResponse.json(
+          {
+            code: 422,
+            status: 'Unprocessable Entity',
+            errors: { json: { return_interval_days: ['Must be between 1 and 1830.'] } },
+          },
+          { status: 422 },
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderPage()
+    await openAddForm(user)
+    await user.type(screen.getAllByRole('textbox')[0], 'Cut')
+    await user.type(screen.getByLabelText('Customers usually return after'), '400')
+    await user.selectOptions(screen.getByLabelText('Unit'), 'weeks')
+    await user.click(submitButton())
+
+    expect(await screen.findByText('Must be between 1 and 1830.')).toBeInTheDocument()
+  })
+})
