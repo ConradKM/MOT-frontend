@@ -9,6 +9,12 @@ const b64url = (o: unknown) =>
 export const jwt = (sub = 'e1') =>
   `${b64url({ alg: 'HS256', typ: 'JWT' })}.${b64url({ sub })}.e2esignature`
 
+/** `GET /api/garage/features` - a PRO business, so every gated section shows. */
+export const FEATURES = {
+  plan: 'PRO',
+  features: { walk_in_queue: true, communications: true, insights_advanced: true },
+}
+
 export const GARAGE = {
   id: 'g1',
   name: 'Bennett Motors',

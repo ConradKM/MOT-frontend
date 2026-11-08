@@ -6,7 +6,12 @@ import { Footer } from './Footer'
 import { ImpersonationBanner } from './ImpersonationBanner'
 import { NeedHelpMenu } from './NeedHelpMenu'
 import { useAuth } from '../auth/AuthContext'
-import { useGarage, useUnreadWhatsAppCount } from '../api/queries'
+import {
+  useFeatureVisible,
+  useGarage,
+  usePendingBookingRequestCount,
+  useUnreadWhatsAppCount,
+} from '../api/queries'
 import { useGarageId } from '../hooks/useGarageId'
 import { resolveLayoutVariant } from '../lib/layoutVariant'
 
@@ -19,6 +24,9 @@ export function Layout() {
   const { logout } = useAuth()
   const { data: garage } = useGarage()
   const { data: unread } = useUnreadWhatsAppCount()
+  const pendingRequests = usePendingBookingRequestCount()
+  const queueVisible = useFeatureVisible('walk_in_queue')
+  const communicationsVisible = useFeatureVisible('communications')
   const garageId = useGarageId()
   const location = useLocation()
   // The phone menu remembers the path it was opened on, so any navigation
@@ -56,16 +64,24 @@ export function Layout() {
     return <Navigate to={`/${garage.id}/${rest}${location.search}`} replace />
   }
 
-  const navItems: { to: string; label: string; end?: boolean; badge?: number }[] = [
+  // Seven items: related pages live as tabs under one entry (Requests under
+  // Appointments, Payments under Insights). A NavLink without `end` stays
+  // active on every tab beneath it. Plan-gated items drop out entirely when
+  // the business doesn't have the feature.
+  const navItems: { to: string; label: string; end?: boolean; badge?: number; hidden?: boolean }[] = [
     { to: `/${garageId}/dashboard`, label: 'Dashboard', end: true },
     { to: `/${garageId}/customers`, label: 'Customers' },
-    { to: `/${garageId}/appointments`, label: 'Appointments' },
-    { to: `/${garageId}/booking-requests`, label: 'Requests' },
-    { to: `/${garageId}/queue`, label: 'Queue' },
-    { to: `/${garageId}/payments`, label: 'Payments' },
-    { to: `/${garageId}/communications`, label: 'Communications', badge: unread?.whatsapp_unread },
+    { to: `/${garageId}/appointments`, label: 'Appointments', badge: pendingRequests },
+    { to: `/${garageId}/queue`, label: 'Queue', hidden: !queueVisible },
+    {
+      to: `/${garageId}/communications`,
+      label: 'Communications',
+      badge: unread?.whatsapp_unread,
+      hidden: !communicationsVisible,
+    },
+    { to: `/${garageId}/insights`, label: 'Insights' },
     { to: `/${garageId}/settings`, label: 'Settings' },
-  ]
+  ].filter((item) => !item.hidden)
 
   // One set of links, rendered twice: inline from `sm:` up, and in the phone
   // menu panel below it. Which one shows is decided by CSS alone.

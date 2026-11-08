@@ -18,10 +18,9 @@ const NAV_LABELS = [
   'Dashboard',
   'Customers',
   'Appointments',
-  'Requests',
   'Queue',
-  'Payments',
   'Communications',
+  'Insights',
   'Settings',
 ]
 

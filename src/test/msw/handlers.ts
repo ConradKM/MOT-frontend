@@ -53,6 +53,12 @@ export const handlers = [
 
   // --- garage-scoped reads ----------------------------------------------
   http.get('*/api/garage', () => HttpResponse.json(makeGarage())),
+  http.get('*/api/garage/features', () =>
+    HttpResponse.json({
+      plan: 'PRO',
+      features: { walk_in_queue: true, communications: true, insights_advanced: true },
+    }),
+  ),
   http.get('*/api/bulk-import/formats', () => HttpResponse.json(makeImportFormats())),
   http.post('*/api/appointment-types/bulk', () =>
     HttpResponse.json(makeImportResult([makeImportItem()])),

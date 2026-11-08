@@ -66,8 +66,9 @@ end customers, separate from the staff app. The wizard
 appointment types from `GET /api/public/<slug>`, and submits to
 `POST /api/public/<slug>/booking-requests`. Submissions land as **pending
 booking requests** — they don't create customers/vehicles/appointments
-directly. Staff review them at `/:garageId/booking-requests`
-(`src/pages/bookingRequests/`) and approve (which creates + links the real
+directly. Staff review them on the Requests tab under Appointments,
+`/:garageId/appointments/requests` (`src/pages/bookingRequests/`; the old
+`/:garageId/booking-requests` URL redirects there), and approve (which creates + links the real
 records) or reject.
 
 **CAPTCHA** is optional and provider-agnostic. Set `VITE_CAPTCHA_PROVIDER`

@@ -106,7 +106,7 @@ describe('Dashboard — pending booking requests', () => {
     expect(await screen.findByText('2 public booking requests waiting for review')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Review requests' })).toHaveAttribute(
       'href',
-      '/g1/booking-requests',
+      '/g1/appointments/requests',
     )
   })
 

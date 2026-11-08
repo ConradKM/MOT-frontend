@@ -43,6 +43,38 @@ export function useGarage() {
   return useQuery({ queryKey: ['garage'], queryFn: garageApi.getGarage })
 }
 
+export function useGarageFeatures() {
+  return useQuery({
+    queryKey: ['garageFeatures'],
+    queryFn: garageApi.getGarageFeatures,
+    staleTime: 5 * 60_000,
+    // A missing endpoint (an older backend) is answered by failing open in
+    // useFeatureVisible, not by retrying.
+    retry: false,
+  })
+}
+
+/**
+ * Whether to show a plan-gated part of the UI. Hidden while the feature list
+ * is loading (so a gated item doesn't flash in and vanish), and shown if the
+ * list can't be loaded at all - the backend enforces every gate itself, so
+ * failing open only ever shows a link, never grants access. A key the
+ * backend doesn't report is treated as on.
+ */
+export function useFeatureVisible(key: string): boolean {
+  const { data, isError } = useGarageFeatures()
+  if (isError) return true
+  if (!data) return false
+  return data.features[key] !== false
+}
+
+/** Pending public booking requests awaiting staff review - the badge on
+ * Appointments and on its Requests tab. */
+export function usePendingBookingRequestCount(): number {
+  const { data } = useBookingRequests('PENDING')
+  return data?.length ?? 0
+}
+
 export function useUpdateGarage() {
   const qc = useQueryClient()
   return useMutation({

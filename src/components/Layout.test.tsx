@@ -16,6 +16,8 @@ function renderLayout(route = '/g1/customers') {
       <Route path="/:garageId" element={<Layout />}>
         <Route path="customers" element={<h1>Customers page</h1>} />
         <Route path="dashboard" element={<h1>Dashboard page</h1>} />
+        <Route path="appointments/requests" element={<h1>Requests page</h1>} />
+        <Route path="insights/payments" element={<h1>Payments page</h1>} />
       </Route>
       <Route path="/login" element={<h1>Login page</h1>} />
     </Routes>,
@@ -57,15 +59,16 @@ describe('Layout — garage chrome', () => {
   it('links every primary section under the current garage id', async () => {
     signInAsStaff()
     renderLayout()
-    await screen.findByRole('link', { name: 'Dashboard' })
+    // Plan-gated items appear once the business's feature list has loaded.
+    await screen.findByRole('link', { name: 'Queue' })
 
     for (const [label, path] of [
       ['Dashboard', '/g1/dashboard'],
       ['Customers', '/g1/customers'],
       ['Appointments', '/g1/appointments'],
-      ['Requests', '/g1/booking-requests'],
       ['Queue', '/g1/queue'],
-      ['Payments', '/g1/payments'],
+      ['Communications', '/g1/communications'],
+      ['Insights', '/g1/insights'],
       ['Settings', '/g1/settings'],
     ]) {
       expect(screen.getByRole('link', { name: new RegExp(`^${label}`) })).toHaveAttribute(
@@ -84,6 +87,85 @@ describe('Layout — garage chrome', () => {
   })
 })
 
+describe('Layout — seven merged sections', () => {
+  const MAIN_LABELS = [
+    'Dashboard',
+    'Customers',
+    'Appointments',
+    'Queue',
+    'Communications',
+    'Insights',
+    'Settings',
+  ]
+
+  it('lists exactly seven sections, in order, with no Requests or Payments', async () => {
+    signInAsStaff()
+    renderLayout()
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    await within(nav).findByRole('link', { name: 'Queue' })
+
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(MAIN_LABELS)
+  })
+
+  it.each([
+    ['/g1/appointments/requests', 'Appointments'],
+    ['/g1/insights/payments', 'Insights'],
+  ])('keeps the parent item active on its tab %s', async (route, label) => {
+    signInAsStaff()
+    renderLayout(route)
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    expect(within(nav).getByRole('link', { name: new RegExp(`^${label}`) })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  it('puts the pending booking-request count on Appointments', async () => {
+    server.use(
+      http.get('*/api/booking-requests/', () => HttpResponse.json([{ id: 'br1' }, { id: 'br2' }])),
+    )
+    signInAsStaff()
+    renderLayout()
+    expect(await screen.findByRole('link', { name: 'Appointments 2' })).toBeInTheDocument()
+  })
+
+  it('hides Queue and Communications when the plan lacks them', async () => {
+    server.use(
+      http.get('*/api/garage/features', () =>
+        HttpResponse.json({
+          plan: 'TRIAL',
+          features: { walk_in_queue: false, communications: false },
+        }),
+      ),
+    )
+    signInAsStaff()
+    renderLayout()
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    await within(nav).findByRole('link', { name: 'Insights' })
+
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Dashboard',
+      'Customers',
+      'Appointments',
+      'Insights',
+      'Settings',
+    ])
+  })
+
+  it('shows every item if the feature list cannot be loaded (the backend still gates)', async () => {
+    server.use(
+      http.get('*/api/garage/features', () =>
+        HttpResponse.json({ message: 'Not found' }, { status: 404 }),
+      ),
+    )
+    signInAsStaff()
+    renderLayout()
+    const nav = await screen.findByRole('navigation', { name: 'Main' })
+    expect(await within(nav).findByRole('link', { name: 'Queue' })).toBeInTheDocument()
+    expect(within(nav).getByRole('link', { name: 'Communications' })).toBeInTheDocument()
+  })
+})
+
 describe('Layout — unread communications badge', () => {
   it('shows the unread WhatsApp count on the Communications link', async () => {
     server.use(
@@ -99,8 +181,7 @@ describe('Layout — unread communications badge', () => {
   it('shows no badge when there is nothing unread', async () => {
     signInAsStaff()
     renderLayout()
-    await screen.findByRole('link', { name: 'Dashboard' })
-    expect(screen.getByRole('link', { name: 'Communications' })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Communications' })).toBeInTheDocument()
   })
 
   it('shows no badge when the count cannot be fetched', async () => {
@@ -176,10 +257,9 @@ describe('Layout — phone menu', () => {
       ['Dashboard', '/g1/dashboard'],
       ['Customers', '/g1/customers'],
       ['Appointments', '/g1/appointments'],
-      ['Requests', '/g1/booking-requests'],
       ['Queue', '/g1/queue'],
-      ['Payments', '/g1/payments'],
       ['Communications', '/g1/communications'],
+      ['Insights', '/g1/insights'],
       ['Settings', '/g1/settings'],
     ]) {
       expect(within(panel).getByRole('link', { name: label })).toHaveAttribute('href', path)

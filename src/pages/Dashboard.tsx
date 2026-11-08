@@ -170,7 +170,7 @@ export function Dashboard() {
             {pendingRequests!.length === 1 ? '' : 's'} waiting for review
           </p>
           <Link
-            to={`/${garageId}/booking-requests`}
+            to={`/${garageId}/appointments/requests`}
             className="mt-2 inline-block text-sm font-medium text-violet-900 underline"
           >
             Review requests
