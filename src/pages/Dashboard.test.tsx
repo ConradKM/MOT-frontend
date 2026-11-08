@@ -9,6 +9,8 @@ import {
   makeCustomer,
   makeGarage,
   makeGarageStatus,
+  makeInsights,
+  makeStaffInsights,
   makeQueueDashboard,
   makeQueueEntry,
 } from '../test/fixtures'
@@ -94,6 +96,38 @@ describe('Dashboard — capacity', () => {
       'href',
       '/g1/appointments?view=week',
     )
+  })
+})
+
+describe('Dashboard — this week', () => {
+  it('shows appointments, no-shows and booked value for Monday to Sunday', async () => {
+    let seen: URL | undefined
+    server.use(
+      http.get('*/api/insights', ({ request }) => {
+        seen = new URL(request.url)
+        return HttpResponse.json(makeInsights())
+      }),
+    )
+    renderDashboard()
+
+    const card = await screen.findByRole('region', { name: 'This week' })
+    expect(await within(card).findByText('£80.00')).toBeInTheDocument()
+    expect(within(card).getByText('Appointments').nextElementSibling).toHaveTextContent('6')
+    expect(within(card).getByText('No-shows').nextElementSibling).toHaveTextContent('1')
+    expect(within(card).getByRole('link', { name: 'See insights →' })).toHaveAttribute('href', '/g1/insights')
+    // 14 Sep 2026 is a Monday.
+    expect(seen?.searchParams.get('start')).toBe('2026-09-14')
+    expect(seen?.searchParams.get('end')).toBe('2026-09-20')
+  })
+
+  it('leaves booked value out when the API does (staff)', async () => {
+    server.use(http.get('*/api/insights', () => HttpResponse.json(makeStaffInsights())))
+    renderDashboard()
+
+    const card = await screen.findByRole('region', { name: 'This week' })
+    await within(card).findByText('1')
+    expect(within(card).queryByText('Booked value')).not.toBeInTheDocument()
+    expect(card.textContent).not.toContain('£')
   })
 })
 
